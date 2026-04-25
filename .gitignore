@@ -32,3 +32,8 @@ key/*
 
 # for https://github.com/di-sukharev/opencommit
 .env
+# 内部简报（不上传）
+PROJECT_BRIEF.md
+MVP_SCOPE.md
+UI_SPEC.md
+CLAUDE.md
