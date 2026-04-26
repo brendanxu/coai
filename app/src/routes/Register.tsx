@@ -29,14 +29,46 @@ type CompProps = {
 
 function Preflight({ form, dispatch, setNext }: CompProps) {
   const { t } = useTranslation();
+  const globalDispatch = useDispatch();
+  const mail = useSelector(infoMailSelector);
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     if (
       !isTextInRange(form.username, 2, 24) ||
       !isTextInRange(form.password, 6, 36) ||
       form.password.trim() !== form.repassword.trim()
-    )
+    ) {
+      // greentokey: surface validation errors instead of silently returning
+      toast.error(t("error"), {
+        description: "用户名 2-24 字符 / 密码 6-36 字符 / 两次密码必须一致",
+      });
       return;
+    }
+
+    // greentokey: when SMTP is unconfigured (mail=false), skip the email/code
+    // step entirely. Auto-generate a placeholder email so the backend accepts
+    // the register call. User can update email later in /account once we ship
+    // SMTP support.
+    if (!mail) {
+      const data = {
+        username: form.username.trim(),
+        password: form.password.trim(),
+        repassword: form.repassword.trim(),
+        email: `${form.username.trim()}@local.greentokey`,
+        code: "",
+      };
+      const resp = await doRegister(data);
+      if (!resp.status) {
+        toast.error(t("error"), { description: resp.error });
+        return;
+      }
+      toast.success(t("auth.register-success"), {
+        description: t("auth.register-success-prompt"),
+      });
+      validateToken(globalDispatch, resp.token);
+      await router.navigate("/");
+      return;
+    }
 
     setNext(true);
   };
@@ -113,7 +145,7 @@ function Preflight({ form, dispatch, setNext }: CompProps) {
         className={`w-full`}
         onClick={onSubmit}
       >
-        {t("auth.next-step")}
+        {mail ? t("auth.next-step") : t("register")}
       </Button>
     </div>
   );
@@ -139,8 +171,19 @@ function Verify({ form, dispatch, setNext }: CompProps) {
   const onSubmit = async () => {
     const data = doFormat(form);
 
-    if (!isEmailValid(data.email)) return;
-    if (mail && data.code.trim().length === 0) return;
+    if (!isEmailValid(data.email)) {
+      // greentokey: was silent return — now surface the error
+      toast.error(t("error"), {
+        description: t("auth.invalid-email"),
+      });
+      return;
+    }
+    if (mail && data.code.trim().length === 0) {
+      toast.error(t("error"), {
+        description: t("auth.code") + " " + (t("required") || "必填"),
+      });
+      return;
+    }
 
     const resp = await doRegister(data);
     if (!resp.status) {
