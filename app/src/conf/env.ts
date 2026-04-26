@@ -87,8 +87,9 @@ export function getTokenField(deploy: boolean): string {
 export function setAppName(name: string): void {
   /**
    * set the app name in localStorage
+   * greentokey: fallback when /api/info.title is empty
    */
-  name = name.trim() || "CoAI";
+  name = name.trim() || "greentokey";
   setMemory("app_name", name);
   appName = name;
 
@@ -98,8 +99,9 @@ export function setAppName(name: string): void {
 export function setAppLogo(logo: string): void {
   /**
    * set the app logo in localStorage
+   * greentokey: fallback when /api/info.logo is empty
    */
-  logo = logo.trim() || "/favicon.ico";
+  logo = logo.trim() || "/logo.svg";
   setMemory("app_logo", logo);
   appLogo = logo;
 
@@ -109,8 +111,9 @@ export function setAppLogo(logo: string): void {
 export function setDocsUrl(url: string): void {
   /**
    * set the docs url in localStorage
+   * greentokey: docs not yet hosted; fall back to project landing
    */
-  url = url.trim() || "https://coai.dev";
+  url = url.trim() || "https://greentokey.com";
   setMemory("docs_url", url);
   docsEndpoint = url;
 }
@@ -118,8 +121,10 @@ export function setDocsUrl(url: string): void {
 export function setBlobEndpoint(endpoint: string): void {
   /**
    * set the blob endpoint in localStorage
+   * greentokey: blob storage not yet provisioned; default empty
+   * (CoAI handles missing blob endpoint gracefully)
    */
-  endpoint = endpoint.trim() || "https://blob.coai.dev";
+  endpoint = endpoint.trim() || "";
   setMemory("blob_endpoint", endpoint);
   blobEndpoint = endpoint;
 }
