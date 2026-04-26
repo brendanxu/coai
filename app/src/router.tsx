@@ -65,15 +65,22 @@ const router = createBrowserRouter([
           </Suspense>
         ),
       },
-      {
-        id: "wallet",
-        path: "wallet",
-        element: (
-          <Suspense>
-            <Wallet />
-          </Suspense>
-        ),
-      },
+      // /wallet route — hidden when HIDE_CREDIT_UI=true (greentokey BYOK has
+      // no internal credit/quota model). Direct access to /wallet falls through
+      // to the catch-all NotFound. Restore by setting VITE_HIDE_CREDIT_UI=false.
+      ...(import.meta.env.VITE_HIDE_CREDIT_UI === "false"
+        ? [
+            {
+              id: "wallet",
+              path: "wallet",
+              element: (
+                <Suspense>
+                  <Wallet />
+                </Suspense>
+              ),
+            },
+          ]
+        : []),
       // {
       //   id: "log",
       //   path: "log",

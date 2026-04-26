@@ -2,11 +2,28 @@ import { updateDocumentTitle, updateFavicon } from "@/utils/dom.ts";
 import { setMemory } from "@/utils/memory.ts";
 
 export let appName =
-  localStorage.getItem("app_name") || import.meta.env.VITE_APP_NAME || "CoAI";
+  localStorage.getItem("app_name") || import.meta.env.VITE_APP_NAME || "greentokey";
 export let appLogo =
   localStorage.getItem("app_logo") ||
   import.meta.env.VITE_APP_LOGO ||
-  "/favicon.ico";
+  "/logo.svg";
+
+/**
+ * greentokey feature flags. See docs/branding-esg.md for rationale.
+ *
+ * HIDE_CREDIT_UI: hide CoAI's native credit/wallet/quota/subscription/redeem UI.
+ * greentokey is BYOK (users bring their own API keys + pay providers directly),
+ * so the credit-purchase model doesn't apply. Affects:
+ *  - MenuBar wallet entry
+ *  - /wallet route (redirects to home)
+ *  - SubscriptionUsage card
+ *  - UpgradePlan dialog
+ *  - Tier badges, subscription tier comparison, redeem code dialogs
+ *
+ * Toggle via env: VITE_HIDE_CREDIT_UI=false to bring CoAI's billing UI back.
+ */
+export const HIDE_CREDIT_UI =
+  (import.meta.env.VITE_HIDE_CREDIT_UI ?? "true") !== "false";
 export let blobEndpoint =
   localStorage.getItem("blob_endpoint") ||
   import.meta.env.VITE_BLOB_ENDPOINT ||

@@ -29,6 +29,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip.tsx";
 import NavBar from "@/components/app/NavBar.tsx";
+import { HIDE_CREDIT_UI } from "@/conf/env.ts";
 
 type BarItemProps = {
   icon: React.ReactElement;
@@ -113,7 +114,9 @@ function ToolBar() {
       <BarItem icon={<MessageCircle />} path={`/`} name={"chat"} />
       <BarItem icon={<LibraryBig />} path={`/model`} name={"model"} />
       {/* <BarItem icon={<Compass />} path={`/preset`} name={"preset"} /> */}
-      <BarItem icon={<Wallet />} path={`/wallet`} name={"wallet"} />
+      {!HIDE_CREDIT_UI && (
+        <BarItem icon={<Wallet />} path={`/wallet`} name={"wallet"} />
+      )}
       {/* <BarItem icon={<DraftingCompass />} path={`/key`} name={"key"} /> */}
       {/* <BarItem icon={<PieChart />} path={`/log`} name={"log"} /> */}
       <BarItem icon={<User />} path={`/account`} name={"account"} />

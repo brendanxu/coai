@@ -25,6 +25,7 @@ import {
   Wallet,
 } from "lucide-react";
 import Icon from "@/components/utils/Icon.tsx";
+import { HIDE_CREDIT_UI } from "@/conf/env.ts";
 
 type MenuBarProps = {
   children: React.ReactNode;
@@ -69,7 +70,9 @@ function MenuBar({ children, className }: MenuBarProps) {
             <BarItem icon={<MessageCircle />} path={`/`} name={"chat"} />
             <BarItem icon={<LibraryBig />} path={`/model`} name={"model"} />
             {/* <BarItem icon={<Compass />} path={`/preset`} name={"preset"} /> */}
-            <BarItem icon={<Wallet />} path={`/wallet`} name={"wallet"} />
+            {!HIDE_CREDIT_UI && (
+              <BarItem icon={<Wallet />} path={`/wallet`} name={"wallet"} />
+            )}
             {/* <BarItem icon={<DraftingCompass />} path={`/key`} name={"key"} /> */}
             <BarItem icon={<User />} path={`/account`} name={"account"} />
             {/* <BarItem icon={<PieChart />} path={`/log`} name={"log"} /> */}

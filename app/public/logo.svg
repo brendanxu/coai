@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  greentokey logo — leaf-and-key motif.
+  Symbolism:
+    - Leaf (#2D5A3D moss) → green / sustainability
+    - Key bow integrated into leaf base + bit lines below
+    - Round badge background uses theme-aware fill
+  Designed to work in light + dark themes via currentColor on the badge stroke.
+  Single-file SVG, no external deps. ~1.5KB.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="greentokey">
+  <title>greentokey</title>
+  <!-- Badge background (forest dark, with sage tint at edge) -->
+  <defs>
+    <linearGradient id="gt-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2D5A3D"/>
+      <stop offset="100%" stop-color="#1F3A2E"/>
+    </linearGradient>
+    <linearGradient id="gt-leaf" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A8C9B0"/>
+      <stop offset="100%" stop-color="#7FA88E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square badge -->
+  <rect x="2" y="2" width="60" height="60" rx="14" ry="14" fill="url(#gt-bg)"/>
+
+  <!-- Leaf — central, slightly tilted to the right -->
+  <path d="M32 14
+           C 22 16, 16 24, 17 36
+           C 18 44, 25 50, 32 50
+           C 39 50, 46 44, 47 36
+           C 48 24, 42 16, 32 14
+           Z"
+        fill="url(#gt-leaf)" opacity="0.95"/>
+
+  <!-- Leaf central vein -->
+  <path d="M32 14 L 32 50" stroke="#1F3A2E" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Side veins (small) -->
+  <path d="M32 22 Q 38 26 42 30 M32 22 Q 26 26 22 30
+           M32 30 Q 39 33 44 36 M32 30 Q 25 33 20 36
+           M32 38 Q 38 40 41 42 M32 38 Q 26 40 23 42"
+        stroke="#1F3A2E" stroke-width="1" stroke-linecap="round" fill="none" opacity="0.35"/>
+
+  <!-- Key bit at the bottom — tiny key teeth integrated into leaf stem -->
+  <rect x="30" y="50" width="4" height="6" fill="#A8C9B0"/>
+  <rect x="34" y="52" width="3" height="2" fill="#A8C9B0"/>
+  <rect x="34" y="55" width="2" height="2" fill="#A8C9B0"/>
+</svg>
