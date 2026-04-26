@@ -1,0 +1,53 @@
+# Dockerfile.split — Go backend only.
+# Frontend (vite build) is done on dev machine (Mac 16GB) and shipped as
+# coai/app/dist/. This avoids OOM on 2GB VPS during pnpm install + vite build.
+#
+# Build flow:
+#   1. (Mac) cd coai/app && pnpm install && pnpm run build  →  app/dist/
+#   2. (Mac) rsync coai/ → VPS:/opt/greentokey/coai-source/
+#   3. (VPS) cd coai-source && docker build -f Dockerfile.split -t greentokey-coai:v0.1 .
+#
+# Final image is identical to Dockerfile (multi-stage) but ~10x faster + RAM-safe.
+
+FROM golang:1.20-alpine AS backend
+
+WORKDIR /backend
+COPY . .
+
+ARG TARGETARCH
+ARG TARGETOS
+ENV GOOS=$TARGETOS GOARCH=$TARGETARCH GO111MODULE=on CGO_ENABLED=1
+
+RUN apk update && \
+    apk add --no-cache \
+    gcc \
+    musl-dev \
+    g++ \
+    make \
+    linux-headers
+
+RUN go build -o chat -a -ldflags="-extldflags=-static" .
+
+FROM alpine
+
+RUN apk upgrade --no-cache && \
+    apk add --no-cache wget ca-certificates tzdata && \
+    update-ca-certificates 2>/dev/null || true
+
+RUN echo "Asia/Shanghai" > /etc/timezone && \
+    ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
+WORKDIR /
+
+# Backend
+COPY --from=backend /backend/chat /chat
+COPY --from=backend /backend/config.example.yaml /config.example.yaml
+COPY --from=backend /backend/utils/templates /utils/templates
+COPY --from=backend /backend/addition/article/template.docx /addition/article/template.docx
+
+# Frontend (pre-built on dev machine — must exist before docker build)
+COPY app/dist /app/dist
+
+VOLUME ["/config", "/logs", "/storage"]
+EXPOSE 8094
+CMD ["./chat"]
