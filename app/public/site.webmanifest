@@ -1,6 +1,7 @@
 {
-    "name": "CoAI",
-    "short_name": "CoAI",
+    "name": "greentokey",
+    "short_name": "greentokey",
+    "description": "Sustainable BYOK AI hub for indie builders.",
     "icons": [
       {
         "src": "/service/android-chrome-192x192.png",
@@ -14,7 +15,7 @@
       }
     ],
     "start_url": "/",
-    "theme_color": "#000",
-    "background_color": "#000",
+    "theme_color": "#1F3A2E",
+    "background_color": "#0F1A14",
     "display": "standalone"
 }

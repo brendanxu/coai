@@ -4,122 +4,136 @@
 
 @import 'normalize.css';
 
+/* greentokey brand palette (HSL) — see docs/branding-esg.md
+   forest  #1F3A2E ≈ 146 31% 18%   primary surface dark, headers
+   moss    #2D5A3D ≈ 140 33% 26%   brand accent, primary CTA
+   sage    #7FA88E ≈ 140 18% 58%   secondary, hover
+   fern    #A8C9B0 ≈ 135 24% 73%   subtle accents, success
+   stone   #E8E5DE ≈ 42  18% 89%   light surface, neutral background
+   bark    #3A2E26 ≈ 24  21% 19%   dark text on light
+   cinder  #0F1A14 ≈ 145 27%  8%   deepest dark mode background
+   sun     #D9A441 ≈ 41  67% 55%   warning, alert (carbon over budget)
+*/
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --background-light: 0 0% 100%;
-    --background-dark: 0 0% 0%;
-    --background-hover: 5 0 98%;
-    --background-active: 5 0 96%;
-    --background-container: 0, 0%, 97%, 0.9;
-    --background-container-hover: 0, 0%, 97%, 0.95;
-    --foreground: 240 10% 3.9%;
+    /* light theme on stone (warm off-white) */
+    --background: 42 18% 89%;
+    --background-light: 42 18% 92%;
+    --background-dark: 145 27% 8%;
+    --background-hover: 42 16% 86%;
+    --background-active: 42 14% 83%;
+    --background-container: 42, 18%, 91%, 0.9;
+    --background-container-hover: 42, 18%, 93%, 0.95;
+    --foreground: 24 21% 19%;            /* bark */
 
-    --card: 0 0% 100%;
-    --card-hover: 0 0% 97%;
-    --card-active: 0 0% 94.5%;
-    --card-foreground: 240 10% 3.9%;
+    --card: 42 18% 92%;
+    --card-hover: 42 16% 89%;
+    --card-active: 42 14% 86%;
+    --card-foreground: 24 21% 19%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover: 42 18% 95%;
+    --popover-foreground: 24 21% 19%;
 
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 140 33% 26%;              /* moss — primary CTA */
+    --primary-foreground: 42 18% 95%;
 
-    --secondary: 240 5.9% 97.5%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 140 18% 58%;            /* sage */
+    --secondary-foreground: 24 21% 19%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 42 14% 84%;
+    --muted-foreground: 24 16% 36%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-secondary: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 135 24% 73%;               /* fern */
+    --accent-secondary: 140 18% 58%;     /* sage */
+    --accent-foreground: 146 31% 18%;    /* forest */
 
-    --destructive: 0 67.22% 50.59%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 62% 48%;
+    --destructive-foreground: 42 18% 95%;
 
-    --success: 120 100% 50%;
-    --success-foreground: 0 0% 98%;
+    --success: 135 30% 45%;              /* fern-deep */
+    --success-foreground: 42 18% 95%;
 
-    --failure: 0 67.22% 50.59%;
-    --failure-foreground: 0 0% 98%;
+    --failure: 0 62% 48%;
+    --failure-foreground: 42 18% 95%;
 
-    --border: 240 5.9% 90%;
-    --border-hover: 240 5.9% 85%;
-    --border-active: 240 5.9% 80%;
+    --border: 42 12% 80%;
+    --border-hover: 42 12% 73%;
+    --border-active: 140 18% 58%;
 
-    --input: 240 5.9% 90%;
-    --input-unread: 240 5.9% 50%;
-    --ring: 240 5% 64.9%;
+    --input: 42 12% 80%;
+    --input-unread: 140 18% 50%;
+    --ring: 140 33% 40%;                 /* moss-light, focus ring */
 
-    --text: 0 0% 0%;
-    --text-light: 0 0% 100%;
-    --text-dark: 0 0% 100%;
-    --text-secondary: 0 0% 35%;
-    --text-unread: 0 0% 50%;
-    --text-secondary-dark: 0 0% 80%;
+    --text: 24 21% 19%;                  /* bark */
+    --text-light: 42 18% 95%;
+    --text-dark: 42 18% 95%;
+    --text-secondary: 24 14% 35%;
+    --text-unread: 140 14% 45%;
+    --text-secondary-dark: 42 18% 80%;
 
-    --selection: 212 100% 41%;
-    --selection-foreground: 0 0% 98%;
+    --selection: 140 33% 26%;            /* moss */
+    --selection-foreground: 42 18% 95%;
 
     --radius: 0.5rem;
 
-    --shadow: #00000005;
+    --shadow: #1F3A2E0F;
 
-    --gold: 40 100% 50%;
-    --gold-foreground: 35 100% 40%;
+    --gold: 41 67% 55%;                  /* sun (replacing gold) */
+    --gold-foreground: 41 60% 30%;
 
-    --link: 210 100% 63%;
-    --error: 20 80% 50%;
+    --link: 140 33% 36%;                 /* moss-mid */
+    --error: 41 67% 50%;
 
-    --anim-bar: no-repeat linear-gradient(#333 0 0);
+    --anim-bar: no-repeat linear-gradient(#2D5A3D 0 0);  /* moss */
   }
 
   .dark {
-    --background: 0 0% 0%;
-    --background-hover: 0 0% 7.8%;
-    --background-active: 0 0% 13.7%;
-    --background-container: 0, 0%, 5%, 0.9;
-    --background-container-hover: 0, 0%, 5%, 0.95;
-    --foreground: 210 40% 98%;
+    /* dark theme on cinder (deep forest dusk) */
+    --background: 145 27% 8%;            /* cinder */
+    --background-hover: 146 24% 11%;
+    --background-active: 146 22% 14%;
+    --background-container: 145, 27%, 7%, 0.9;
+    --background-container-hover: 145, 27%, 9%, 0.95;
+    --foreground: 42 18% 89%;            /* stone on cinder */
 
-    --card: 240 10% 3.9%;
-    --card-hover: 240 11% 12.5%;
-    --card-active: 240 9.5% 19%;
-    --card-foreground: 0 0% 98%;
+    --card: 146 31% 12%;                 /* forest-darker */
+    --card-hover: 146 28% 16%;
+    --card-active: 146 26% 20%;
+    --card-foreground: 42 18% 89%;
 
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 146 31% 11%;
+    --popover-foreground: 42 18% 89%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 140 18% 58%;              /* sage on dark = brand CTA */
+    --primary-foreground: 145 27% 8%;
 
-    --secondary: 0 0 10%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 146 31% 18%;            /* forest */
+    --secondary-foreground: 42 18% 89%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 146 22% 16%;
+    --muted-foreground: 140 14% 60%;
 
-    --accent: 240 3.7% 15.9%;
-    --accent-secondary: 240 5% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 140 33% 26%;               /* moss on dark */
+    --accent-secondary: 140 18% 40%;
+    --accent-foreground: 42 18% 89%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 60% 40%;
+    --destructive-foreground: 42 18% 95%;
 
-    --border: 240 3.7% 12.9%;
-    --border-hover: 240 3.7% 17.9%;
-    --border-active: 240 3.7% 25.9%;
-    --input: 240 3.7% 15.9%;
-    --input-unread: 240 3.7% 50%;
-    --ring: 240 4.9% 83.9%;
-    --text: 0 0% 100%;
-    --text-secondary: 0 0% 80%;
-    --text-unread: 0 0% 50%;
+    --border: 146 22% 16%;
+    --border-hover: 146 22% 22%;
+    --border-active: 140 18% 40%;
 
-    --shadow: #ffffff05;
-    --anim-bar: no-repeat linear-gradient(#ccc 0 0);
+    --input: 146 22% 16%;
+    --input-unread: 140 14% 50%;
+    --ring: 140 18% 58%;                 /* sage focus */
+    --text: 42 18% 89%;
+    --text-secondary: 42 14% 75%;
+    --text-unread: 140 12% 55%;
+
+    --shadow: #A8C9B008;
+    --anim-bar: no-repeat linear-gradient(#7FA88E 0 0);  /* sage */
   }
 
   [type='text']:focus, input:where(:not([type])):focus, [type='email']:focus, [type='url']:focus, [type='password']:focus, [type='number']:focus, [type='date']:focus, [type='datetime-local']:focus, [type='month']:focus, [type='search']:focus, [type='tel']:focus, [type='time']:focus, [type='week']:focus, [multiple]:focus, textarea:focus, select:focus {
