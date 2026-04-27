@@ -43,6 +43,7 @@ import { cn } from "@/components/ui/lib/utils.ts";
 import { getNumberMemory } from "@/utils/memory.ts";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
+import { MonthlyWidget } from "@/components/Carbon/MonthlyWidget.tsx";
 
 type Operation = {
   target: ConversationInstance | null;
@@ -419,6 +420,8 @@ function SideBar() {
   return (
     <div className={cn("sidebar", open && "open")}>
       <div className={`sidebar-content`}>
+        {/* v0.6 carbon — monthly widget; only when authenticated */}
+        {auth && <MonthlyWidget />}
         <SidebarAction
           search={search}
           setSearch={setSearch}

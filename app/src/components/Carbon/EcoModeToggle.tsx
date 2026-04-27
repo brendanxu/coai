@@ -16,6 +16,7 @@ import {
   clearEcoOverride,
 } from "@/store/carbon.ts";
 import { setEcoMode as setEcoModeAPI, getEcoMode } from "@/api/carbon.ts";
+import axios from "axios";
 import { LeafIcon } from "./icons.tsx";
 import {
   Tooltip,
@@ -59,6 +60,17 @@ export function EcoModeToggle({ className }: { className?: string }) {
     const id = setTimeout(() => dispatch(clearEcoOverride()), OVERRIDE_TTL_MS);
     return () => clearTimeout(id);
   }, [overrideActive, dispatch]);
+
+  // Sync axios default header so every chat completion request carries the
+  // X-Eco-Override flag while the override window is open. Backend's
+  // ChatRelayAPI reads this header (see manager/chat_completions.go b7).
+  useEffect(() => {
+    if (overrideActive) {
+      axios.defaults.headers.common["X-Eco-Override"] = "off";
+    } else {
+      delete axios.defaults.headers.common["X-Eco-Override"];
+    }
+  }, [overrideActive]);
 
   const handleToggle = async () => {
     if (busy) return;

@@ -25,6 +25,10 @@ const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
 const Article = lazyFactor(() => import("@/routes/Article.tsx"));
 
+// v0.6 carbon
+const Dashboard = lazyFactor(() => import("@/routes/Dashboard.tsx"));
+const Methodology = lazyFactor(() => import("@/routes/Methodology.tsx"));
+
 const AdminPage = lazyFactor(() => import("@/routes/Admin.tsx"));
 const AdminDashboard = lazyFactor(() => import("@/routes/admin/DashBoard.tsx"));
 const AdminMarket = lazyFactor(() => import("@/routes/admin/Market.tsx"));
@@ -114,6 +118,27 @@ const router = createBrowserRouter([
         element: (
           <Suspense>
             <Account />
+          </Suspense>
+        ),
+      },
+      // v0.6 carbon routes
+      {
+        id: "dashboard",
+        path: "dashboard",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <Dashboard />
+            </Suspense>
+          </AuthRequired>
+        ),
+      },
+      {
+        id: "methodology",
+        path: "methodology",
+        element: (
+          <Suspense>
+            <Methodology />
           </Suspense>
         ),
       },
