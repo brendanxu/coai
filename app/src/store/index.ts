@@ -12,6 +12,7 @@ import sharingReducer from "./sharing";
 import settingsReducer from "./settings";
 import recordReducer from "./record";
 import avatarReducer from "./avatar";
+import carbonReducer from "./carbon";
 
 const store = configureStore({
   reducer: {
@@ -28,6 +29,8 @@ const store = configureStore({
     settings: settingsReducer,
     record: recordReducer,
     avatar: avatarReducer,
+    // v0.6 carbon
+    carbon: carbonReducer,
   },
 });
 
