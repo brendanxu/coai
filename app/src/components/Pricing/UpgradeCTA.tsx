@@ -84,7 +84,7 @@ export default function UpgradeCTA({ className }: UpgradeCTAProps) {
       <div className={className}>
         <div className="inline-flex items-center text-sm text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          {t("pricing.loading", "Loading plan…")}
+          {t("pricing-page.loading", "Loading plan…")}
         </div>
       </div>
     );
@@ -122,7 +122,7 @@ export default function UpgradeCTA({ className }: UpgradeCTAProps) {
           ) : (
             <Sparkles className="mr-2 h-4 w-4" />
           )}
-          {t("pricing.upgrade", "Upgrade to Starter")}
+          {t("pricing-page.upgrade", "Upgrade to Starter")}
           <span className="ml-2 text-muted-foreground">{STARTER_PRICE_LABEL}</span>
         </Button>
       </div>
@@ -139,13 +139,13 @@ export default function UpgradeCTA({ className }: UpgradeCTAProps) {
           <p className="inline-flex items-center text-sm text-destructive">
             <AlertCircle className="mr-2 h-4 w-4" />
             {t(
-              "pricing.past-due",
+              "pricing-page.past-due",
               "Your last payment didn't go through.",
             )}
           </p>
           <Button onClick={handleClick} disabled={busy} variant="destructive" size="sm">
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t("pricing.update-payment", "Update payment method")}
+            {t("pricing-page.update-payment", "Update payment method")}
           </Button>
         </div>
       </div>
@@ -160,10 +160,10 @@ export default function UpgradeCTA({ className }: UpgradeCTAProps) {
       <div className={className}>
         <p className="inline-flex items-center text-sm text-muted-foreground">
           <Clock className="mr-2 h-4 w-4" />
-          {t("pricing.on-trial", "Trial")}
+          {t("pricing-page.on-trial", "Trial")}
           {sub.renews_at && (
             <>
-              &nbsp;·&nbsp;{t("pricing.auto-bills", "auto-bills")}&nbsp;
+              &nbsp;·&nbsp;{t("pricing-page.auto-bills", "auto-bills")}&nbsp;
               <span className="font-mono">{formatDate(sub.renews_at)}</span>
               &nbsp;@ {STARTER_PRICE_LABEL}
             </>
@@ -181,15 +181,15 @@ export default function UpgradeCTA({ className }: UpgradeCTAProps) {
       <div className={className}>
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            <span className="font-medium">{t("pricing.cancelled", "Cancelled")}</span>
+            <span className="font-medium">{t("pricing-page.cancelled", "Cancelled")}</span>
             &nbsp;·&nbsp;
-            {t("pricing.access-until", "access until")}&nbsp;
+            {t("pricing-page.access-until", "access until")}&nbsp;
             <span className="font-mono">{formatDate(sub.expired_at)}</span>
           </p>
           <Button onClick={handleClick} disabled={busy} size="sm" variant="outline">
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Sparkles className="mr-2 h-4 w-4" />
-            {t("pricing.resume", "Resume subscription")}
+            {t("pricing-page.resume", "Resume subscription")}
           </Button>
         </div>
       </div>
@@ -202,12 +202,12 @@ export default function UpgradeCTA({ className }: UpgradeCTAProps) {
   return (
     <div className={className}>
       <p className="text-sm text-muted-foreground">
-        {t("pricing.current-plan", "Current plan")}:&nbsp;
+        {t("pricing-page.current-plan", "Current plan")}:&nbsp;
         <span className="font-medium">Starter</span>
         {sub.expired_at && (
           <>
             &nbsp;·&nbsp;
-            {t("pricing.until", "until")}&nbsp;
+            {t("pricing-page.until", "until")}&nbsp;
             <span className="font-mono">{formatDate(sub.expired_at)}</span>
           </>
         )}
@@ -229,7 +229,7 @@ function surfaceCheckoutError(
     case "unauthorized":
       toast.error(
         t(
-          "pricing.error-unauthorized",
+          "pricing-page.error-unauthorized",
           "Your session expired. Please sign in again to upgrade.",
         ),
       );
@@ -238,7 +238,7 @@ function surfaceCheckoutError(
       // ops issue — surface long-form so it gets reported, not just retried.
       toast.error(
         t(
-          "pricing.error-misconfigured",
+          "pricing-page.error-misconfigured",
           "Checkout isn't configured yet. Please contact support.",
         ),
         { duration: 8000 },
@@ -247,7 +247,7 @@ function surfaceCheckoutError(
     case "network":
       toast.error(
         t(
-          "pricing.error-network",
+          "pricing-page.error-network",
           "Couldn't reach our server. Check your connection and try again.",
         ),
       );
@@ -256,7 +256,7 @@ function surfaceCheckoutError(
     default:
       toast.error(
         t(
-          "pricing.error-unknown",
+          "pricing-page.error-unknown",
           "Couldn't open checkout. Please try again in a moment.",
         ),
       );

@@ -36,19 +36,19 @@ function Pricing() {
         {/* ---- Hero ---- */}
         <div className="text-center space-y-6 mb-12">
           <p className="text-sm tracking-widest uppercase text-muted-foreground">
-            {t("pricing.tagline", "Sustainable · BYOK · Indie-built")}
+            {t("pricing-page.tagline", "Sustainable · BYOK · Indie-built")}
           </p>
           <h1 className="text-4xl md:text-6xl leading-tight font-display">
-            {t("pricing.headline-1", "One flat fee.")}{" "}
+            {t("pricing-page.headline-1", "One flat fee.")}{" "}
             <span style={{ color: "hsl(var(--primary))" }}>
-              {t("pricing.headline-2", "Your keys.")}
+              {t("pricing-page.headline-2", "Your keys.")}
             </span>
             <br />
-            {t("pricing.headline-3", "Zero markup.")}
+            {t("pricing-page.headline-3", "Zero markup.")}
           </h1>
           <p className="text-lg text-secondary max-w-2xl mx-auto leading-relaxed">
             {t(
-              "pricing.subheadline",
+              "pricing-page.subheadline",
               "Bring your own OpenAI / Claude / Gemini keys. We give you the UI, the cost cap, the privacy layer — and visible carbon. You pay providers directly.",
             )}
           </p>
@@ -58,29 +58,29 @@ function Pricing() {
         <div className="max-w-md mx-auto rounded-xl border border-border bg-card p-8 space-y-6 mb-20 shadow-sm">
           <div className="space-y-1">
             <p className="text-sm tracking-wide uppercase text-muted-foreground">
-              {t("pricing.starter", "Starter")}
+              {t("pricing-page.starter", "Starter")}
             </p>
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-display">$15</span>
               <span className="text-muted-foreground">
-                /{t("pricing.month", "month")}
+                /{t("pricing-page.month", "month")}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
               {t(
-                "pricing.starter-tagline",
+                "pricing-page.starter-tagline",
                 "Everything you need. Nothing you don't.",
               )}
             </p>
           </div>
 
           <ul className="space-y-3 text-sm">
-            <FeatureRow text={t("pricing.feature-byok", "Bring your own API keys (BYOK)")} />
-            <FeatureRow text={t("pricing.feature-models", "All major models — GPT, Claude, Gemini, Llama")} />
-            <FeatureRow text={t("pricing.feature-zero", "Zero prompt retention — we never see your data")} />
-            <FeatureRow text={t("pricing.feature-cap", "Hard cost cap — no surprise bills")} />
-            <FeatureRow text={t("pricing.feature-carbon", "Per-chat carbon footprint + monthly dashboard")} />
-            <FeatureRow text={t("pricing.feature-cancel", "Cancel anytime — keep access until period ends")} />
+            <FeatureRow text={t("pricing-page.feature-byok", "Bring your own API keys (BYOK)")} />
+            <FeatureRow text={t("pricing-page.feature-models", "All major models — GPT, Claude, Gemini, Llama")} />
+            <FeatureRow text={t("pricing-page.feature-zero", "Zero prompt retention — we never see your data")} />
+            <FeatureRow text={t("pricing-page.feature-cap", "Hard cost cap — no surprise bills")} />
+            <FeatureRow text={t("pricing-page.feature-carbon", "Per-chat carbon footprint + monthly dashboard")} />
+            <FeatureRow text={t("pricing-page.feature-cancel", "Cancel anytime — keep access until period ends")} />
           </ul>
 
           <div className="pt-2">
@@ -89,7 +89,7 @@ function Pricing() {
 
           <p className="text-xs text-muted-foreground text-center">
             {t(
-              "pricing.disclaimer",
+              "pricing-page.disclaimer",
               "Billed monthly. Powered by LemonSqueezy. Includes applicable tax.",
             )}
           </p>
@@ -99,25 +99,25 @@ function Pricing() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
           <ValueProp
             icon={<KeyRound className="w-5 h-5" />}
-            title={t("pricing.value-wallet-title", "Wallet")}
+            title={t("pricing-page.value-wallet-title", "Wallet")}
             body={t(
-              "pricing.value-wallet-body",
+              "pricing-page.value-wallet-body",
               "Compress $50–150/mo across ChatGPT Plus + Claude Pro + Cursor + scattered API into one flat fee. You bring the keys; we charge for the UI + ops.",
             )}
           />
           <ValueProp
             icon={<Shield className="w-5 h-5" />}
-            title={t("pricing.value-privacy-title", "Privacy")}
+            title={t("pricing-page.value-privacy-title", "Privacy")}
             body={t(
-              "pricing.value-privacy-body",
+              "pricing-page.value-privacy-body",
               "Configured zero-retention through the gateway. No prompt logging. Public methodology. Your conversations stay between you and your provider.",
             )}
           />
           <ValueProp
             icon={<Leaf className="w-5 h-5" />}
-            title={t("pricing.value-planet-title", "Planet")}
+            title={t("pricing-page.value-planet-title", "Planet")}
             body={t(
-              "pricing.value-planet-body",
+              "pricing-page.value-planet-body",
               "Each chat shows ~CO₂g. Monthly sustainability dashboard. Optional Eco Mode routes to smaller models + cache. No greenwashing — methodology page is public.",
             )}
           />
@@ -126,45 +126,45 @@ function Pricing() {
         {/* ---- FAQ ---- */}
         <div className="max-w-2xl mx-auto mb-16 space-y-6">
           <h2 className="text-2xl font-display text-center">
-            {t("pricing.faq-title", "Questions you might have")}
+            {t("pricing-page.faq-title", "Questions you might have")}
           </h2>
           <FaqItem
             question={t(
-              "pricing.faq-byok-q",
+              "pricing-page.faq-byok-q",
               "What does BYOK actually mean?",
             )}
             answer={t(
-              "pricing.faq-byok-a",
+              "pricing-page.faq-byok-a",
               "You hold the API keys with each provider (OpenAI, Anthropic, Google, etc.) and pay them directly at their published rates — no markup from us. We're the UI + cost cap + privacy layer on top.",
             )}
           />
           <FaqItem
             question={t(
-              "pricing.faq-cancel-q",
+              "pricing-page.faq-cancel-q",
               "Can I cancel anytime?",
             )}
             answer={t(
-              "pricing.faq-cancel-a",
+              "pricing-page.faq-cancel-a",
               "Yes. Cancellation is one click in your account. You keep full access until the end of the period you've paid for, then drop to free tier — no surprise charges.",
             )}
           />
           <FaqItem
             question={t(
-              "pricing.faq-refund-q",
+              "pricing-page.faq-refund-q",
               "Refunds?",
             )}
             answer={t(
-              "pricing.faq-refund-a",
+              "pricing-page.faq-refund-a",
               "Email support within 14 days of your first charge for a no-questions refund. After that, we honor refunds case-by-case for service issues we caused.",
             )}
           />
           <FaqItem
             question={t(
-              "pricing.faq-data-q",
+              "pricing-page.faq-data-q",
               "What data do you store about my conversations?",
             )}
             answer={t(
-              "pricing.faq-data-a",
+              "pricing-page.faq-data-a",
               "Conversation metadata (timestamps, model, token counts) for billing transparency. No prompt content, no completion content. The gateway is configured with prompt logging off.",
             )}
           />
@@ -173,9 +173,9 @@ function Pricing() {
         {/* ---- Trust strip ---- */}
         <div className="text-center pt-12 border-t border-border">
           <div className="flex flex-wrap justify-center gap-6 text-xs text-muted-foreground">
-            <TrustItem icon={<CreditCard className="w-3.5 h-3.5" />} text={t("pricing.trust-ls", "Powered by LemonSqueezy")} />
-            <TrustItem icon={<RefreshCcw className="w-3.5 h-3.5" />} text={t("pricing.trust-cancel", "Cancel anytime")} />
-            <TrustItem icon={<ShieldCheck className="w-3.5 h-3.5" />} text={t("pricing.trust-no-lockin", "No vendor lock-in — your keys stay yours")} />
+            <TrustItem icon={<CreditCard className="w-3.5 h-3.5" />} text={t("pricing-page.trust-ls", "Powered by LemonSqueezy")} />
+            <TrustItem icon={<RefreshCcw className="w-3.5 h-3.5" />} text={t("pricing-page.trust-cancel", "Cancel anytime")} />
+            <TrustItem icon={<ShieldCheck className="w-3.5 h-3.5" />} text={t("pricing-page.trust-no-lockin", "No vendor lock-in — your keys stay yours")} />
           </div>
         </div>
       </div>
