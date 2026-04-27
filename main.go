@@ -5,6 +5,7 @@ import (
 	"chat/addition"
 	"chat/admin"
 	"chat/auth"
+	"chat/carbon"
 	"chat/channel"
 	"chat/cli"
 	"chat/globals"
@@ -49,6 +50,8 @@ func registerApiRouter(engine *gin.Engine) {
 		manager.Register(app)
 		addition.Register(app)
 		conversation.Register(app)
+		// v0.6 carbon routes
+		carbon.Register(app)
 	}
 }
 
