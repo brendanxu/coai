@@ -12,12 +12,28 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
+
+// logf emits a single-line key=value structured log via CoAI's globals logger.
+// Format: "[payment] <event> k1=v1 k2=v2 ..."
+//
+// Reasons for inline kv (vs. zap/zerolog): CoAI's logger has no structured
+// API and adding a new logging dep risks rebase pain. Single-line k=v is
+// `grep | awk` friendly and lints clean in production aggregators.
+func logf(level func(args ...interface{}), event string, fields ...interface{}) {
+	parts := make([]string, 0, 2+len(fields)/2)
+	parts = append(parts, "[payment]", event)
+	for i := 0; i+1 < len(fields); i += 2 {
+		parts = append(parts, fmt.Sprintf("%v=%v", fields[i], fields[i+1]))
+	}
+	level(strings.Join(parts, " "))
+}
 
 // levelStarter is the only paid tier shipping in v0.6 ($15/mo Starter).
 // Maps directly to CoAI's `subscription.level` column. v0.7+ may add
@@ -78,22 +94,24 @@ func verifySignature(body []byte, signature, secret string) bool {
 // exact bytes LS signed. Gin's binding consumes the body; doing it after
 // json.Unmarshal would leave verification with empty bytes.
 func HandleWebhook(c *gin.Context) {
+	start := time.Now()
 	secret := viper.GetString("lemonsqueezy.webhook_secret")
 	if secret == "" {
-		globals.Warn("[payment] LEMONSQUEEZY_WEBHOOK_SECRET not configured")
+		logf(globals.Warn, "secret_unconfigured")
 		c.AbortWithStatusJSON(401, gin.H{"error": "webhook secret not configured"})
 		return
 	}
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		globals.Warn(fmt.Sprintf("[payment] read body: %s", err))
+		logf(globals.Warn, "body_read_failed", "error", err)
 		c.AbortWithStatusJSON(500, gin.H{"error": "body read failed"})
 		return
 	}
 
 	sig := c.GetHeader("X-Signature")
 	if !verifySignature(body, sig, secret) {
+		logf(globals.Warn, "signature_invalid", "len", len(body), "sig_len", len(sig))
 		c.AbortWithStatusJSON(401, gin.H{"error": "invalid signature"})
 		return
 	}
@@ -102,7 +120,7 @@ func HandleWebhook(c *gin.Context) {
 	if err := json.Unmarshal(body, &payload); err != nil {
 		// Valid signature but unparseable body. Logging and 200-OK avoids
 		// LS retry-loop hell; we already absorbed the verified-but-broken event.
-		globals.Warn(fmt.Sprintf("[payment] webhook payload unparseable: %s", err))
+		logf(globals.Warn, "payload_unparseable", "error", err)
 		c.JSON(200, gin.H{"status": "ignored"})
 		return
 	}
@@ -115,10 +133,12 @@ func HandleWebhook(c *gin.Context) {
 
 	inserted, err := insertWebhookEvent(db, eventID, payload.Meta.EventName)
 	if err != nil {
+		logf(globals.Error, "idempotency_table_error", "event_id", eventID, "error", err)
 		c.AbortWithStatusJSON(500, gin.H{"error": "idempotency table"})
 		return
 	}
 	if !inserted {
+		logf(globals.Info, "duplicate_event", "event_id", eventID, "event_type", payload.Meta.EventName)
 		c.JSON(200, gin.H{"status": "duplicate"})
 		return
 	}
@@ -127,7 +147,10 @@ func HandleWebhook(c *gin.Context) {
 		// Roll back the idempotency row so a future LS retry can succeed.
 		_, _ = globals.ExecDb(db,
 			`DELETE FROM gtk_webhook_event WHERE event_id = ?`, eventID)
-		globals.Warn(fmt.Sprintf("[payment] dispatch %s: %s", payload.Meta.EventName, err))
+		logf(globals.Warn, "dispatch_failed",
+			"event_id", eventID,
+			"event_type", payload.Meta.EventName,
+			"error", err)
 		c.AbortWithStatusJSON(500, gin.H{"error": "dispatch failed"})
 		return
 	}
@@ -135,7 +158,37 @@ func HandleWebhook(c *gin.Context) {
 	_, _ = globals.ExecDb(db,
 		`UPDATE gtk_webhook_event SET processed_at = ? WHERE event_id = ?`,
 		utils.ConvertSqlTime(time.Now()), eventID)
+
+	latencyMs := time.Since(start).Milliseconds()
+	logf(globals.Info, "processed",
+		"event_id", eventID,
+		"event_type", payload.Meta.EventName,
+		"test_mode", payload.Meta.TestMode,
+		"latency_ms", latencyMs)
+
+	// Probabilistic background cleanup of old idempotency rows.
+	// 5% sampling rate at webhook traffic of ~10/min keeps the table
+	// bounded without a separate cron worker. The async DELETE doesn't
+	// block our 200-response — LS only needs the status code.
+	if rand.Intn(100) < 5 {
+		go cleanupOldEvents(db)
+	}
+
 	c.JSON(200, gin.H{"status": "ok"})
+}
+
+// cleanupOldEvents trims gtk_webhook_event rows older than the idempotency
+// window (90d). LS retries within ~24h on failures, so 90d is generous.
+//
+// Runs on its own goroutine — never logs success (success is silent and
+// frequent). Logs DB errors so a stuck cleanup is visible.
+func cleanupOldEvents(db *sql.DB) {
+	cutoff := utils.ConvertSqlTime(time.Now().AddDate(0, 0, -90))
+	_, err := globals.ExecDb(db,
+		`DELETE FROM gtk_webhook_event WHERE received_at < ?`, cutoff)
+	if err != nil {
+		logf(globals.Warn, "cleanup_failed", "error", err)
+	}
 }
 
 func sha256Hex(b []byte) string {
@@ -178,10 +231,11 @@ func dispatch(db *sql.DB, p *webhookPayload) error {
 		return markCancelled(db, p)
 	case eventPaymentFailed:
 		// Log only; LS handles dunning. User keeps access until subscription_cancelled fires.
-		globals.Warn(fmt.Sprintf("[payment] payment_failed for ls_sub=%s", p.Data.ID))
+		logf(globals.Warn, "payment_failed", "ls_subscription_id", p.Data.ID)
 		return nil
 	default:
 		// Unknown event_name. Ack with 200 (don't 4xx — LS would mark endpoint broken).
+		logf(globals.Info, "unknown_event", "event_type", p.Meta.EventName)
 		return nil
 	}
 }
