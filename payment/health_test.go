@@ -6,12 +6,12 @@ import (
 	"testing"
 )
 
-func TestHealthAPI_EmptyTable(t *testing.T) {
+func TestHealthAPI_ReturnsBooleanOnly(t *testing.T) {
 	r, _ := newTestEngine(t)
+	r.GET("/payment/health", HealthAPI)
 
 	req := httptest.NewRequest("GET", "/payment/health", nil)
 	w := httptest.NewRecorder()
-	r.GET("/payment/health", HealthAPI)
 	r.ServeHTTP(w, req)
 
 	if w.Code != 200 {
@@ -24,39 +24,14 @@ func TestHealthAPI_EmptyTable(t *testing.T) {
 	if body["healthy"] != true {
 		t.Fatalf("got healthy=%v want true", body["healthy"])
 	}
-	// processed_total comes through JSON as float64.
-	if body["processed_total"].(float64) != 0 {
-		t.Fatalf("got processed_total=%v want 0", body["processed_total"])
+	// Codex P2 fix (2026-04-27): no business telemetry leaked from the
+	// public health probe. Counts and timestamps are explicitly NOT in
+	// the response.
+	if _, has := body["processed_total"]; has {
+		t.Errorf("processed_total leaked from public health endpoint: %v", body["processed_total"])
 	}
-}
-
-func TestHealthAPI_AfterProcessedEvent(t *testing.T) {
-	r, db := newTestEngine(t)
-	r.GET("/payment/health", HealthAPI)
-
-	// Insert a fake processed event.
-	if _, err := db.Exec(`
-		INSERT INTO gtk_webhook_event (event_id, event_type, processed_at)
-		VALUES ('evt_test', 'subscription_created', '2026-04-27 12:34:56')
-	`); err != nil {
-		t.Fatalf("seed event: %v", err)
-	}
-
-	req := httptest.NewRequest("GET", "/payment/health", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != 200 {
-		t.Fatalf("got %d want 200; body=%s", w.Code, w.Body.String())
-	}
-	var body map[string]interface{}
-	_ = json.Unmarshal(w.Body.Bytes(), &body)
-
-	if body["processed_total"].(float64) != 1 {
-		t.Fatalf("got processed_total=%v want 1", body["processed_total"])
-	}
-	if body["last_event_at"].(string) == "" {
-		t.Fatal("last_event_at should be populated after a processed event")
+	if _, has := body["last_event_at"]; has {
+		t.Errorf("last_event_at leaked from public health endpoint: %v", body["last_event_at"])
 	}
 }
 

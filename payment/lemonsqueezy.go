@@ -118,35 +118,60 @@ func HandleWebhook(c *gin.Context) {
 
 	var payload webhookPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
-		// Valid signature but unparseable body. Logging and 200-OK avoids
-		// LS retry-loop hell; we already absorbed the verified-but-broken event.
+		// Verified-but-malformed payload. Codex P1 (2026-04-27): returning 200
+		// silently loses LS-bug events that would parse on retry (truncation,
+		// provider-side regression). Return 500 so LS retries within its bounded
+		// window (~24h). Persistent malformed payloads will eventually exhaust
+		// LS retries — that's the correct durable failure signal.
 		logf(globals.Warn, "payload_unparseable", "error", err)
-		c.JSON(200, gin.H{"status": "ignored"})
+		c.AbortWithStatusJSON(500, gin.H{"error": "payload unparseable"})
 		return
 	}
 
-	// Idempotency. SHA256 of the body is a safe event ID:
-	//   * Same body re-delivered (LS retry on our 5xx) → same hash → duplicate.
-	//   * Different events → different bodies (LS includes timestamps in payload) → fresh hash.
+	// Idempotency. SHA256 of the body is the event ID.
+	//   * Same body re-delivered (LS retry on our 5xx) → same hash.
+	//   * Different events → different bodies (LS includes timestamps).
+	//
+	// Two-phase classification (Codex P1 fix, 2026-04-27):
+	//   * Insert succeeded → first-time delivery; proceed to dispatch.
+	//   * Insert dup-key + existing row's processed_at IS NOT NULL → fully processed
+	//     duplicate; ack 200 OK.
+	//   * Insert dup-key + processed_at IS NULL → first attempt is in-flight
+	//     OR crashed mid-dispatch. Return 503 so LS retries; by then either
+	//     the in-flight attempt completes (next retry sees processed_at and
+	//     200s) or has been cleaned up (next retry inserts cleanly).
 	eventID := sha256Hex(body)
 	db := utils.GetDBFromContext(c)
 
-	inserted, err := insertWebhookEvent(db, eventID, payload.Meta.EventName)
+	classification, err := classifyEvent(db, eventID, payload.Meta.EventName)
 	if err != nil {
 		logf(globals.Error, "idempotency_table_error", "event_id", eventID, "error", err)
 		c.AbortWithStatusJSON(500, gin.H{"error": "idempotency table"})
 		return
 	}
-	if !inserted {
+	switch classification {
+	case eventClassFresh:
+		// fall through to dispatch
+	case eventClassProcessed:
 		logf(globals.Info, "duplicate_event", "event_id", eventID, "event_type", payload.Meta.EventName)
 		c.JSON(200, gin.H{"status": "duplicate"})
+		return
+	case eventClassInFlight:
+		logf(globals.Warn, "in_flight_retry", "event_id", eventID, "event_type", payload.Meta.EventName)
+		c.AbortWithStatusJSON(503, gin.H{"error": "in flight, retry"})
 		return
 	}
 
 	if err := dispatch(db, &payload); err != nil {
 		// Roll back the idempotency row so a future LS retry can succeed.
-		_, _ = globals.ExecDb(db,
-			`DELETE FROM gtk_webhook_event WHERE event_id = ?`, eventID)
+		// If the DELETE itself fails, log loudly — the row remains as
+		// "in-flight" and the in_flight_retry path above will keep returning
+		// 503 until LS retries successfully or gives up.
+		if _, delErr := globals.ExecDb(db,
+			`DELETE FROM gtk_webhook_event WHERE event_id = ?`, eventID); delErr != nil {
+			logf(globals.Error, "rollback_delete_failed",
+				"event_id", eventID, "error", delErr)
+		}
 		logf(globals.Warn, "dispatch_failed",
 			"event_id", eventID,
 			"event_type", payload.Meta.EventName,
@@ -196,19 +221,49 @@ func sha256Hex(b []byte) string {
 	return hex.EncodeToString(h[:])
 }
 
-// insertWebhookEvent returns (inserted, err). inserted=false with err=nil
-// means the row already existed (idempotent duplicate).
-func insertWebhookEvent(db *sql.DB, eventID, eventType string) (bool, error) {
+// Event classification for the idempotency state machine. See HandleWebhook
+// for the full flow rationale.
+type eventClass int
+
+const (
+	eventClassFresh     eventClass = iota // first-time delivery; row freshly inserted
+	eventClassProcessed                   // row exists with processed_at set; safe duplicate
+	eventClassInFlight                    // row exists with processed_at NULL; first attempt mid-flight or crashed
+)
+
+// classifyEvent attempts to insert a webhook event row. On dup-key it
+// inspects the existing row's processed_at to distinguish between safely
+// processed events (Fresh→Processed) and events whose first attempt is
+// either still running or died before reaching the UPDATE that sets
+// processed_at.
+//
+// Returns (eventClassFresh, nil) only if the INSERT succeeded — the caller
+// owns the subsequent dispatch. (eventClassProcessed/InFlight, nil) means
+// no INSERT happened; the caller must NOT dispatch.
+func classifyEvent(db *sql.DB, eventID, eventType string) (eventClass, error) {
 	_, err := globals.ExecDb(db,
 		`INSERT INTO gtk_webhook_event (event_id, event_type) VALUES (?, ?)`,
 		eventID, eventType)
 	if err == nil {
-		return true, nil
+		return eventClassFresh, nil
 	}
-	if isDupErr(err) {
-		return false, nil
+	if !isDupErr(err) {
+		return eventClassFresh, err
 	}
-	return false, err
+
+	// Dup-key. Inspect the existing row.
+	var processedAt sql.NullString
+	if scanErr := globals.QueryRowDb(db,
+		`SELECT processed_at FROM gtk_webhook_event WHERE event_id = ?`,
+		eventID).Scan(&processedAt); scanErr != nil {
+		// Row vanished between INSERT and SELECT — race with a concurrent
+		// rollback DELETE. Treat as fresh on the next call (the LS retry).
+		return eventClassInFlight, nil
+	}
+	if processedAt.Valid && processedAt.String != "" {
+		return eventClassProcessed, nil
+	}
+	return eventClassInFlight, nil
 }
 
 // isDupErr matches duplicate-key errors across MySQL (1062) and sqlite
@@ -313,13 +368,18 @@ func upsertLsMapping(db *sql.DB, userID int64, p *webhookPayload, renewsAt time.
 		return err
 	}
 
+	// Monotonic guard (Codex P1 fix, 2026-04-27): two concurrent webhooks for
+	// the same subscription can land out-of-order at the DB. Only overwrite
+	// when the incoming renews_at is at-or-after the stored one — older events
+	// arriving last become no-ops instead of stale-state regressions.
 	_, err = globals.ExecDb(db, `
 		UPDATE gtk_ls_subscription
 		SET variant_id = ?, status = ?, renews_at = ?, test_mode = ?
 		WHERE ls_subscription_id = ?
+		  AND (renews_at IS NULL OR renews_at <= ?)
 	`,
 		variantID, p.Data.Attributes.Status, renewsAtStr,
-		p.Data.Attributes.TestMode, p.Data.ID)
+		p.Data.Attributes.TestMode, p.Data.ID, renewsAtStr)
 	if err != nil {
 		return err
 	}
@@ -370,11 +430,14 @@ func activateExternalSubscription(db *sql.DB, userID int64, level int, expiredAt
 		return err
 	}
 
-	// Always UPDATE — covers both the just-inserted case (no-op effectively)
-	// and the renewal case where the row pre-existed. total_month is NOT
-	// touched here; LS payload has no signal of "this is renewal #N".
+	// Monotonic guard (Codex P1 fix, 2026-04-27): only advance expired_at,
+	// never roll it back. If two webhooks for the same user race and the
+	// older one arrives last, this clause prevents it from clobbering the
+	// already-stored newer expiry. total_month is NOT touched here; LS
+	// payload has no signal of "this is renewal #N".
 	_, err = globals.ExecDb(db,
-		`UPDATE subscription SET expired_at = ?, level = ? WHERE user_id = ?`,
-		date, level, userID)
+		`UPDATE subscription SET expired_at = ?, level = ?
+		 WHERE user_id = ? AND (expired_at IS NULL OR expired_at <= ?)`,
+		date, level, userID, date)
 	return err
 }

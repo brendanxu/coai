@@ -31,6 +31,13 @@ func Migrate(db *sql.DB) error {
 }
 
 func createLsSubscriptionTable(db *sql.DB) error {
+	// FK has explicit ON DELETE CASCADE (Codex P2 fix, 2026-04-27): without
+	// it, MySQL defaults to RESTRICT (deleting a user with LS rows would
+	// fail) and SQLite ignores FKs unless globally enabled — cross-engine
+	// behavior diverges. CASCADE means deleting an auth user also reaps
+	// their LS subscription mapping, which is the correct GDPR-friendly
+	// semantic for greentokey: when the user is gone, the audit row goes
+	// with them.
 	_, err := globals.ExecDb(db, `
 		CREATE TABLE IF NOT EXISTS gtk_ls_subscription (
 		  id INT PRIMARY KEY AUTO_INCREMENT,
@@ -43,7 +50,7 @@ func createLsSubscriptionTable(db *sql.DB) error {
 		  test_mode BOOLEAN DEFAULT FALSE,
 		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		  FOREIGN KEY (user_id) REFERENCES auth(id)
+		  FOREIGN KEY (user_id) REFERENCES auth(id) ON DELETE CASCADE
 		);
 	`)
 	return err

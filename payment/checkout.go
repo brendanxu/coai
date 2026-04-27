@@ -6,9 +6,22 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+)
+
+// LS store slugs are DNS labels: lowercase alphanumerics + hyphens, 1-63 chars,
+// not starting or ending with a hyphen. LS variant IDs are positive integers.
+//
+// Validating these defends against (Codex P2 fix, 2026-04-27): operator
+// misconfiguration like `evil.com/`, `..`, `foo@evil.com`, or `#` that would
+// reshape the URL into something away from `*.lemonsqueezy.com` — and against
+// silent failures where the URL builds successfully but routes to nowhere.
+var (
+	storeSlugRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+	variantIDRe = regexp.MustCompile(`^[1-9][0-9]{0,17}$`)
 )
 
 // CheckoutAPI returns a LemonSqueezy Checkout URL pre-bound to the
@@ -60,6 +73,12 @@ func buildCheckoutURL(userID int64) (string, error) {
 	}
 	if variantID == "" {
 		return "", errors.New("LEMONSQUEEZY_VARIANT_ID not configured")
+	}
+	if !storeSlugRe.MatchString(slug) {
+		return "", fmt.Errorf("LEMONSQUEEZY_STORE_SLUG invalid: %q must be a DNS label (a-z, 0-9, hyphen)", slug)
+	}
+	if !variantIDRe.MatchString(variantID) {
+		return "", fmt.Errorf("LEMONSQUEEZY_VARIANT_ID invalid: %q must be a positive integer", variantID)
 	}
 
 	params := url.Values{}
