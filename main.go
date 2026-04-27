@@ -51,6 +51,7 @@ func registerApiRouter(engine *gin.Engine) {
 		manager.Register(app)
 		addition.Register(app)
 		conversation.Register(app)
+		payment.Register(app)
 	}
 }
 
