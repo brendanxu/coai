@@ -10,7 +10,7 @@ import (
 // Constructed at the end of the relay handler in manager/chat_completions.go
 // and handed to GoLogUsage for fire-and-forget persistence.
 type UsageEvent struct {
-	UserID        int
+	UserID        int64
 	Model         string // the model that was actually used (post-eco-route)
 	Region        string // optional; "" → use default_region
 	Tokens        int    // total_tokens from the upstream usage block (may be 0 on stream error)

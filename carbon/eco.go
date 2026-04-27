@@ -93,15 +93,15 @@ func GetEcoRoutingTable() *EcoRoutingTable {
 
 // UserCarbonPrefs is the per-user state stored in user_carbon_prefs.
 type UserCarbonPrefs struct {
-	UserID                    int  `json:"user_id"`
-	EcoMode                   bool `json:"eco_mode"`
-	EcoModeFirstFeedbackSeen  bool `json:"eco_mode_first_feedback_seen"`
+	UserID                    int64 `json:"user_id"`
+	EcoMode                   bool  `json:"eco_mode"`
+	EcoModeFirstFeedbackSeen  bool  `json:"eco_mode_first_feedback_seen"`
 }
 
 // GetUserCarbonPrefs reads the user's carbon prefs row. If no row exists,
 // returns the zero-value struct (eco_mode=false) — matches the D7 design
 // decision (Eco Mode default OFF).
-func GetUserCarbonPrefs(db *sql.DB, userID int) UserCarbonPrefs {
+func GetUserCarbonPrefs(db *sql.DB, userID int64) UserCarbonPrefs {
 	prefs := UserCarbonPrefs{UserID: userID}
 	row := globals.QueryRowDb(db, `
 		SELECT eco_mode, eco_mode_first_feedback_seen
@@ -110,14 +110,14 @@ func GetUserCarbonPrefs(db *sql.DB, userID int) UserCarbonPrefs {
 	// Both columns may be NULL/0 if no row; sql.Scan into bool handles that.
 	if err := row.Scan(&prefs.EcoMode, &prefs.EcoModeFirstFeedbackSeen); err != nil && err != sql.ErrNoRows {
 		// Not a hard failure — log and return zero prefs.
-		globals.Warn("carbon: GetUserCarbonPrefs scan error for user " + itoa(userID) + ": " + err.Error())
+		globals.Warn("carbon: GetUserCarbonPrefs scan error for user ", userID, ": ", err.Error())
 	}
 	return prefs
 }
 
 // SetUserEcoMode upserts the user's eco_mode flag. Lazy-creates the row on
 // first toggle.
-func SetUserEcoMode(db *sql.DB, userID int, enabled bool) error {
+func SetUserEcoMode(db *sql.DB, userID int64, enabled bool) error {
 	_, err := globals.ExecDb(db, `
 		INSERT INTO user_carbon_prefs (user_id, eco_mode)
 		VALUES (?, ?)
@@ -129,35 +129,11 @@ func SetUserEcoMode(db *sql.DB, userID int, enabled bool) error {
 // MarkEcoFirstFeedbackSeen records that the user has seen the "Eco saved X%"
 // pill enough times. Frontend caps the show count at 5 then calls this to
 // stop showing.
-func MarkEcoFirstFeedbackSeen(db *sql.DB, userID int) error {
+func MarkEcoFirstFeedbackSeen(db *sql.DB, userID int64) error {
 	_, err := globals.ExecDb(db, `
 		INSERT INTO user_carbon_prefs (user_id, eco_mode_first_feedback_seen)
 		VALUES (?, TRUE)
 		ON DUPLICATE KEY UPDATE eco_mode_first_feedback_seen = TRUE, updated_at = CURRENT_TIMESTAMP
 	`, userID)
 	return err
-}
-
-// itoa is a tiny inline helper to avoid pulling in strconv just for log lines.
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := false
-	if n < 0 {
-		neg = true
-		n = -n
-	}
-	buf := [20]byte{}
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + n%10)
-		n /= 10
-	}
-	if neg {
-		i--
-		buf[i] = '-'
-	}
-	return string(buf[i:])
 }
