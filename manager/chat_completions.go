@@ -5,6 +5,7 @@ import (
 	"chat/addition/web"
 	"chat/admin"
 	"chat/auth"
+	"chat/carbon"
 	"chat/channel"
 	"chat/globals"
 	"chat/utils"
@@ -26,6 +27,19 @@ const (
 
 func supportRelayPlan() bool {
 	return channel.SystemInstance.SupportRelayPlan()
+}
+
+// logCarbonForCompletion emits a fire-and-forget carbon usage log row for one
+// chat completion. Called at every terminal point of the relay (success or
+// stream error) so /dashboard reflects all activity. v0.6 carbon hook.
+func logCarbonForCompletion(c *gin.Context, db *sql.DB, user *auth.User, form RelayForm, tokens int, streamError bool) {
+	carbon.GoLogUsage(db, carbon.UsageEvent{
+		UserID:        user.GetID(db),
+		Model:         form.Model,
+		Tokens:        tokens,
+		EcoRoutedFrom: c.GetString("carbon.eco_routed_from"),
+		StreamError:   streamError,
+	})
 }
 
 func checkEnableState(db *sql.DB, cache *redis.Client, user *auth.User, model string, messages []globals.Message) (state error, plan bool) {
@@ -80,6 +94,21 @@ func ChatRelayAPI(c *gin.Context) {
 		form.Official = true
 	}
 
+	// v0.6 carbon: eco-route BEFORE quota check so user is billed for the
+	// model they actually use. Per-chat override (X-Eco-Override: off header
+	// or future Redux flag) bypasses for one turn.
+	carbonOrigModel := form.Model
+	userID := user.GetID(db)
+	if userID > 0 && c.GetHeader("X-Eco-Override") != "off" {
+		prefs := carbon.GetUserCarbonPrefs(db, userID)
+		if prefs.EcoMode {
+			if r := carbon.MaybeRouteEco(form.Model); r.DidRoute {
+				form.Model = r.NewModel
+				c.Set("carbon.eco_routed_from", carbonOrigModel)
+			}
+		}
+	}
+
 	check, plan := checkEnableState(db, cache, user, form.Model, messages)
 	if check != nil {
 		sendErrorResponse(c, check, "quota_exceeded_error")
@@ -124,6 +153,9 @@ func sendTranshipmentResponse(c *gin.Context, form RelayForm, messages []globals
 		auth.RevertSubscriptionUsage(db, cache, user, form.Model)
 		globals.Warn(fmt.Sprintf("error from chat request api: %s (instance: %s, client: %s)", err, form.Model, c.ClientIP()))
 
+		// v0.6 carbon: log error path with stream_error flag
+		logCarbonForCompletion(c, db, user, form, buffer.CountToken(), true)
+
 		sendErrorResponse(c, err)
 		return
 	}
@@ -158,6 +190,9 @@ func sendTranshipmentResponse(c *gin.Context, form RelayForm, messages []globals
 		},
 		Quota: utils.Multi[*float32](form.Official, nil, utils.ToPtr(buffer.GetQuota())),
 	})
+
+	// v0.6 carbon: log successful non-stream completion
+	logCarbonForCompletion(c, db, user, form, buffer.CountToken(), false)
 }
 
 func getFinishReason(buffer *utils.Buffer, end bool) interface{} {
@@ -239,6 +274,8 @@ func sendStreamTranshipmentResponse(c *gin.Context, form RelayForm, messages []g
 			auth.RevertSubscriptionUsage(db, cache, user, form.Model)
 			globals.Warn(fmt.Sprintf("error from chat request api: %s (instance: %s, client: %s)", err.Error(), form.Model, c.ClientIP()))
 			partial <- getStreamTranshipmentForm(id, created, form, &globals.Chunk{Content: err.Error()}, buffer, true, err)
+			// v0.6 carbon: log stream-error path
+			logCarbonForCompletion(c, db, user, form, buffer.CountToken(), true)
 			close(partial)
 			return
 		}
@@ -248,6 +285,9 @@ func sendStreamTranshipmentResponse(c *gin.Context, form RelayForm, messages []g
 		if !hit {
 			CollectQuota(c, user, buffer, plan, err)
 		}
+
+		// v0.6 carbon: log successful streamed completion
+		logCarbonForCompletion(c, db, user, form, buffer.CountToken(), false)
 
 		close(partial)
 		return
