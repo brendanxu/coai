@@ -21,6 +21,7 @@ import {
   LibraryBig,
   MessageCircle,
   Shield,
+  Sparkles,
   User,
   Wallet,
 } from "lucide-react";
@@ -74,6 +75,7 @@ function MenuBar({ children, className }: MenuBarProps) {
               <BarItem icon={<Wallet />} path={`/wallet`} name={"wallet"} />
             )}
             {/* <BarItem icon={<DraftingCompass />} path={`/key`} name={"key"} /> */}
+            <BarItem icon={<Sparkles />} path={`/pricing`} name={"pricing"} />
             <BarItem icon={<User />} path={`/account`} name={"account"} />
             {/* <BarItem icon={<PieChart />} path={`/log`} name={"log"} /> */}
             {admin && (

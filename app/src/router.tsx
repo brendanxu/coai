@@ -20,6 +20,7 @@ import License from "@/routes/admin/License.tsx";
 const Model = lazyFactor(() => import("@/routes/Model.tsx"));
 const Wallet = lazyFactor(() => import("@/routes/Wallet.tsx"));
 const Account = lazyFactor(() => import("@/routes/Account.tsx"));
+const Pricing = lazyFactor(() => import("@/routes/Pricing.tsx"));
 
 const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
@@ -114,6 +115,15 @@ const router = createBrowserRouter([
         element: (
           <Suspense>
             <Account />
+          </Suspense>
+        ),
+      },
+      {
+        id: "pricing",
+        path: "pricing",
+        element: (
+          <Suspense>
+            <Pricing />
           </Suspense>
         ),
       },
