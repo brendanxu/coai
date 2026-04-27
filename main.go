@@ -7,10 +7,12 @@ import (
 	"chat/auth"
 	"chat/channel"
 	"chat/cli"
+	"chat/connection"
 	"chat/globals"
 	"chat/manager"
 	"chat/manager/conversation"
 	"chat/middleware"
+	"chat/payment"
 	"chat/utils"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -64,6 +66,12 @@ func main() {
 	app := utils.NewEngine()
 	worker := middleware.RegisterMiddleware(app)
 	defer worker()
+
+	// greentokey: bridge tables for LemonSqueezy subscription billing (v0.6+).
+	// Runs after middleware.RegisterMiddleware connects DB; idempotent on reboot.
+	if err := payment.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey payment migration failed: %s", err))
+	}
 
 	utils.RegisterStaticRoute(app)
 	registerApiRouter(app)
