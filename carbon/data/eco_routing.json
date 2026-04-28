@@ -5,8 +5,8 @@
     {
       "from": "gpt-4",
       "to": "gpt-4o-mini",
-      "expected_savings_pct": 89,
-      "notes": "older GPT-4 to small efficient model"
+      "expected_savings_pct": 95,
+      "notes": "older GPT-4 to small efficient model; estimated coefficient delta, low confidence"
     },
     {
       "from": "gpt-4-turbo",
@@ -49,7 +49,9 @@
     "gpt-4o-mini",
     "claude-haiku-4-5",
     "gemini-1.5-flash",
-    "gemini-2.0-flash"
+    "gemini-2.0-flash",
+    "deepseek-chat",
+    "deepseek-v3"
   ],
-  "calibration_note": "expected_savings_pct is computed from carbon_factors.json: (from_g - to_g) / from_g * 100. Recompute when factors change. UI displays this on the first 5 Eco-Mode-on chats then goes quiet."
+  "calibration_note": "expected_savings_pct is the estimated coefficient delta from carbon_factors.json: (from_g - to_g) / from_g * 100. Recompute when factors change. The unit test TestEcoRouting_SavingsMatchFactors enforces this within ±0.5pp. Note: this is internal consistency — it does NOT validate the underlying carbon estimates. See Methodology page for limitations."
 }

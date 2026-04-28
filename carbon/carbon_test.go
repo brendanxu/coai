@@ -193,8 +193,11 @@ func TestFactorsTable_HasMinimumModels(t *testing.T) {
 	if tbl.Version == "" {
 		t.Errorf("expected non-empty Version")
 	}
-	if tbl.ErrorMarginPct <= 0 || tbl.ErrorMarginPct > 50 {
-		t.Errorf("ErrorMarginPct should be a small positive int, got %v", tbl.ErrorMarginPct)
+	// Honest margins for closed-model inference are 50-200% per Codex
+	// review of public LLM-carbon literature. Anything ≤25% is suspicious
+	// (false precision); anything >300% is meaningless.
+	if tbl.ErrorMarginPct < 25 || tbl.ErrorMarginPct > 300 {
+		t.Errorf("ErrorMarginPct should be in [25, 300]; got %v (false precision or meaningless?)", tbl.ErrorMarginPct)
 	}
 	if len(tbl.Sources) < 2 {
 		t.Errorf("expected ≥2 sources cited, got %d", len(tbl.Sources))
@@ -216,8 +219,11 @@ func TestFactorsTable_HasMinimumModels(t *testing.T) {
 }
 
 func TestEcoRouting_SavingsMatchFactors(t *testing.T) {
-	// Verify expected_savings_pct claims roughly match (from_g - to_g) / from_g.
-	// Allow ±5 percentage points slack — the JSON is hand-edited.
+	// Verify expected_savings_pct in eco_routing.json matches the integer-rounded
+	// coefficient delta from carbon_factors.json. Tightened from ±5pp to ±0.5pp
+	// per Codex review — looser slack rubber-stamps drift; ±0.5pp catches any
+	// hand-edit that doesn't recompute. Note this is INTERNAL consistency only:
+	// it does NOT validate the underlying coefficients are scientifically sound.
 	ecoTbl := GetEcoRoutingTable()
 	for _, m := range ecoTbl.Mappings {
 		fromG, _, ok1 := LookupCoefficient(m.From, "")
@@ -227,8 +233,8 @@ func TestEcoRouting_SavingsMatchFactors(t *testing.T) {
 		}
 		actual := (fromG - toG) / fromG * 100
 		diff := math.Abs(actual - float64(m.ExpectedSavingsPct))
-		if diff > 5 {
-			t.Errorf("mapping %s→%s: claimed savings=%d%%, computed=%.1f%% (diff %.1f > 5)",
+		if diff > 0.5 {
+			t.Errorf("mapping %s→%s: claimed savings=%d%%, computed=%.2f%% (diff %.2f > 0.5)",
 				m.From, m.To, m.ExpectedSavingsPct, actual, diff)
 		}
 	}
