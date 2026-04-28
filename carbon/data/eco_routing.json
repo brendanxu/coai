@@ -1,0 +1,57 @@
+{
+  "version": "2026-04",
+  "description": "Eco Mode model substitutions. When user.eco_mode=true and the requested model has a mapping here, the carbon middleware mutates form.Model BEFORE the chat completion handler runs. Billing follows the mutated model (channel.ChargeInstance.GetCharge(form.Model)), so user saves both money and CO2. Per-chat override (long-press toggle) bypasses this for one turn.",
+  "mappings": [
+    {
+      "from": "gpt-4",
+      "to": "gpt-4o-mini",
+      "expected_savings_pct": 95,
+      "notes": "older GPT-4 to small efficient model; estimated coefficient delta, low confidence"
+    },
+    {
+      "from": "gpt-4-turbo",
+      "to": "gpt-4o-mini",
+      "expected_savings_pct": 87
+    },
+    {
+      "from": "gpt-4o",
+      "to": "gpt-4o-mini",
+      "expected_savings_pct": 84
+    },
+    {
+      "from": "gpt-3.5-turbo",
+      "to": "gpt-4o-mini",
+      "expected_savings_pct": 30,
+      "notes": "modest improvement; gpt-3.5-turbo is already small but 4o-mini is newer + more efficient"
+    },
+    {
+      "from": "claude-opus-4-7",
+      "to": "claude-haiku-4-5",
+      "expected_savings_pct": 91
+    },
+    {
+      "from": "claude-sonnet-4-6",
+      "to": "claude-haiku-4-5",
+      "expected_savings_pct": 85
+    },
+    {
+      "from": "claude-sonnet-4-5",
+      "to": "claude-haiku-4-5",
+      "expected_savings_pct": 85
+    },
+    {
+      "from": "gemini-1.5-pro",
+      "to": "gemini-1.5-flash",
+      "expected_savings_pct": 87
+    }
+  ],
+  "skip_already_efficient": [
+    "gpt-4o-mini",
+    "claude-haiku-4-5",
+    "gemini-1.5-flash",
+    "gemini-2.0-flash",
+    "deepseek-chat",
+    "deepseek-v3"
+  ],
+  "calibration_note": "expected_savings_pct is the estimated coefficient delta from carbon_factors.json: (from_g - to_g) / from_g * 100. Recompute when factors change. The unit test TestEcoRouting_SavingsMatchFactors enforces this within ±0.5pp. Note: this is internal consistency — it does NOT validate the underlying carbon estimates. See Methodology page for limitations."
+}

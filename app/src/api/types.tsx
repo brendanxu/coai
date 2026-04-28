@@ -69,6 +69,12 @@ export type Message = {
   tool_call_id?: string;
   name?: string;
   response_type?: string;
+  // v0.6 carbon: optional usage metadata for CarbonBadge.
+  // Populated from upstream completion's Usage block when available.
+  // Backend wiring to populate these is v0.7 polish; until then the badge
+  // falls back to (content.length / 4) for tokens + the global selected model.
+  tokens?: number;
+  model?: string;
 };
 
 export type Model = {

@@ -1,0 +1,168 @@
+{
+  "version": "2026-04",
+  "error_margin_pct": 100,
+  "default_region": "default",
+  "sources": [
+    {
+      "name": "Lacoste et al. 2019 — Quantifying the Carbon Emissions of ML",
+      "url": "https://arxiv.org/abs/1910.09700",
+      "note": "foundational methodology — gCO2e = energy consumed × grid carbon intensity"
+    },
+    {
+      "name": "ML CO2 Impact calculator",
+      "url": "https://mlco2.github.io/impact/",
+      "note": "interactive estimation tool by Lacoste et al."
+    },
+    {
+      "name": "Patterson et al. 2021 — Carbon Emissions and Large Neural Network Training",
+      "url": "https://arxiv.org/abs/2104.10350",
+      "note": "training-time carbon analysis; informs inference-vs-training framing"
+    },
+    {
+      "name": "IEA Global Energy & Climate Model — regional grid intensity",
+      "url": "https://www.iea.org/reports/global-energy-and-climate-model",
+      "note": "default region uses global weighted average ~430 gCO2e/kWh"
+    },
+    {
+      "name": "Luccioni et al. 2022 — Estimating Carbon Footprint of BLOOM",
+      "url": "https://arxiv.org/abs/2211.02001",
+      "note": "open inference-time carbon study for a 176B model"
+    },
+    {
+      "name": "Jegham et al. 2025 — LLM inference benchmarking",
+      "url": "https://arxiv.org/abs/2502.05670",
+      "note": "newer per-prompt energy benchmarking for closed-model inference"
+    }
+  ],
+  "factors": [
+    {
+      "model": "gpt-4",
+      "region": "default",
+      "gco2e_per_1k_tokens": 1.4,
+      "valid_from": "2026-04-28",
+      "version": "2026-04",
+      "notes": "model-class estimate; older GPT-4 generation, less inference-optimized than 4o; band roughly 1.2-1.6 (Jegham 2025); confidence: low"
+    },
+    {
+      "model": "gpt-4-turbo",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.55,
+      "valid_from": "2026-04-01",
+      "version": "2026-04",
+      "notes": "model-class estimate; confidence: low"
+    },
+    {
+      "model": "gpt-4o",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.45,
+      "valid_from": "2026-04-01",
+      "version": "2026-04",
+      "notes": "frontier model with optimized inference path; model-class estimate; confidence: low"
+    },
+    {
+      "model": "gpt-4o-mini",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.07,
+      "valid_from": "2026-04-01",
+      "version": "2026-04",
+      "notes": "small efficient model — Eco Mode default target for GPT family; model-class estimate; confidence: low"
+    },
+    {
+      "model": "gpt-3.5-turbo",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.10,
+      "valid_from": "2026-04-01",
+      "version": "2026-04",
+      "notes": "model-class estimate; confidence: low"
+    },
+    {
+      "model": "claude-opus-4-7",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.70,
+      "valid_from": "2026-04-01",
+      "version": "2026-04",
+      "notes": "frontier model; model-class estimate; confidence: low"
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.40,
+      "valid_from": "2026-04-01",
+      "version": "2026-04",
+      "notes": "model-class estimate; confidence: low"
+    },
+    {
+      "model": "claude-sonnet-4-5",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.40,
+      "valid_from": "2026-04-01",
+      "version": "2026-04",
+      "notes": "model-class estimate; confidence: low"
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.06,
+      "valid_from": "2026-04-01",
+      "version": "2026-04",
+      "notes": "small efficient model — Eco Mode default target for Claude family; model-class estimate; confidence: low"
+    },
+    {
+      "model": "gemini-1.5-pro",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.45,
+      "valid_from": "2026-04-01",
+      "version": "2026-04",
+      "notes": "model-class estimate; confidence: low"
+    },
+    {
+      "model": "gemini-1.5-flash",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.06,
+      "valid_from": "2026-04-01",
+      "version": "2026-04",
+      "notes": "small efficient model — Eco Mode default target for Gemini family; model-class estimate; confidence: low"
+    },
+    {
+      "model": "gemini-2.0-flash",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.05,
+      "valid_from": "2026-04-01",
+      "version": "2026-04",
+      "notes": "model-class estimate; confidence: low"
+    },
+    {
+      "model": "deepseek-chat",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.25,
+      "valid_from": "2026-04-28",
+      "version": "2026-04",
+      "notes": "DeepSeek general-purpose model; positioned as efficient; model-class estimate; confidence: low"
+    },
+    {
+      "model": "deepseek-v3",
+      "region": "default",
+      "gco2e_per_1k_tokens": 0.25,
+      "valid_from": "2026-04-28",
+      "version": "2026-04",
+      "notes": "DeepSeek-V3; model-class estimate; confidence: low"
+    }
+  ],
+  "what_we_dont_measure": [
+    "Model training emissions — amortized across all inference but not attributed per request",
+    "Embodied carbon of GPU manufacturing and data center construction",
+    "Network transit between user, gateway, and inference host",
+    "Cooling water consumption (WUE) at upstream data centers",
+    "Data center energy overhead (PUE) — we use a flat global average",
+    "Inference batch effects — single-user vs batched inference can shift per-token energy ~45% per batch-size doubling",
+    "Cold-start vs warm-pool serving — first request after idle costs more energy than steady-state",
+    "Prompt caching and context caching — repeated context costs less than first-time context",
+    "Speculative decoding overhead — accepted vs rejected drafts have different energy profiles",
+    "Hidden / reasoning tokens — for reasoning models, internal token counts we cannot see",
+    "Provider-side efficiency optimizations — vendor model serving improvements we cannot independently verify",
+    "Actual data-center region — most upstream APIs do not expose this; we use a global default",
+    "Market-based vs location-based electricity accounting — providers' RECs / offsets / PPAs not reflected here",
+    "Variability in actual inference compute per request — we use a per-1k-token midpoint"
+  ],
+  "calibration_note": "v1 uses static per-model midpoints with a declared ±100% margin (single-value UI is for readability — actual real-world band is wider, especially for closed-provider models). v2 will integrate live ML-CO2 API + per-region grid factors + bands & confidence labels. Coefficients are reviewed quarterly. If a model is missing from this table, the badge shows '~?g' rather than guessing."
+}

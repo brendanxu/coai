@@ -35,6 +35,7 @@ import { ModelArea } from "@/components/home/ModelArea.tsx";
 import { toast } from "sonner";
 import { VoiceAction } from "@/components/VoiceProvider.tsx";
 import { AnimatePresence, motion } from "framer-motion";
+import { EcoModeToggle } from "@/components/Carbon/EcoModeToggle.tsx";
 
 type InterfaceProps = {
   scrollable: boolean;
@@ -245,6 +246,8 @@ function ChatWrapper() {
             </div>
             <div className="flex items-center justify-end gap-2">
               <ActionCommand input={input} />
+              {/* v0.6 carbon: Eco Mode toggle, left of send button */}
+              {auth && <EcoModeToggle />}
               <ActionButton
                 working={working}
                 onClick={() => (working ? handleCancel() : handleSend())}
