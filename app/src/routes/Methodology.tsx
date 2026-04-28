@@ -179,11 +179,24 @@ export default function Methodology() {
         </li>
       </ul>
       <p>
-        <strong>v2 roadmap.</strong> Replace static midpoints with bands +
+        <strong>v0.7 roadmap.</strong> Replace static midpoints with bands +
         confidence labels per model. Integrate a real-time ML-CO2 (or equivalent)
         API for per-region grid factors. Surface the band on the badge instead of
         a single number. Publish a quarterly methodology update with provider
         disclosure deltas.
+      </p>
+      <p className="mt-4">
+        <strong>How v0.6 displays uncertainty today.</strong> Every percentage
+        you see in the UI is prefixed with{" "}
+        <code className="font-mono text-sm">~</code> to signal "estimate, not
+        measurement" at a glance. The Eco Mode tooltip and any savings claim
+        carries an explicit{" "}
+        <em>(low confidence)</em> tag. The share card includes "Estimates only,
+        low confidence" in its footer so the disclaimer travels with the image.
+        These are <em>copy-level</em> softening measures; v0.7 replaces them
+        with structured bands and confidence labels — see the published spec at{" "}
+        <code className="font-mono text-sm">docs/v0.7-carbon-bands-spec.md</code>{" "}
+        in the source repository for the planned data and UI changes.
       </p>
 
       {/* Footer signature */}
