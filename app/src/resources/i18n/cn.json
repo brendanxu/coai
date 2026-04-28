@@ -1213,7 +1213,7 @@
       "epayAggregation": "聚合支付模式",
       "epayAggregationTip": "聚合支付模式，开启后点击将不会选择支付方式 **直接跳转至聚合支付页面**\n请确保您的易支付支持聚合支付模式",
       "stripeTitle": "Stripe",
-      "stripeTip":"Stripe 是一种广泛使用的国际在线支付系统，支持多种支付方式，包括信用卡、借记卡、Apple Pay、Google Pay等。它为用户提供了安全、便捷的支付体验，特别适合需要处理国际支付的业务。",
+      "stripeTip": "Stripe 是一种广泛使用的国际在线支付系统，支持多种支付方式，包括信用卡、借记卡、Apple Pay、Google Pay等。它为用户提供了安全、便捷的支付体验，特别适合需要处理国际支付的业务。",
       "stripeEnabled": "启用 Stripe",
       "stripeSecretKey": "Stripe Secret Key",
       "stripeSecretKeyPlaceholder": "请输入 Stripe Secret Key",
@@ -1370,13 +1370,13 @@
           "title": "CoAI Pro",
           "description": "CoAI Pro 商业版授权，解锁对接多种支付渠道、用户（组）倍率控制、内容审核、会话日志等全部商业功能"
         },
-        "multiKey": { 
+        "multiKey": {
           "title": "多令牌管理",
           "description": "多 API KEY 管理, 支持一单元内多令牌分发管理, 支持设置可调用模型，余额限制，调用日志，状态管理，对接指南等高级功能"
         },
         "stripe": {
           "title": "Stripe 支付",
-            "description": "Stripe Hosted Checkout 高级支付模块，支持 Stripe 银行卡/Bank/Link/微信/Alipay+ 等几十余种支付对接，支持多种货币支付"
+          "description": "Stripe Hosted Checkout 高级支付模块，支持 Stripe 银行卡/Bank/Link/微信/Alipay+ 等几十余种支付对接，支持多种货币支付"
         },
         "paypal": {
           "title": "PayPal 支付",
@@ -1497,7 +1497,8 @@
     "account": "账户",
     "account-full": "账户管理",
     "admin": "后台",
-    "admin-full": "后台管理"
+    "admin-full": "后台管理",
+    "pricing-full": "套餐"
   },
   "account": {
     "title": "账号管理",
@@ -1634,7 +1635,9 @@
   "aff": {
     "title": "推广分成",
     "bind-desc": "绑定推广码，开始获得被邀请用户购买后的返佣收益。",
-    "placeholder": { "code": "请输入推广码" },
+    "placeholder": {
+      "code": "请输入推广码"
+    },
     "generate-code-first": "请先生成推广码",
     "get": "获取推广码",
     "get-placeholder": "点击获取推广码",
@@ -1661,5 +1664,55 @@
       "pending": "待结算",
       "rate": "返佣率"
     }
+  },
+  "pricing-page": {
+    "tagline": "可持续 · BYOK · 独立开发者作品",
+    "headline-1": "一个统一月费。",
+    "headline-2": "你的 keys。",
+    "headline-3": "零加价。",
+    "subheadline": "用你自己的 OpenAI / Claude / Gemini keys。我们给你统一 UI、费用上限、隐私层和可见的碳足迹。你直接付给供应商。",
+    "starter": "Starter",
+    "month": "月",
+    "starter-tagline": "你需要的全有,不需要的一概没有。",
+    "feature-byok": "BYOK,用你自己的 API keys",
+    "feature-models": "覆盖所有主流模型 — GPT、Claude、Gemini、Llama",
+    "feature-zero": "零 prompt 留存,我们永不看你的数据",
+    "feature-cap": "硬性费用上限,杜绝意外账单",
+    "feature-carbon": "每条对话碳足迹 + 月度仪表盘",
+    "feature-cancel": "随时取消 — 当期内保留全部权限",
+    "disclaimer": "按月计费。LemonSqueezy 提供支付。含适用税费。",
+    "value-wallet-title": "Wallet 钱包",
+    "value-wallet-body": "把你散在 ChatGPT Plus + Claude Pro + Cursor + 散装 API 上的 $50-150/月,压成一套统一月费。Keys 你自己带;我们只收 UI + 运维的钱。",
+    "value-privacy-title": "Privacy 隐私",
+    "value-privacy-body": "网关层配置零留存,不记录 prompt,方法学公开。你的对话只在你和模型供应商之间。",
+    "value-planet-title": "Planet 地球",
+    "value-planet-body": "每条对话显示 ~CO₂g 估算。月度可持续仪表盘。可选 Eco Mode 自动路由小模型 + cache。无 greenwashing — 方法学页面公开。",
+    "faq-title": "你可能想问",
+    "faq-byok-q": "BYOK 到底是什么?",
+    "faq-byok-a": "你跟各家供应商(OpenAI、Anthropic、Google 等)各自持有 API keys,按他们公开标价直接付费 — 我们不抽成。我们是上面的 UI + 费用上限 + 隐私层。",
+    "faq-cancel-q": "可以随时取消吗?",
+    "faq-cancel-a": "可以。账户里一键取消。你已付费的当期内保留完整访问权,期满后自动降级到免费档 — 不会有意外扣款。",
+    "faq-refund-q": "可以退款吗?",
+    "faq-refund-a": "首次扣款 14 天内联系客服,无条件退款。之后,因我们的服务问题导致的退款逐案处理。",
+    "faq-data-q": "你们存我对话的什么数据?",
+    "faq-data-a": "用于计费透明的元数据(时间戳、模型、token 数)。不存 prompt 内容、不存回答内容。网关层关闭了 prompt 日志。",
+    "trust-ls": "LemonSqueezy 提供支付",
+    "trust-cancel": "随时取消",
+    "trust-no-lockin": "无供应商锁定 — keys 始终是你的",
+    "loading": "正在加载套餐…",
+    "upgrade": "升级到 Starter",
+    "current-plan": "当前套餐",
+    "until": "至",
+    "past-due": "你上次付款未成功。",
+    "update-payment": "更新支付方式",
+    "on-trial": "试用中",
+    "auto-bills": "自动续费",
+    "cancelled": "已取消",
+    "access-until": "访问权至",
+    "resume": "恢复订阅",
+    "error-unauthorized": "登录已过期,请重新登录后再升级。",
+    "error-misconfigured": "结账尚未配置完毕,请联系客服。",
+    "error-network": "无法连接服务器,检查网络后重试。",
+    "error-unknown": "暂时打不开结账,请稍后再试。"
   }
 }
