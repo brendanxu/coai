@@ -1,4 +1,5 @@
 import { ValuableProgress } from "@/components/ui/progress.tsx";
+import { HIDE_CREDIT_UI } from "@/conf/env.ts";
 
 type UsageProps = {
   name: string;
@@ -9,6 +10,7 @@ type UsageProps = {
 };
 
 function SubscriptionUsage({ name, usage }: UsageProps) {
+  if (HIDE_CREDIT_UI) return null;
   if (!usage) return null;
 
   const isInfinity = usage.total === -1;

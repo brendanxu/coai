@@ -25,6 +25,7 @@ import { getMemory } from "@/utils/memory.ts";
 import { Progress } from "@/components/ui/progress.tsx";
 import { cn } from "@/components/ui/lib/utils.ts";
 import { toast } from "sonner";
+import { HIDE_CREDIT_UI } from "@/conf/env.ts";
 
 type ProgressProps = {
   current: number;
@@ -60,12 +61,14 @@ function GenerateProgress({
         )}
       </p>
       <Progress value={(100 * current) / total} />
-      <div
-        className={`article-quota flex flex-row mt-4 border border-input rounded-md py-1 px-3 select-none w-max items-center mx-auto`}
-      >
-        <Cloud className={`h-4 w-4 mr-2`} />
-        <p>{quota.toFixed(2)}</p>
-      </div>
+      {!HIDE_CREDIT_UI && (
+        <div
+          className={`article-quota flex flex-row mt-4 border border-input rounded-md py-1 px-3 select-none w-max items-center mx-auto`}
+        >
+          <Cloud className={`h-4 w-4 mr-2`} />
+          <p>{quota.toFixed(2)}</p>
+        </div>
+      )}
     </div>
   );
 }
