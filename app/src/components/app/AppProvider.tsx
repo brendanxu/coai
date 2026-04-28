@@ -13,6 +13,8 @@ import { dispatchSubscriptionData, setTheme } from "@/store/globals.ts";
 import { infoEvent } from "@/events/info.ts";
 import { setForm } from "@/store/info.ts";
 import { themeEvent } from "@/events/theme.ts";
+import { setFactors, setFactorsLoading } from "@/store/carbon.ts";
+import { getCarbonFactors } from "@/api/carbon.ts";
 import { useEffect } from "react";
 
 function AppProvider({ children }: { children?: React.ReactNode }) {
@@ -32,6 +34,17 @@ function AppProvider({ children }: { children?: React.ReactNode }) {
     updateSupportModels(dispatch, await bindMarket());
     dispatchSubscriptionData(dispatch, await getApiPlans());
     await updateMasks(dispatch);
+    // greentokey v0.6 — fetch carbon factors once on app boot so CarbonBadge
+    // on chat messages can render exact estimates immediately. Without this
+    // the factors only loaded when /methodology was visited, leaving every
+    // chat badge stuck on the "?g" coefficient-gap fallback.
+    dispatch(setFactorsLoading(true));
+    try {
+      const factors = await getCarbonFactors();
+      dispatch(setFactors(factors));
+    } catch {
+      dispatch(setFactorsLoading(false));
+    }
   }, []);
 
   return (
