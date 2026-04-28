@@ -146,8 +146,9 @@ export function EcoModeToggle({ className }: { className?: string }) {
           <div className="text-xs leading-relaxed space-y-1">
             <p className="font-medium">{stateLabel}</p>
             <p className="text-muted-foreground">
-              Routes to smaller models when quality difference is acceptable.
-              Saves ~85% CO<sub>2</sub> on average and bills cheaper too.
+              Routes to smaller models when you opt into lower-cost / lower-emission
+              routing. Estimated ~85% lower CO<sub>2</sub> on average (low confidence)
+              and bills cheaper too.
             </p>
             {ecoMode && !overrideActive && (
               <p className="text-muted-foreground italic">

@@ -105,7 +105,7 @@ export function ShareCard({ summary }: Props) {
             >
               <span>{m.model}</span>
               <span style={{ opacity: 0.7 }}>
-                {formatCO2(m.g)} · {m.pct.toFixed(0)}%
+                {formatCO2(m.g)} · ~{m.pct.toFixed(0)}%
               </span>
             </div>
           ))}
@@ -113,9 +113,9 @@ export function ShareCard({ summary }: Props) {
 
         {/* Footer — disclaimer + URL */}
         <div style={{ fontSize: 11, opacity: 0.55, marginTop: 32 }}>
-          Estimate ±{summary.error_margin_pct}% · Coefficient v{summary.coefficient_version}
+          Estimates only · ±{summary.error_margin_pct}% margin · Coefficient v{summary.coefficient_version} · low confidence
           <br />
-          greentokey.com/methodology
+          See methodology: greentokey.com/methodology
         </div>
       </div>
     </>

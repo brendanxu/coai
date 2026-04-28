@@ -52,7 +52,7 @@ function Hero({ totalG, deltaPct, firstMonth, lastMonthG }: {
                 : "text-[hsl(var(--gold))]",
             )}
           >
-            {Math.abs(deltaPct).toFixed(0)}%
+            ~{Math.abs(deltaPct).toFixed(0)}%
           </span>
           <span className="text-muted-foreground text-sm">vs last month</span>
         </div>

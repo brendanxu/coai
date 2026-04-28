@@ -134,7 +134,7 @@ export function MonthlyWidget({ className }: Props) {
                   : "text-[hsl(var(--gold))]",
               )}
             >
-              {Math.abs(summary.delta_pct).toFixed(0)}%
+              ~{Math.abs(summary.delta_pct).toFixed(0)}%
             </span>
             <span className="text-muted-foreground">vs last month</span>
           </>

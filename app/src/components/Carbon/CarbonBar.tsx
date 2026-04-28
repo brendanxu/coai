@@ -35,8 +35,8 @@ export function CarbonBar({ model, g, pct, maxPct, className }: Props) {
       <div className="w-20 text-right tabular-nums font-mono text-xs">
         {formatCO2(g)}
       </div>
-      <div className="w-12 text-right tabular-nums text-xs text-muted-foreground">
-        {pct.toFixed(0)}%
+      <div className="w-14 text-right tabular-nums text-xs text-muted-foreground">
+        ~{pct.toFixed(0)}%
       </div>
     </div>
   );
