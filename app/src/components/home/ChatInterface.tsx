@@ -97,7 +97,7 @@ function ChatInterface({ scrollable, setTarget }: ChatInterfaceProps) {
                     <CarbonBadge
                       tokens={message.tokens ?? Math.max(1, Math.round(message.content.length / 4))}
                       model={message.model ?? currentModel}
-                      streaming={message.end === false}
+                      streaming={false}
                     />
                   </div>
                 )}
