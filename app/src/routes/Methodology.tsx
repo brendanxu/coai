@@ -53,16 +53,19 @@ export default function Methodology() {
       </h1>
 
       <p className="text-lg text-muted-foreground mb-12">
-        Last updated April 2026. Estimates carry a ±{factors?.error_margin_pct ?? 20}%
-        margin — we&apos;d rather be honest than precise.
+        Last updated April 2026. These are rough estimates, not measurements.
+        Closed-provider inference values can be off by 2× or more — see Acknowledged
+        limitations below.
       </p>
 
       {/* Disclaimer callout — early + prominent */}
       <Callout variant="warning">
         <strong>This is an estimate, not a measurement.</strong> Real per-request
-        compute varies with batch size, GPU, and grid mix. We use per-model
-        midpoints and disclose the ±20% margin everywhere we show a number. If you
-        need audited measurements, this isn&apos;t the tool — yet.
+        compute varies with batching, cache hits, hardware generation, routing,
+        and grid mix. We show broad estimate bands, not audited measurements.
+        For closed-provider models we have no telemetry and cannot independently
+        verify upstream efficiency improvements. If you need audited carbon
+        measurements, this isn&apos;t the tool — yet.
       </Callout>
 
       {/* The formula */}
@@ -72,10 +75,11 @@ export default function Methodology() {
       </pre>
       <p className="mt-4">
         Tokens come straight from the upstream provider&apos;s response (the same
-        number your billing reflects). Coefficients are per-model, per-region
-        midpoints sourced from public LLM-carbon studies. Region defaults to a
-        global weighted average (~430 gCO₂e/kWh) when the upstream API
-        doesn&apos;t expose data center location.
+        number your billing reflects). Coefficients are <em>model-class
+        estimates</em> derived from public inference studies and vendor disclosures
+        where available. Region is currently a global default (~430 gCO₂e/kWh)
+        because most upstream LLM APIs do not expose data-center location. We do
+        not claim per-model, per-region accuracy — see Acknowledged limitations.
       </p>
 
       {/* Coefficients */}
@@ -127,18 +131,59 @@ export default function Methodology() {
       <p>
         When you turn on the leaf icon next to your message input, future chats
         route to a smaller variant of the same model family (GPT-4 → GPT-4o-mini,
-        Claude Sonnet → Haiku, etc.) when quality difference is acceptable. The
-        substitution happens server-side, so your billing also reflects the
-        cheaper model — not just the carbon. Long-press the toggle to skip Eco
-        for one chat.
+        Claude Sonnet → Haiku, etc.) when the user has opted into lower-cost /
+        lower-emission routing. We do not claim quality equivalence — that&apos;s
+        a per-task judgment we cannot make for you. The substitution happens
+        server-side, so your billing also reflects the cheaper model. Long-press
+        the toggle to skip Eco for one chat.
       </p>
       <p className="mt-4">
-        Routing rules and expected savings live in{" "}
+        Routing rules and the estimated coefficient delta live in{" "}
         <code className="font-mono text-sm">data/eco_routing.json</code>, the same
-        source the middleware reads. The savings claim ({" "}
-        <span className="font-mono text-sm">expected_savings_pct</span>) is computed
-        from this coefficient table — there&apos;s a unit test that asserts they stay
-        in sync.
+        source the middleware reads. The displayed savings percentage is{" "}
+        <em>internal consistency</em>: a unit test checks it matches{" "}
+        <code className="font-mono text-sm">(from − to) / from × 100</code> from the
+        coefficient table within ±0.5pp. The test does <strong>not</strong> validate
+        the underlying carbon estimates.
+      </p>
+
+      {/* Acknowledged limitations */}
+      <h2 className="font-display text-3xl mt-16 mb-4">Acknowledged limitations</h2>
+      <p className="mb-4">
+        We are not pretending v1 is precise. Concrete things we know are wrong or
+        provisional:
+      </p>
+      <ul className="list-disc list-inside space-y-2 marker:text-[hsl(var(--gold))] mb-4">
+        <li>
+          <strong>Static coefficients.</strong> v1 ships per-model midpoints
+          sourced primarily from Lacoste et al. 2019 and Jegham et al. 2025.
+          Closed-provider models (GPT-4, Claude, Gemini) do not publish per-token
+          inference energy — our values are model-class estimates with low
+          confidence.
+        </li>
+        <li>
+          <strong>Error margin: ±100% (declared).</strong> The single-value chip
+          on each chat is for readability. The actual real-world band is wider,
+          especially for closed-provider models. Treat the badge as
+          order-of-magnitude, not measurement.
+        </li>
+        <li>
+          <strong>Single global region.</strong> Per-region grid carbon factors
+          are stubbed at a global weighted ~430 gCO₂e/kWh. Routing to cleaner
+          regions is a v2 feature pending upstream API support.
+        </li>
+        <li>
+          <strong>What we don&apos;t measure</strong> (above) is the long list of
+          known omissions: training, embodied compute, batching, caching,
+          speculative decoding, hidden tokens, provider-side optimizations.
+        </li>
+      </ul>
+      <p>
+        <strong>v2 roadmap.</strong> Replace static midpoints with bands +
+        confidence labels per model. Integrate a real-time ML-CO2 (or equivalent)
+        API for per-region grid factors. Surface the band on the badge instead of
+        a single number. Publish a quarterly methodology update with provider
+        disclosure deltas.
       </p>
 
       {/* Footer signature */}
