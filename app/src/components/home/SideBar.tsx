@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { selectAuthenticated } from "@/store/auth.ts";
 import {
@@ -398,6 +399,7 @@ function SidebarConversationList({
 
 function SideBar() {
   const { t } = useTranslation();
+  const { pathname } = useLocation();
   const { refresh, toggle } = useConversationActions();
   const current = useSelector(selectCurrent);
   const open = useSelector(selectMenu);
@@ -416,6 +418,12 @@ function SideBar() {
     if (!resp.map((item) => item.id).includes(store)) return; // not in the list, no need to dispatch
     await toggle(store);
   }, []);
+
+  // v0.6.1 — defensive guard placed AFTER all hooks (Rules of Hooks).
+  // SideBar belongs to /chat. If it's mounted elsewhere by accident
+  // (route refactor, new surface), render nothing instead of leaking
+  // a chat-history sidebar onto a non-chat page.
+  if (pathname !== "/chat") return null;
 
   return (
     <div className={cn("sidebar", open && "open")}>
