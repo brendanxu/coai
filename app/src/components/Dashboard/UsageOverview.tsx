@@ -1,8 +1,5 @@
-// v0.6.1 — top banner on the logged-in home dashboard.
-// Shows "Welcome back" + this-month-usage + carbon-vs-last-month delta.
-//
-// Usage count is currently a placeholder (em-dash + tooltip) until a backend
-// /v1/usage/summary endpoint exists. See TODOS.md.
+// v0.7-design — claudo-style banner with accent-soft tint background.
+// Shows welcome + this-month-overview + carbon vs last month delta.
 
 import { useTranslation } from "react-i18next";
 import { useCarbonSummary } from "@/components/Carbon/useCarbonSummary.ts";
@@ -17,51 +14,98 @@ export function UsageOverview() {
 
   const isImprovement = summary && summary.delta_pct < 0;
   const isFirstMonth = summary?.first_month;
-  const showDelta =
-    summary && !isFirstMonth && summary.last_month_g > 0;
+  const showDelta = summary && !isFirstMonth && summary.last_month_g > 0;
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+    <section
+      className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-6 md:gap-8 items-center"
+      style={{
+        padding: "28px 32px",
+        background: "hsl(var(--accent-soft))",
+        color: "hsl(var(--primary-deep))",
+        borderRadius: "var(--radius-card-sm)",
+      }}
+    >
+      {/* Lead — welcome + tagline */}
       <div>
-        <h1 className="font-display text-3xl tracking-tight">
+        <div
+          className="font-mono text-[11px] uppercase tracking-[0.18em] mb-2"
+          style={{ color: "hsl(var(--primary-deep) / 0.6)" }}
+        >
+          This month
+        </div>
+        <h2
+          className="font-display"
+          style={{
+            fontSize: "1.625rem",
+            lineHeight: 1.2,
+            letterSpacing: "-0.01em",
+            fontWeight: 700,
+            color: "hsl(var(--primary-deep))",
+          }}
+        >
           {t("dashboard.welcome-back")}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        </h2>
+        <p
+          className="text-sm mt-1.5"
+          style={{ color: "hsl(var(--primary-deep) / 0.7)" }}
+        >
           {t("dashboard.this-month-overview")}
         </p>
       </div>
+
+      {/* Carbon stat */}
       {summary && (
-        <div className="flex items-center gap-2 text-sm">
-          <LeafIcon
-            size={14}
-            className="text-[hsl(var(--primary))]"
-          />
-          <span className="tabular-nums font-medium">
+        <div className="flex items-baseline gap-2">
+          <LeafIcon size={16} />
+          <span
+            className="font-display tabular-nums"
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: 700,
+              letterSpacing: "-0.01em",
+            }}
+          >
             {formatCO2(summary.total_g)}
           </span>
-          <span className="text-muted-foreground">
+          <span
+            className="text-xs"
+            style={{ color: "hsl(var(--primary-deep) / 0.65)" }}
+          >
             {t("dashboard.co2-this-month")}
           </span>
-          {showDelta && (
-            <span
-              className={cn(
-                "flex items-center gap-0.5 ml-1 tabular-nums",
-                isImprovement
-                  ? "text-[hsl(var(--success))]"
-                  : "text-[hsl(var(--gold))]",
-              )}
-              title={t("dashboard.vs-last-month")}
-            >
-              {isImprovement ? (
-                <ArrowDown size={12} aria-hidden="true" />
-              ) : (
-                <ArrowUp size={12} aria-hidden="true" />
-              )}
-              {Math.abs(summary.delta_pct).toFixed(0)}%
-            </span>
-          )}
         </div>
       )}
-    </div>
+
+      {/* Delta */}
+      {showDelta && (
+        <div
+          className={cn(
+            "inline-flex items-center gap-1.5 tabular-nums text-sm font-medium",
+          )}
+          style={{
+            color: isImprovement
+              ? "hsl(var(--primary))"
+              : "hsl(var(--gold))",
+          }}
+          title={t("dashboard.vs-last-month")}
+        >
+          {isImprovement ? (
+            <ArrowDown size={14} aria-hidden="true" />
+          ) : (
+            <ArrowUp size={14} aria-hidden="true" />
+          )}
+          <span>
+            {Math.abs(summary.delta_pct).toFixed(0)}%
+          </span>
+          <span
+            className="text-xs"
+            style={{ color: "hsl(var(--primary-deep) / 0.65)" }}
+          >
+            {t("dashboard.vs-last-month")}
+          </span>
+        </div>
+      )}
+    </section>
   );
 }

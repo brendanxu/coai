@@ -29,14 +29,19 @@ export function ChatFloatingButton({ hidden, onClick }: Props) {
       whileTap={{ scale: 0.95 }}
       className={cn(
         "fixed bottom-6 right-6 z-50",
-        "w-12 h-12 rounded-full shadow-lg",
         "flex items-center justify-center",
-        "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]",
-        "hover:shadow-xl transition-shadow",
-        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[hsl(var(--primary))]",
+        "transition-shadow focus:outline-none focus:ring-2 focus:ring-offset-2",
       )}
+      style={{
+        width: "56px",
+        height: "56px",
+        borderRadius: "50%",
+        background: "hsl(var(--ink))",
+        color: "hsl(var(--card))",
+        boxShadow: "var(--shadow)",
+      }}
     >
-      <Leaf className="w-5 h-5" />
+      <Leaf style={{ width: "22px", height: "22px" }} />
     </motion.button>
   );
 }

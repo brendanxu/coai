@@ -63,13 +63,25 @@ export function ChatPanel({ open, onClose }: Props) {
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed top-0 right-0 z-50 h-full w-full max-w-md bg-background shadow-2xl flex flex-col"
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed top-0 right-0 z-50 h-full w-full max-w-md flex flex-col"
+            style={{
+              background: "hsl(var(--card))",
+              borderTopLeftRadius: "22px",
+              borderBottomLeftRadius: "22px",
+              boxShadow: "-20px 0 60px rgba(43,33,24,0.10)",
+            }}
             // Path tag helps debugging double-mount issues — see comment at top.
             data-route={pathname}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-              <div className="font-display text-sm font-medium">
+            <div
+              className="flex items-center justify-between px-5 py-4 shrink-0"
+              style={{ borderBottom: "1px solid hsl(var(--border))" }}
+            >
+              <div
+                className="font-display"
+                style={{ fontSize: "15px", fontWeight: 700, letterSpacing: "-0.01em" }}
+              >
                 {t("chat-floating.panel-title")}
               </div>
               <Button
