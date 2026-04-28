@@ -12,6 +12,7 @@ import { useSelector } from "react-redux";
 import { subscriptionDataSelector } from "@/store/globals.ts";
 import { useTranslation } from "react-i18next";
 import router from "@/router.tsx";
+import { HIDE_CREDIT_UI } from "@/conf/env.ts";
 import Emoji from "../Emoji";
 import { cn } from "../ui/lib/utils";
 import ModelAvatar from "../ModelAvatar";
@@ -132,6 +133,20 @@ export default function ({ children }: LabelProps) {
       /user quota is not enough error \(model: (.*), minimum quota: (.*), your quota: (.*)\)/,
     );
     if (match) {
+      if (HIDE_CREDIT_UI) {
+        // greentokey: BYOK — no /wallet route, no quota numbers exposed.
+        // Friendly fallback replaces both the quota-exceeded label (item 4)
+        // and the /wallet + /wallet#plan dead-end buttons (item 5, dispatch §3.4).
+        return (
+          <div className={`flex flex-col items-center pt-4 pb-1`}>
+            <Emoji emoji={"1f915"} className={`w-16 h-16 m-6 mb-4`} />
+            <p className={`text-lg font-semibold !mb-1`}>Hit a usage limit</p>
+            <p className={`text-sm text-secondary px-2.5 text-center`}>
+              Reach out to support if you need a higher limit.
+            </p>
+          </div>
+        );
+      }
       const [, model, minimum, quota] = match;
       const plan = subscription
         .flatMap((p) => p.items.map((i) => i.models.includes(model)))
