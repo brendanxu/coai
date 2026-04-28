@@ -2,7 +2,7 @@ app/node_modules
 app/src-tauri
 app/.idea
 app/.vscode
-app/dist
+# app/dist  # greentokey: Dockerfile.split needs the pre-built dist baked into the image
 app/dev-dist
 app/dist-ssr
 app/target
