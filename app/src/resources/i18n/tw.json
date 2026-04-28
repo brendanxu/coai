@@ -1743,7 +1743,8 @@
     "carbon-monthly-label": "本月碳足跡",
     "carbon-cta": "詳細報告",
     "carbon-empty-title": "本月還沒有碳資料",
-    "carbon-empty-body": "發出第一條對話,我們就開始記錄。"
+    "carbon-empty-body": "發出第一條對話,我們就開始記錄。",
+    "chat-floating-hint": "多模型對話已就緒 · 點右下角 🌱 隨時開聊"
   },
   "chat-floating": {
     "open": "打開聊天",

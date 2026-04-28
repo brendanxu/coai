@@ -1690,7 +1690,8 @@
     "carbon-monthly-label": "Carbon this month",
     "carbon-cta": "Full report",
     "carbon-empty-title": "No carbon to report yet",
-    "carbon-empty-body": "Send your first chat and we'll start counting."
+    "carbon-empty-body": "Send your first chat and we'll start counting.",
+    "chat-floating-hint": "マルチモデルチャットが利用可能 · 右下の🌱を押せばすぐ開始"
   },
   "chat-floating": {
     "open": "Open chat",

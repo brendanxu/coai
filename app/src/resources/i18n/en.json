@@ -1811,7 +1811,8 @@
     "carbon-monthly-label": "Carbon this month",
     "carbon-cta": "Full report",
     "carbon-empty-title": "No carbon to report yet",
-    "carbon-empty-body": "Send your first chat and we'll start counting."
+    "carbon-empty-body": "Send your first chat and we'll start counting.",
+    "chat-floating-hint": "Multi-model chat is ready · click the 🌱 in the bottom-right anytime"
   },
   "chat-floating": {
     "open": "Open chat",

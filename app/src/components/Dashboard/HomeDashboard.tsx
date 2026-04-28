@@ -1,13 +1,15 @@
 // v0.6.1 — logged-in home (/) dashboard. Replaces the chat-first home.
-// Composition: UsageOverview banner → 3 service cards → carbon footer.
+// v0.6.1.1 hotfix: removed redundant Chat Playground card. Chat is the
+// floating widget (bottom-right), not a service tile — those two were felt
+// as "the same thing" by founder during smoke test.
+// Dashboard now primarily surfaces the differentiated AI services.
 //
 // File named HomeDashboard.tsx to avoid collision with routes/Dashboard.tsx
 // (the v0.6 carbon report at /dashboard).
 
 import { useTranslation } from "react-i18next";
-import { MessageSquare, Receipt, Film } from "lucide-react";
+import { Receipt, Film, MessageSquare } from "lucide-react";
 import { UsageOverview } from "./UsageOverview.tsx";
-import { ActiveServiceCard } from "./ActiveServiceCard.tsx";
 import { ComingSoonServiceCard } from "./ComingSoonServiceCard.tsx";
 import { MonthlyCarbonSummary } from "./MonthlyCarbonSummary.tsx";
 
@@ -23,15 +25,14 @@ export function HomeDashboard() {
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             {t("dashboard.your-services")}
           </h2>
+
+          {/* Subtle inline hint — chat is the floating widget, not a card. */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground/80 px-1 py-1">
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>{t("dashboard.chat-floating-hint", "多模型对话已就绪 · 点右下角 🌱 随时开聊")}</span>
+          </div>
+
           <div className="space-y-3">
-            <ActiveServiceCard
-              icon={<MessageSquare className="w-5 h-5" />}
-              title={t("dashboard.svc-chat-title")}
-              subtitle={t("dashboard.svc-chat-subtitle")}
-              body={t("dashboard.svc-chat-body")}
-              ctaLabel={t("dashboard.svc-chat-cta")}
-              to="/chat"
-            />
             <ComingSoonServiceCard
               icon={<Receipt className="w-5 h-5" />}
               title={t("dashboard.svc-tax-title")}

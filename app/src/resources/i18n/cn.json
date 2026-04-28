@@ -1804,7 +1804,8 @@
     "carbon-monthly-label": "本月碳足迹",
     "carbon-cta": "详细报告",
     "carbon-empty-title": "本月还没有碳数据",
-    "carbon-empty-body": "发出第一条对话,我们就开始记录。"
+    "carbon-empty-body": "发出第一条对话,我们就开始记录。",
+    "chat-floating-hint": "多模型对话已就绪 · 点右下角 🌱 随时开聊"
   },
   "chat-floating": {
     "open": "打开聊天",
