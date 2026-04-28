@@ -1672,6 +1672,76 @@
     "withdraw-failed-prompt": "Withdrawal failed! Reason: {{reason}}",
     "invalid-amount": "Invalid amount"
   },
+  "landing": {
+    "eyebrow": "Sustainable · BYOK · Indie-built",
+    "headline": {
+      "before": "Sustainable AI services,",
+      "middle": "made for",
+      "accent": "indie builders"
+    },
+    "sub": "One subscription · multiple services · carbon visible · zero prompt retention",
+    "cta": {
+      "cny": "Subscribe ¥99/mo",
+      "usd": "Subscribe $15/mo",
+      "fineprint": "China · Alipay · Global · card via LemonSqueezy"
+    },
+    "services": {
+      "heading": "Services",
+      "sub": "Today: chat. Soon: tax filing & auto-editing. All on one subscription.",
+      "chat": {
+        "title": "Multi-model chat",
+        "desc": "GPT-4o, Claude, Gemini, DeepSeek and more — pick the best model per task. Carbon shown after every reply.",
+        "status": "Included",
+        "cta": "Try it"
+      },
+      "tax": {
+        "title": "AI Tax Assistant",
+        "desc": "Personal income tax done in minutes. Reads your statements, surfaces deductions, prepares filings.",
+        "status": "Coming soon",
+        "cta": "Get notified"
+      },
+      "video": {
+        "title": "Auto Video Editor",
+        "desc": "Drop a long take. Get a tight cut with timing, transitions, and captions. Eco mode keeps it lean.",
+        "status": "Coming soon",
+        "cta": "Get notified"
+      }
+    },
+    "why": {
+      "heading": "Why greentokey",
+      "carbon": {
+        "title": "Carbon visible",
+        "body": "Every chat shows a real-time CO₂ estimate. Monthly dashboard. Public methodology.",
+        "link": "Methodology →"
+      },
+      "privacy": {
+        "title": "Zero prompt retention",
+        "body": "Your prompts never persist. Open-source gateway. Hard cost cap so a runaway loop can't drain your balance."
+      },
+      "bundle": {
+        "title": "One subscription, many services",
+        "body": "Pay once. Use chat today. Tax filing and auto-edit unlock for you the moment they ship."
+      }
+    },
+    "waitlist": {
+      "title": "Join the waitlist",
+      "desc": "Drop your email and we'll notify you the moment this service launches.",
+      "placeholder": "you@example.com",
+      "submit": "Notify me",
+      "cancel": "Cancel",
+      "ok": "You're on the waitlist",
+      "ok-desc": "We'll email you the moment {{name}} ships.",
+      "dup": "Already on the list",
+      "invalid": "Please enter a valid email.",
+      "rate-limited": "Too many requests — please try again in a minute.",
+      "network": "Network error — please check your connection.",
+      "server": "Couldn't sign you up right now. Please try again."
+    },
+    "footer": {
+      "tagline": "One subscription. Transparent compute. Visible carbon.",
+      "attribution": "Built for indie hackers / solo founders / vibe coders who care. Open source CoAI fork · Apache 2.0."
+    }
+  },
   "pricing-page": {
     "tagline": "Sustainable · BYOK · Indie-built",
     "headline-1": "One flat fee.",
