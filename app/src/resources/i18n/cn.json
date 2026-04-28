@@ -1665,6 +1665,76 @@
       "rate": "返佣率"
     }
   },
+  "landing": {
+    "eyebrow": "可持续 · BYOK · 独立开发者作品",
+    "headline": {
+      "before": "可持续的 AI 服务平台,",
+      "middle": "为",
+      "accent": "独立开发者"
+    },
+    "sub": "一个订阅 · 多个服务 · 碳可见 · 零 prompt 留存",
+    "cta": {
+      "cny": "立即开通 ¥99/月",
+      "usd": "Subscribe $15/mo",
+      "fineprint": "中国 · 支付宝 / Global · card via LemonSqueezy"
+    },
+    "services": {
+      "heading": "服务",
+      "sub": "今天:多模型对话。即将上线:报税、剪辑。全部包含在一个订阅里。",
+      "chat": {
+        "title": "多模型对话",
+        "desc": "GPT-4o、Claude、Gemini、DeepSeek 等 — 按任务挑最合适的模型。每次回复后显示碳排放估算。",
+        "status": "订阅含",
+        "cta": "试用"
+      },
+      "tax": {
+        "title": "AI 报税助手",
+        "desc": "几分钟搞定个人所得税。读你的工资单与流水,自动识别专项扣除,生成申报材料。",
+        "status": "即将上线",
+        "cta": "留邮箱抢先体验"
+      },
+      "video": {
+        "title": "自动剪辑",
+        "desc": "丢一段长素材进来,自动出节奏紧凑的剪辑版本 — 转场、字幕、配速一次到位。Eco Mode 走小模型 + 缓存。",
+        "status": "即将上线",
+        "cta": "留邮箱抢先体验"
+      }
+    },
+    "why": {
+      "heading": "为什么选 greentokey",
+      "carbon": {
+        "title": "碳可见",
+        "body": "每次对话显示实时 CO₂ 估算。月度可持续 dashboard。方法论开源可查。",
+        "link": "查看方法论 →"
+      },
+      "privacy": {
+        "title": "零 prompt 留存",
+        "body": "我们永不存你的 prompt。网关开源 + 硬成本上限,失控循环不会刷爆你的余额。"
+      },
+      "bundle": {
+        "title": "一个订阅,多个服务",
+        "body": "一次付费。今天用对话。报税与剪辑上线那天自动解锁。"
+      }
+    },
+    "waitlist": {
+      "title": "加入等待列表",
+      "desc": "留下邮箱,服务上线我们第一时间通知你。",
+      "placeholder": "you@example.com",
+      "submit": "通知我",
+      "cancel": "取消",
+      "ok": "已加入等待列表",
+      "ok-desc": "{{name}} 上线时第一时间发邮件给你。",
+      "dup": "已在等待列表",
+      "invalid": "请输入正确的邮箱。",
+      "rate-limited": "请求过多,请一分钟后再试。",
+      "network": "网络错误,请检查连接。",
+      "server": "暂时无法处理,请稍后重试。"
+    },
+    "footer": {
+      "tagline": "一个订阅。透明计算。可见碳。",
+      "attribution": "为关心可持续的独立开发者 / Solo founder / Vibe coder 而建。开源 CoAI fork · Apache 2.0。"
+    }
+  },
   "pricing-page": {
     "tagline": "可持续 · BYOK · 独立开发者作品",
     "headline-1": "一个统一月费。",

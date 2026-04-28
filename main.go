@@ -15,6 +15,7 @@ import (
 	"chat/middleware"
 	"chat/payment"
 	"chat/utils"
+	"chat/waitlist"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -55,6 +56,8 @@ func registerApiRouter(engine *gin.Engine) {
 		payment.Register(app)
 		// v0.6 carbon routes
 		carbon.Register(app)
+		// v0.6.1 waitlist (marketing landing email capture)
+		waitlist.Register(app)
 	}
 }
 
@@ -75,6 +78,9 @@ func main() {
 	// Runs after middleware.RegisterMiddleware connects DB; idempotent on reboot.
 	if err := payment.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey payment migration failed: %s", err))
+	}
+	if err := waitlist.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey waitlist migration failed: %s", err))
 	}
 
 	utils.RegisterStaticRoute(app)
