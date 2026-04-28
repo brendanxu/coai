@@ -75,7 +75,9 @@ function EmptyState() {
         Send your first message and we&apos;ll start estimating the impact of every
         chat — and showing you the trend.
       </p>
-      <Link to="/">
+      {/* v0.6.1 — chat moved to /chat; this CTA used to land on / which is
+          now the dashboard (the page the user just came from). */}
+      <Link to="/chat">
         <Button>Start chatting →</Button>
       </Link>
     </div>

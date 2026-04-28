@@ -1670,5 +1670,32 @@
       "pending": "Подлежит урегулированию",
       "rate": "Ставка возврата"
     }
+  },
+  "dashboard": {
+    "welcome-back": "Welcome back",
+    "this-month-overview": "Here's how this month is shaping up",
+    "co2-this-month": "CO₂ this month",
+    "vs-last-month": "vs last month",
+    "your-services": "Your services",
+    "svc-chat-title": "Chat Playground",
+    "svc-chat-subtitle": "Multi-model · included in your plan",
+    "svc-chat-body": "Chat with every supported model — your BYOK keys, our gateway, your data stays yours.",
+    "svc-chat-cta": "Start chatting",
+    "svc-tax-title": "AI Tax Filing",
+    "svc-tax-body": "Drop in your invoices and statements; we file or pre-fill the forms.",
+    "svc-editor-title": "Auto Video Editor",
+    "svc-editor-body": "Long-form to short-form, captions, beats, b-roll — automatic.",
+    "coming-soon": "Coming soon",
+    "notify-me": "Notify me",
+    "carbon-monthly-label": "Carbon this month",
+    "carbon-cta": "Full report",
+    "carbon-empty-title": "No carbon to report yet",
+    "carbon-empty-body": "Send your first chat and we'll start counting."
+  },
+  "chat-floating": {
+    "open": "Open chat",
+    "close": "Close chat",
+    "panel-title": "Chat",
+    "panel-label": "Floating chat panel"
   }
 }

@@ -30,6 +30,9 @@ const Article = lazyFactor(() => import("@/routes/Article.tsx"));
 const Dashboard = lazyFactor(() => import("@/routes/Dashboard.tsx"));
 const Methodology = lazyFactor(() => import("@/routes/Methodology.tsx"));
 
+// v0.6.1 — dedicated /chat route (chat moved off /)
+const Chat = lazyFactor(() => import("@/routes/Chat.tsx"));
+
 const AdminPage = lazyFactor(() => import("@/routes/Admin.tsx"));
 const AdminDashboard = lazyFactor(() => import("@/routes/admin/DashBoard.tsx"));
 const AdminMarket = lazyFactor(() => import("@/routes/admin/Market.tsx"));
@@ -60,6 +63,18 @@ const router = createBrowserRouter([
         id: "home",
         path: "",
         element: <Home />,
+      },
+      // v0.6.1 — dedicated chat route. Anonymous users with skip_welcome=1
+      // are redirected here from Home. Logged-in users land on the dashboard
+      // and reach chat via the ToolBar icon, dashboard CTA, or floating button.
+      {
+        id: "chat",
+        path: "chat",
+        element: (
+          <Suspense>
+            <Chat />
+          </Suspense>
+        ),
       },
       {
         id: "model",

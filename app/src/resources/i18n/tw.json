@@ -1723,5 +1723,32 @@
     "error-misconfigured": "結帳尚未設定完畢,請聯絡客服。",
     "error-network": "無法連接伺服器,檢查網路後重試。",
     "error-unknown": "暫時打不開結帳,請稍後再試。"
+  },
+  "dashboard": {
+    "welcome-back": "歡迎回來",
+    "this-month-overview": "看看本月概況",
+    "co2-this-month": "本月 CO₂",
+    "vs-last-month": "對比上月",
+    "your-services": "你的服務",
+    "svc-chat-title": "Chat Playground",
+    "svc-chat-subtitle": "多模型 · 訂閱含",
+    "svc-chat-body": "用所有支援的模型聊天 — 你自己的 keys 走我們的閘道,資料全程歸你。",
+    "svc-chat-cta": "開始對話",
+    "svc-tax-title": "AI 報稅",
+    "svc-tax-body": "上傳發票、流水,我們替你填表或申報。",
+    "svc-editor-title": "自動剪輯",
+    "svc-editor-body": "長影片轉短影片,字幕、節奏、b-roll 全自動。",
+    "coming-soon": "即將上線",
+    "notify-me": "上線通知我",
+    "carbon-monthly-label": "本月碳足跡",
+    "carbon-cta": "詳細報告",
+    "carbon-empty-title": "本月還沒有碳資料",
+    "carbon-empty-body": "發出第一條對話,我們就開始記錄。"
+  },
+  "chat-floating": {
+    "open": "打開聊天",
+    "close": "關閉聊天",
+    "panel-title": "聊天",
+    "panel-label": "懸浮聊天面板"
   }
 }

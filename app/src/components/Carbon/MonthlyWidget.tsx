@@ -1,49 +1,23 @@
 // v0.6 carbon — sidebar monthly widget.
 // Compact 2-line stat block at the top of the chat sidebar. Click → /dashboard.
 //
-// Data freshness: re-fetches on mount + when ecoMode toggles (good signal that
-// usage pattern just changed). No polling — staleness OK for v0.6.
+// Data freshness: useCarbonSummary fetches once per session and refetches when
+// ecoMode toggles. v0.6.1 extracted the fetch into a shared hook so the new
+// dashboard MonthlyCarbonSummary can read the same redux summary without
+// duplicating the fetch logic.
 
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  selectCarbonSummary,
-  selectCarbonSummaryLoading,
-  selectEcoMode,
-  setSummary,
-  setSummaryLoading,
-} from "@/store/carbon.ts";
-import { getCarbonSummary } from "@/api/carbon.ts";
 import { LeafIcon } from "./icons.tsx";
 import { formatCO2 } from "./tier.ts";
+import { useCarbonSummary } from "./useCarbonSummary.ts";
 import { cn } from "@/components/ui/lib/utils.ts";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import type { AppDispatch } from "@/store/index.ts";
 
 type Props = { className?: string };
 
 export function MonthlyWidget({ className }: Props) {
-  const dispatch = useDispatch<AppDispatch>();
-  const summary = useSelector(selectCarbonSummary);
-  const loading = useSelector(selectCarbonSummaryLoading);
-  const ecoMode = useSelector(selectEcoMode);
+  const { summary, loading } = useCarbonSummary();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    let cancelled = false;
-    dispatch(setSummaryLoading(true));
-    getCarbonSummary()
-      .then((s) => {
-        if (!cancelled) dispatch(setSummary(s));
-      })
-      .catch(() => {
-        if (!cancelled) dispatch(setSummaryLoading(false));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dispatch, ecoMode]);
 
   // Loading state — skeleton same dimensions
   if (loading && !summary) {
