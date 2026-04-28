@@ -1714,5 +1714,32 @@
     "error-misconfigured": "结账尚未配置完毕,请联系客服。",
     "error-network": "无法连接服务器,检查网络后重试。",
     "error-unknown": "暂时打不开结账,请稍后再试。"
+  },
+  "dashboard": {
+    "welcome-back": "欢迎回来",
+    "this-month-overview": "看看本月概况",
+    "co2-this-month": "本月 CO₂",
+    "vs-last-month": "对比上月",
+    "your-services": "你的服务",
+    "svc-chat-title": "Chat Playground",
+    "svc-chat-subtitle": "多模型 · 订阅含",
+    "svc-chat-body": "用所有支持的模型聊天 — 你自己的 keys 走我们的网关,数据全程归你。",
+    "svc-chat-cta": "开始对话",
+    "svc-tax-title": "AI 报税",
+    "svc-tax-body": "上传发票、流水,我们替你填表或申报。",
+    "svc-editor-title": "自动剪辑",
+    "svc-editor-body": "长视频转短视频,字幕、节奏、b-roll 全自动。",
+    "coming-soon": "即将上线",
+    "notify-me": "上线通知我",
+    "carbon-monthly-label": "本月碳足迹",
+    "carbon-cta": "详细报告",
+    "carbon-empty-title": "本月还没有碳数据",
+    "carbon-empty-body": "发出第一条对话,我们就开始记录。"
+  },
+  "chat-floating": {
+    "open": "打开聊天",
+    "close": "关闭聊天",
+    "panel-title": "聊天",
+    "panel-label": "悬浮聊天面板"
   }
 }
