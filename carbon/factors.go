@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"chat/connection"
 	"chat/globals"
 )
 
@@ -65,19 +66,42 @@ func loadFactors() {
 // (model, region). If region is empty, falls back to FactorsTable.DefaultRegion.
 // Returns ok=false when the model has no entry — caller should write a
 // usage_carbon row with co2g_estimate=NULL and notes='coefficient_gap'.
+//
+// T2.6 (2026-04-30): now DB-first. Queries gtk_carbon_coeffs first; on
+// miss or DB error, falls back to the embedded JSON map (preserves
+// pre-T2.6 behavior). Public signature unchanged — callers in
+// manager/chat_completions.go are unaware of the storage shift.
 func LookupCoefficient(model, region string) (gco2e float64, version string, ok bool) {
 	factorsOnce.Do(loadFactors)
-	if factorsIdx == nil {
-		return 0, "", false
-	}
 	if region == "" {
 		region = factorsTable.DefaultRegion
+	}
+
+	// DB-first: query gtk_carbon_coeffs when the connection is initialized.
+	// If the migration hasn't run yet (table missing), or the row isn't
+	// there, getActiveCoeffFromDB returns ok=false silently and we drop
+	// through to the JSON map below.
+	if connection.DB != nil {
+		if entry, found := getActiveCoeffFromDB(connection.DB, model, region); found {
+			return entry.GCO2ePer1KTokens, entry.Version, true
+		}
+		if region != factorsTable.DefaultRegion {
+			if entry, found := getActiveCoeffFromDB(connection.DB, model, factorsTable.DefaultRegion); found {
+				return entry.GCO2ePer1KTokens, entry.Version, true
+			}
+		}
+	}
+
+	// JSON fallback (also covers test-time scenarios where connection.DB
+	// is intentionally nil, and the bootstrap window before main.go finishes
+	// wiring connection.DB).
+	if factorsIdx == nil {
+		return 0, "", false
 	}
 	key := strings.ToLower(model) + "|" + strings.ToLower(region)
 	if entry, found := factorsIdx[key]; found {
 		return entry.GCO2ePer1KTokens, entry.Version, true
 	}
-	// Fallback: try the default region for this model
 	if region != factorsTable.DefaultRegion {
 		key = strings.ToLower(model) + "|" + strings.ToLower(factorsTable.DefaultRegion)
 		if entry, found := factorsIdx[key]; found {
@@ -105,7 +129,32 @@ func GetFactorsJSON() []byte {
 }
 
 // GetFactorsTable returns the parsed table (used by tests and internal code).
+//
+// T2.6 (2026-04-30): when gtk_carbon_coeffs has rows, returns a copy of the
+// table with Factors overridden by current DB rows. Global metadata (Version,
+// ErrorMarginPct, DefaultRegion, Sources, WhatWeDontMeasure, CalibrationNote)
+// stays from the JSON — those fields are not stored per-row in the DB.
+//
+// Falls back to the embedded JSON when:
+//   - connection.DB is nil (tests / bootstrap window / migration unrun)
+//   - listAllActiveCoeffsFromDB returns nil (DB error)
+//   - listAllActiveCoeffsFromDB returns empty (table genuinely empty)
+//
+// The seed loader in migration.go calls this function to read the JSON,
+// so seedCoeffsIfEmpty must NOT be triggered by GetFactorsTable. The DB
+// short-circuit (rows == 0 → fall through to JSON) is sufficient because
+// migration.Migrate runs before the first GetFactorsTable call from any
+// HTTP handler.
 func GetFactorsTable() *FactorsTable {
 	factorsOnce.Do(loadFactors)
-	return &factorsTable
+	if connection.DB == nil {
+		return &factorsTable
+	}
+	rows := listAllActiveCoeffsFromDB(connection.DB)
+	if len(rows) == 0 {
+		return &factorsTable
+	}
+	out := factorsTable // copy global meta
+	out.Factors = rows
+	return &out
 }
