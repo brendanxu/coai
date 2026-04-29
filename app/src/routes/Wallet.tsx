@@ -20,7 +20,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { docsEndpoint } from "@/conf/env.ts";
+import { docsEndpoint, HIDE_CREDIT_UI } from "@/conf/env.ts";
 import { cn } from "@/components/ui/lib/utils.ts";
 import { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
@@ -364,7 +364,7 @@ function WalletPlanBox() {
         </motion.div>
 
         <motion.div className={`sub-wrapper px-2`} variants={itemVariants}>
-          {subscription && (
+          {!HIDE_CREDIT_UI && subscription && (
             <Accordion
               type="single"
               collapsible
@@ -454,7 +454,7 @@ function Wallet() {
   return (
     <ScrollArea className={`w-full h-full flex flex-col p-2 pr-4 bg-muted/25`}>
       <div className={`w-full h-fit max-w-5xl mx-auto py-2 md:py-6`}>
-        <WalletQuotaBox />
+        {!HIDE_CREDIT_UI && <WalletQuotaBox />}
         <WalletPlanBox />
       </div>
     </ScrollArea>

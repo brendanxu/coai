@@ -16,7 +16,7 @@ import MenuBar from "./MenuBar.tsx";
 import { getMemory } from "@/utils/memory.ts";
 import { goAuth } from "@/utils/app.ts";
 import Avatar from "@/components/Avatar.tsx";
-import { appLogo } from "@/conf/env.ts";
+import { appLogo, HIDE_CREDIT_UI } from "@/conf/env.ts";
 import { refreshQuota } from "@/store/quota.ts";
 import { refreshSubscription } from "@/store/subscription.ts";
 import { useEffectAsync } from "@/utils/hook.ts";
@@ -53,6 +53,7 @@ function NavBar() {
   const auth = useSelector(selectAuthenticated);
 
   useEffectAsync(async () => {
+    if (HIDE_CREDIT_UI) return;
     if (!auth) return;
 
     const quotaTask = createCronJob(dispatch, refreshQuota, 30, true);

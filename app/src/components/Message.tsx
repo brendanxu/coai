@@ -33,7 +33,7 @@ import EditorProvider from "@/components/EditorProvider.tsx";
 import Avatar from "@/components/Avatar.tsx";
 import { useSelector } from "react-redux";
 import { selectUsername } from "@/store/auth.ts";
-import { appLogo } from "@/conf/env.ts";
+import { appLogo, HIDE_CREDIT_UI } from "@/conf/env.ts";
 import { motion } from "framer-motion";
 import { ThinkContent } from "@/components/ThinkContent";
 
@@ -72,7 +72,7 @@ function MessageSegment(props: MessageProps) {
       }}
     >
       <MessageContent {...props} />
-      <MessageQuota message={message} />
+      {!HIDE_CREDIT_UI && <MessageQuota message={message} />}
     </div>
   );
 }

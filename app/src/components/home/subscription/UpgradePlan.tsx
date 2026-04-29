@@ -21,7 +21,7 @@ import {
   Plus,
   ShoppingCart,
 } from "lucide-react";
-import { deeptrainEndpoint, useDeeptrain } from "@/conf/env.ts";
+import { deeptrainEndpoint, useDeeptrain, HIDE_CREDIT_UI } from "@/conf/env.ts";
 import { quotaSelector } from "@/store/quota.ts";
 import { getPlanName, getPlanPrice } from "@/conf/subscription.tsx";
 import { Plans } from "@/api/types.tsx";
@@ -105,6 +105,9 @@ async function callBuyAction(
         month,
       }),
     });
+  } else if (HIDE_CREDIT_UI) {
+    // greentokey: BYOK — suppress quota number + dead /home/wallet link
+    toast.error(t("sub.failed"));
   } else {
     toast.error(t("sub.failed"), {
       description: useDeeptrain

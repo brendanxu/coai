@@ -11,7 +11,7 @@ import { manager } from "@/api/generation.ts";
 import { handleGenerationData } from "@/utils/processor.ts";
 import { selectModel } from "@/store/chat.ts";
 import ModelArea from "@/components/home/ModelArea.tsx";
-import { appLogo } from "@/conf/env.ts";
+import { appLogo, HIDE_CREDIT_UI } from "@/conf/env.ts";
 import { isEnter } from "@/utils/base.ts";
 import { toast } from "sonner";
 
@@ -95,7 +95,7 @@ function Wrapper({ onSend }: WrapperProps) {
     <div className={`generation-wrapper`}>
       {stayed ? (
         <div className={`box`}>
-          {quota > 0 && (
+          {!HIDE_CREDIT_UI && quota > 0 && (
             <div className={`quota-box`}>
               <Cloud className={`h-4 w-4 mr-2`} />
               {quota.toFixed(2)}

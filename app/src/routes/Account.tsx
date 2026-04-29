@@ -48,7 +48,7 @@ import { getSharedLink, SharingPreviewForm } from "@/api/sharing.ts";
 import { openWindow } from "@/utils/device.ts";
 import { dataSelector, deleteData, syncData } from "@/store/sharing.ts";
 import { DeeptrainOnly } from "@/conf/deeptrain.tsx";
-import { deeptrainEndpoint, docsEndpoint } from "@/conf/env.ts";
+import { deeptrainEndpoint, docsEndpoint, HIDE_CREDIT_UI } from "@/conf/env.ts";
 import { getApiKey, keySelector, regenerateApiKey } from "@/store/api.ts";
 import { Input } from "@/components/ui/input.tsx";
 import {
@@ -329,41 +329,43 @@ function Account() {
               </Badge>
             </div>
           </div>
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-card shadow-sm rounded-lg p-4 transition-all border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-muted-foreground">
-                  {t("account.current-quota")}
-                </span>
-                <Cloud className="w-10 h-10 p-2 rounded-lg bg-muted/40 text-secondary stroke-[1]" />
+          {!HIDE_CREDIT_UI && (
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-card shadow-sm rounded-lg p-4 transition-all border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("account.current-quota")}
+                  </span>
+                  <Cloud className="w-10 h-10 p-2 rounded-lg bg-muted/40 text-secondary stroke-[1]" />
+                </div>
+                <p className="text-md">{quota.toFixed(2)}</p>
               </div>
-              <p className="text-md">{quota.toFixed(2)}</p>
+              <div className="bg-card shadow-sm rounded-lg p-4 transition-all border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("account.used-quota")}
+                  </span>
+                  <CloudRain className="w-10 h-10 p-2 rounded-lg bg-muted/40 text-secondary stroke-[1]" />
+                </div>
+                <p className="text-md">{info.used_quota.toFixed(2)}</p>
+              </div>
+              <div className="bg-card shadow-sm rounded-lg p-4 transition-all border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("account.plan-total-month")}
+                  </span>
+                  <CalendarClock className="w-10 h-10 p-2 rounded-lg bg-muted/40 text-secondary stroke-[1]" />
+                </div>
+                <div className="flex items-center">
+                  <p className="text-md mr-2">{info.plan_total_month}</p>
+                  <Tips
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    content={t("account.plan-total-month-tips")}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="bg-card shadow-sm rounded-lg p-4 transition-all border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-muted-foreground">
-                  {t("account.used-quota")}
-                </span>
-                <CloudRain className="w-10 h-10 p-2 rounded-lg bg-muted/40 text-secondary stroke-[1]" />
-              </div>
-              <p className="text-md">{info.used_quota.toFixed(2)}</p>
-            </div>
-            <div className="bg-card shadow-sm rounded-lg p-4 transition-all border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-muted-foreground">
-                  {t("account.plan-total-month")}
-                </span>
-                <CalendarClock className="w-10 h-10 p-2 rounded-lg bg-muted/40 text-secondary stroke-[1]" />
-              </div>
-              <div className="flex items-center">
-                <p className="text-md mr-2">{info.plan_total_month}</p>
-                <Tips
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  content={t("account.plan-total-month-tips")}
-                />
-              </div>
-            </div>
-          </div>
+          )}
         </AccountCard>
         <DeeptrainOnly>
           <AccountCard

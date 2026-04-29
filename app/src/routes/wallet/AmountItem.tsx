@@ -6,6 +6,7 @@ import { cn } from "@/components/ui/lib/utils.ts";
 import { Cloud, Check } from "lucide-react";
 import { Input } from "@/components/ui/input.tsx";
 import { useCurrency } from "@/store/info";
+import { HIDE_CREDIT_UI } from "@/conf/env.ts";
 
 type AmountComponentProps = {
   amount: number;
@@ -75,6 +76,8 @@ export default function QuotaWrapper({
 }: QuotaWrapperProps) {
   const customIndex = builtinAmount.length;
   const [customAmount, setCustomAmount] = useState("");
+
+  if (HIDE_CREDIT_UI) return null;
 
   const containerVariants = {
     hidden: { opacity: 0 },

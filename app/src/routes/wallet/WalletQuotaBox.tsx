@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { quotaSelector, refreshQuota } from "@/store/quota.ts";
 import { AppDispatch } from "@/store";
 import { Cloud, ExternalLink, Gift } from "lucide-react";
-import { docsEndpoint } from "@/conf/env.ts";
+import { docsEndpoint, HIDE_CREDIT_UI } from "@/conf/env.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { toast } from "sonner";
 import {
@@ -23,6 +23,8 @@ export default function WalletQuotaBox() {
   const { t } = useTranslation();
   const quota = useSelector(quotaSelector);
   const [redeemOpen, setRedeemOpen] = useState(false);
+
+  if (HIDE_CREDIT_UI) return null;
 
   const containerVariants = {
     hidden: { opacity: 0 },
