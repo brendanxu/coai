@@ -1673,124 +1673,105 @@
     "invalid-amount": "Invalid amount"
   },
   "landing": {
-    "eyebrow": "Sustainable · BYOK · Indie-built",
+    "eyebrow": "民宿 · 小红书运营 · 全托管",
     "headline": {
-      "before": "Sustainable AI services,",
-      "middle": "made for",
-      "accent": "indie builders"
+      "before": "你做民宿，",
+      "middle": "我做",
+      "accent": "你的小红书。"
     },
-    "sub": "One subscription · multiple services · carbon visible · zero prompt retention",
+    "sub": "AI 帮你写文案、出图、自动发布、应对评论私信。每月 ¥1980 全托管，比本地 MCN 更稳更便宜。先做大理环洱海。",
     "cta": {
-      "cny": "Subscribe ¥99/mo",
-      "usd": "Subscribe $15/mo",
-      "fineprint": "China · Alipay · Global · card via LemonSqueezy"
+      "demo": "联系预约 demo",
+      "pricing": "了解套餐 ¥1980/月",
+      "fineprint": "首批客户高接触陪跑 · 30 天 50% 退款承诺 · 不打折不分级"
+    },
+    "contact": {
+      "title": "联系预约 demo"
     },
     "services": {
-      "heading": "Services",
-      "sub": "Today: chat. Soon: tax filing & auto-editing. All on one subscription.",
-      "chat": {
-        "title": "Multi-model chat",
-        "desc": "GPT-4o, Claude, Gemini, DeepSeek and more — pick the best model per task. Carbon shown after every reply.",
-        "status": "Included",
-        "cta": "Try it"
+      "heading": "全闭环 4 个环节",
+      "sub": "从写到发到回到归因，¥1980/月一价全包。前 6 周 concierge 模式陪跑，后台逐步自动化。",
+      "content": {
+        "title": "内容生成",
+        "desc": "上传 5-10 张原片 + 1 句房型说明 → AI 写小红书爆款文案、出优化封面图、配 hashtag。每周 5-7 篇。学你已有爆款的语气和风格。",
+        "status": "已上线 · 陪跑模式",
+        "cta": "看示例"
       },
-      "tax": {
-        "title": "AI Tax Assistant",
-        "desc": "Personal income tax done in minutes. Reads your statements, surfaces deductions, prepares filings.",
-        "status": "Coming soon",
-        "cta": "Get notified"
+      "publish": {
+        "title": "自动发布",
+        "desc": "内容生成后自动出现在你小红书草稿箱。手机收到通知 → 一键确认即发。账号 100% 你自己掌控，封号风险低，省 95% 工时。",
+        "status": "Phase 1.B · 第 4-6 周",
+        "cta": "留微信抢先体验"
       },
-      "video": {
-        "title": "Auto Video Editor",
-        "desc": "Drop a long take. Get a tight cut with timing, transitions, and captions. Eco mode keeps it lean.",
-        "status": "Coming soon",
-        "cta": "Get notified"
+      "engage": {
+        "title": "互动管理",
+        "desc": "评论 AI 自动起草 → 你审 → 一键发。私信 AI 初筛（订房咨询 vs 闲聊）→ 订房咨询直接打到你。前 100 条人工 sample，后续闭环自学习。",
+        "status": "Phase 1.C · 第 6-8 周",
+        "cta": "留微信抢先体验"
+      },
+      "roi": {
+        "title": "ROI 归因",
+        "desc": "每天看：「这周新增 X 间订单从小红书来 / 内容投入产出比 Y」。Phase 1 老板每来订单 30 秒标来源；Phase 2 与携程/Airbnb 自动直连归因。",
+        "status": "已上线 · 手动归因",
+        "cta": "看示例"
       }
     },
     "why": {
-      "heading": "Why greentokey",
-      "carbon": {
-        "title": "Carbon visible",
-        "body": "Every chat shows a real-time CO₂ estimate. Monthly dashboard. Public methodology.",
-        "link": "Methodology →"
+      "heading": "为啥找我们做",
+      "replace-mcn": {
+        "title": "替代本地 MCN",
+        "body": "你给本地工作室付 ¥2-5K/月，3 个月退订是常事。我们用 AI 把那套活儿做实，¥1980/月不分级，效果不稳定时 30 天 50% 退款。"
       },
-      "privacy": {
-        "title": "Zero prompt retention",
-        "body": "Your prompts never persist. Open-source gateway. Hard cost cap so a runaway loop can't drain your balance."
+      "vertical": {
+        "title": "民宿垂直 AI",
+        "body": "我们不是通用 AI 工具。AI 学过的是大理民宿爆款的语料：洱海、苍山、旅拍、蜜月、亲子、季节性玩法。先做大理一个区域，做透了再扩。"
       },
-      "bundle": {
-        "title": "One subscription, many services",
-        "body": "Pay once. Use chat today. Tax filing and auto-edit unlock for you the moment they ship."
+      "your-account": {
+        "title": "账号 100% 你掌控",
+        "body": "我们不接管你的小红书账号。内容生成后推到你手机草稿箱，你一键确认即发。封号风险低，账号永远是你的。"
       }
     },
-    "waitlist": {
-      "title": "Join the waitlist",
-      "desc": "Drop your email and we'll notify you the moment this service launches.",
-      "placeholder": "you@example.com",
-      "submit": "Notify me",
-      "cancel": "Cancel",
-      "ok": "You're on the waitlist",
-      "ok-desc": "We'll email you the moment {{name}} ships.",
-      "dup": "Already on the list",
-      "invalid": "Please enter a valid email.",
-      "rate-limited": "Too many requests — please try again in a minute.",
-      "network": "Network error — please check your connection.",
-      "server": "Couldn't sign you up right now. Please try again."
-    },
     "footer": {
-      "tagline": "One subscription. Transparent compute. Visible carbon.",
-      "attribution": "Built for indie hackers / solo founders / vibe coders who care. Open source CoAI fork · Apache 2.0."
+      "tagline": "AI 替代 MCN，更稳更便宜，民宿主自己掌控。",
+      "attribution": "首阶段只做大理环洱海 · 优质池 1K+ 民宿主 · 单档 ¥1980/月不分级 · 30 天 50% 退款承诺"
     }
   },
   "pricing-page": {
-    "tagline": "Sustainable · BYOK · Indie-built",
-    "headline-1": "One flat fee.",
-    "headline-2": "Your keys.",
-    "headline-3": "Zero markup.",
-    "subheadline": "Bring your own OpenAI / Claude / Gemini keys. We give you the UI, the cost cap, the privacy layer — and visible carbon. You pay providers directly.",
-    "starter": "Starter",
-    "month": "month",
-    "starter-tagline": "Everything you need. Nothing you don't.",
-    "feature-byok": "Bring your own API keys (BYOK)",
-    "feature-models": "All major models — GPT, Claude, Gemini, Llama",
-    "feature-zero": "Zero prompt retention — we never see your data",
-    "feature-cap": "Hard cost cap — no surprise bills",
-    "feature-carbon": "Per-chat carbon footprint + monthly dashboard",
-    "feature-cancel": "Cancel anytime — keep access until period ends",
-    "disclaimer": "Billed monthly. Powered by LemonSqueezy. Includes applicable tax.",
-    "value-wallet-title": "Wallet",
-    "value-wallet-body": "Compress $50–150/mo across ChatGPT Plus + Claude Pro + Cursor + scattered API into one flat fee. You bring the keys; we charge for the UI + ops.",
-    "value-privacy-title": "Privacy",
-    "value-privacy-body": "Configured zero-retention through the gateway. No prompt logging. Public methodology. Your conversations stay between you and your provider.",
-    "value-planet-title": "Planet",
-    "value-planet-body": "Each chat shows ~CO₂g. Monthly sustainability dashboard. Optional Eco Mode routes to smaller models + cache. No greenwashing — methodology page is public.",
-    "faq-title": "Questions you might have",
-    "faq-byok-q": "What does BYOK actually mean?",
-    "faq-byok-a": "You hold the API keys with each provider (OpenAI, Anthropic, Google, etc.) and pay them directly at their published rates — no markup from us. We're the UI + cost cap + privacy layer on top.",
-    "faq-cancel-q": "Can I cancel anytime?",
-    "faq-cancel-a": "Yes. Cancellation is one click in your account. You keep full access until the end of the period you've paid for, then drop to free tier — no surprise charges.",
-    "faq-refund-q": "Refunds?",
-    "faq-refund-a": "Email support within 14 days of your first charge for a no-questions refund. After that, we honor refunds case-by-case for service issues we caused.",
-    "faq-data-q": "What data do you store about my conversations?",
-    "faq-data-a": "Conversation metadata (timestamps, model, token counts) for billing transparency. No prompt content, no completion content. The gateway is configured with prompt logging off.",
-    "trust-ls": "Powered by LemonSqueezy",
-    "trust-cancel": "Cancel anytime",
-    "trust-no-lockin": "No vendor lock-in — your keys stay yours",
-    "loading": "Loading plan…",
-    "upgrade": "Upgrade to Starter",
-    "current-plan": "Current plan",
-    "until": "until",
-    "past-due": "Your last payment didn't go through.",
-    "update-payment": "Update payment method",
-    "on-trial": "Trial",
-    "auto-bills": "auto-bills",
-    "cancelled": "Cancelled",
-    "access-until": "access until",
-    "resume": "Resume subscription",
-    "error-unauthorized": "Your session expired. Please sign in again to upgrade.",
-    "error-misconfigured": "Checkout isn't configured yet. Please contact support.",
-    "error-network": "Couldn't reach our server. Check your connection and try again.",
-    "error-unknown": "Couldn't open checkout. Please try again in a moment."
+    "tagline": "民宿 · 小红书运营 · 全托管",
+    "headline-1": "¥1980 一价全包，",
+    "headline-2": "替你的本地 MCN。",
+    "subheadline": "AI 帮你写 + 帮你发 + 帮你回 + 帮你看效果。每月 ¥1980 不分级、不打折、首批客户高接触陪跑。30 天若入住率没看到提升，无理由退 50%。",
+    "starter": "民宿全托管",
+    "month": "月",
+    "starter-tagline": "单档全功能，没有进阶/旗舰/企业等让你纠结的版本。",
+    "feature-content": "每月 20+ 篇可发布小红书内容（文案 + 优化封面 + hashtag）",
+    "feature-style": "AI 学你已有爆款的风格 — 上传 5+ 篇当 few-shot 例子",
+    "feature-publish": "自动发布：内容自动到你手机草稿箱，一键确认即发",
+    "feature-engage": "评论 / 私信 AI 草稿，你审一键发，订房咨询直接打到你",
+    "feature-roi": "每日 ROI dashboard：本周 X 间订单从小红书来",
+    "feature-concierge": "首批 5 客户高接触陪跑（founder 当面教 + 调 prompt）",
+    "feature-refund": "30 天若入住率没看到提升，无理由退 50%",
+    "cta-demo": "加微信预约 demo",
+    "disclaimer": "首批不开放自助下单 · founder 一对一沟通后开通 · 微信支付 / 支付宝 / 银行转账皆可",
+    "value-replace-title": "替代 MCN",
+    "value-replace-body": "你给本地工作室付 ¥2-5K/月、3 个月退订是常态。我们用 AI 把那套活儿做实，更稳更便宜，还有 30 天 50% 退款保障。",
+    "value-vertical-title": "民宿垂直",
+    "value-vertical-body": "AI 学过的不是通用语料，是大理民宿爆款数据：洱海、苍山、旅拍、蜜月、亲子、季节性玩法。先做大理一个区域，做透了再扩。",
+    "value-control-title": "你掌控账号",
+    "value-control-body": "我们不接管你的小红书账号。内容生成后推到你手机草稿箱，你一键确认即发。封号风险低，账号永远是你的。",
+    "faq-title": "常见问题",
+    "faq-vs-mcn-q": "你们和我现在用的 MCN 工作室有什么区别？",
+    "faq-vs-mcn-a": "MCN 是人工写，受限于一个写手的小红书理解。我们用 AI + 民宿垂直语料 + 老板自己的爆款 few-shot，输出更稳。价格 ¥1980/月通常比本地工作室便宜，还有 30 天退款保障。最大的差别是『你掌控账号』 — 我们不要你的密码。",
+    "faq-account-q": "我自己已经有小红书账号怎么办？要给你们密码吗？",
+    "faq-account-a": "不需要。我们生成的内容会自动出现在你账号草稿箱，你打开手机一键确认即可发布。整个过程账号 100% 在你手里，零封号风险。",
+    "faq-cancel-q": "可以随时取消吗？",
+    "faq-cancel-a": "随时。提前 1 天微信告诉我们就行。当月已付费用持续到月底，下月不再扣费。30 天内若入住率没改善，无理由退 50%。",
+    "faq-data-q": "你们会留我的什么数据？",
+    "faq-data-a": "你上传的房源照片 + 历史爆款用于 AI 学习风格，不外传。AI 生成的内容版权归你。你的小红书账号、订房系统数据、客人信息我们 0 接触。",
+    "trust-concierge": "首批 5 客户高接触陪跑",
+    "trust-refund": "30 天 50% 退款承诺",
+    "trust-account": "账号永远在你手里",
+    "contact-title": "联系预约 demo"
   },
   "dashboard": {
     "welcome-back": "Welcome back",
