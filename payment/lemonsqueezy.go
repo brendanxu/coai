@@ -2,7 +2,9 @@ package payment
 
 import (
 	"chat/globals"
+	"chat/newapi"
 	"chat/utils"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -343,10 +345,56 @@ func upsertSubscription(db *sql.DB, p *webhookPayload) error {
 		return fmt.Errorf("activate: %w", err)
 	}
 
+	// v0.9: also provision (or top-up) NewAPI user + token so the user gets
+	// an api-key (sk-xxx) the moment payment succeeds. Failure here is
+	// LOGGED-NOT-FATAL: the user has already paid + CoAI subscription is
+	// active; a follow-up retry queue (TODO gtk_newapi_pending_provisions)
+	// re-tries provisioning. Returning an error here would 500 the webhook
+	// → LemonSqueezy retries → potential double-activate. Better to ack +
+	// retry async.
+	if newapi.IsConfigured() {
+		spec := newapi.PlanSpec{
+			Code:       "starter",
+			QuotaUnits: quotaUnitsForLevel(levelStarter),
+			// 1-day grace past LS renews_at — protects users from instant
+			// access loss if the next-month webhook is briefly delayed.
+			ExpiresAt: renewsAt.Add(24 * time.Hour),
+		}
+		if _, err := newapi.ProvisionForPlan(context.Background(), db, userID, spec); err != nil {
+			logf(globals.Warn, "newapi_provision_failed",
+				"user_id", userID, "ls_subscription_id", p.Data.ID, "err", err)
+		}
+	}
+
 	// Upsert the audit/mapping row. Existing cancelled_at gets cleared on resumed
 	// (resumed = un-cancellation), preserved on update (re-billing of an active sub).
 	clearCancelled := p.Meta.EventName == eventResumed
 	return upsertLsMapping(db, userID, p, renewsAt, clearCancelled)
+}
+
+// quotaUnitsForLevel converts a CoAI subscription level into NewAPI's
+// internal quota units. NewAPI quota model: $1 ≈ 500_000 units (configurable
+// per-channel via channel.token_per_dollar; the default is 500k).
+//
+// v0.9 mapping table (placeholder — should move to gtk_plan.quota_units once
+// LS variant_id → plan lookup is wired):
+//
+//	levelStarter (1)  → $15 cap        = 7_500_000 units / month
+//	levelIndie   (2)  → ¥199/mo cap   ≈ 14_000_000 units / month
+//	levelMinsu   (3)  → ¥1980/mo cap  ≈ 138_500_000 units / month
+//
+// For v0.9 only levelStarter is wired; the rest exist for documentation.
+func quotaUnitsForLevel(level int) int64 {
+	switch level {
+	case 1: // starter $15/mo
+		return 7_500_000
+	case 2: // indie ¥199/mo
+		return 14_000_000
+	case 3: // 民宿 ¥1980/mo
+		return 138_500_000
+	default:
+		return 0
+	}
 }
 
 func upsertLsMapping(db *sql.DB, userID int64, p *webhookPayload, renewsAt time.Time, clearCancelled bool) error {
