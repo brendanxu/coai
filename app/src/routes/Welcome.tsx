@@ -10,15 +10,20 @@ import { ServiceIcons } from "@/components/Marketing/icons.tsx";
 import router from "@/router.tsx";
 
 /**
- * greentokey marketing landing — shown to logged-out visitors.
+ * greentokey marketing landing — v0.8 民宿 wedge (大理环洱海).
  *
- * v0.6.1 IA shift: chat is no longer the front door. The landing positions
- * greentokey as a service marketplace (multi-model chat live now, AI 报税 +
- * 自动剪辑 coming soon) gated by a single subscription. Dual-currency CTA
- * routes via /register?next=/pricing — actual checkout (LemonSqueezy /
- * 虎皮椒) is owned by the post-signup UpgradeCTA on /pricing, so we don't
- * duplicate that flow here. Visitors who can't pay yet leave their email on
- * a Coming-Soon service via the waitlist endpoint.
+ * 5-day pivot from indie hacker BYOK hub → 民宿小红书全托管 SaaS.
+ * Wedge details: see docs/strategy/2026-04-30-pivot-v4-民宿-saas.md.
+ *
+ * 4 个 service cards = 全闭环的 4 个环节:
+ *   1. 内容生成（含风格学习 few-shot）— LIVE on Concierge first
+ *   2. 自动发布（老板手机端 helper）— Coming soon (Phase 1.B)
+ *   3. 互动管理（评论 + 私信 AI 草稿）— Coming soon (Phase 1.C)
+ *   4. ROI 归因 — LIVE manual mode → Phase 2 自动归因
+ *
+ * Concierge-first delivery: 首批 5 客户 Week 1-2 已开始付费 + 完整体验，
+ * 后台 founder + 亲人手工跑（用 Claude/GPT + 微信 + Notion），代码逐步
+ * 接管。Hero CTA 不直接 checkout — 走 demo 预约（信任优先 over 转化优先）。
  */
 function Welcome() {
   const { t } = useTranslation();
@@ -28,14 +33,18 @@ function Welcome() {
     title: string;
   }>({ slug: "any", title: "" });
 
-  const goRegisterForCheckout = (currency: "cny" | "usd") => {
-    router.navigate(`/register?intent=${currency}&next=/pricing`);
+  const openContactDemo = () => {
+    setWaitlistService({
+      slug: "any",
+      title: t("landing.contact.title", "联系预约 demo"),
+    });
+    setWaitlistOpen(true);
   };
 
-  const goTryChat = () => router.navigate("/login");
+  const goPricing = () => router.navigate("/pricing");
 
-  const openWaitlist = (
-    slug: "tax-filing" | "video-editing",
+  const openWaitlistFor = (
+    slug: "tax-filing" | "video-editing" | "any",
     title: string,
   ) => {
     setWaitlistService({ slug, title });
@@ -46,74 +55,86 @@ function Welcome() {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-5xl mx-auto px-6 py-12 md:py-20">
         <HeroSection
-          onUpgradeCNY={() => goRegisterForCheckout("cny")}
-          onUpgradeUSD={() => goRegisterForCheckout("usd")}
+          onContactDemo={openContactDemo}
+          onViewPricing={goPricing}
         />
 
-        {/* Service grid — three tiles */}
+        {/* Service grid — 4 个民宿闭环环节 */}
         <div className="space-y-4 mb-20">
           <h2 className="text-2xl font-display font-medium text-center">
-            {t("landing.services.heading", "Services")}
+            {t("landing.services.heading", "全闭环 4 个环节")}
           </h2>
           <p className="text-center text-sm text-muted-foreground mb-6">
             {t(
               "landing.services.sub",
-              "Today: chat. Soon: tax filing & auto-editing. All on one subscription.",
+              "从写到发到回到归因，¥1980/月一价全包。前 6 周 concierge 模式陪跑，后台逐步自动化。",
             )}
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <ServiceCard
-              icon={ServiceIcons.chat}
-              title={t("landing.services.chat.title", "多模型对话")}
+              icon={ServiceIcons.content}
+              title={t("landing.services.content.title", "内容生成")}
               desc={t(
-                "landing.services.chat.desc",
-                "GPT-4o, Claude, Gemini, DeepSeek and more — pick the best model per task. Carbon shown after every reply.",
+                "landing.services.content.desc",
+                "上传 5-10 张原片 + 1 句房型说明 → AI 写小红书爆款文案、出优化封面图、配 hashtag。每周 5-7 篇。学你已有爆款的语气和风格。",
               )}
               status="live"
-              statusLabel={t("landing.services.chat.status", "订阅含")}
-              ctaLabel={t("landing.services.chat.cta", "试用")}
-              onCta={goTryChat}
+              statusLabel={t("landing.services.content.status", "已上线 · 陪跑模式")}
+              ctaLabel={t("landing.services.content.cta", "看示例")}
+              onCta={openContactDemo}
             />
             <ServiceCard
-              icon={ServiceIcons["tax-filing"]}
-              title={t("landing.services.tax.title", "AI 报税助手")}
+              icon={ServiceIcons.publish}
+              title={t("landing.services.publish.title", "自动发布")}
               desc={t(
-                "landing.services.tax.desc",
-                "Personal income tax done in minutes. Reads your statements, surfaces deductions, prepares filings.",
+                "landing.services.publish.desc",
+                "内容生成后自动出现在你小红书草稿箱。手机收到通知 → 一键确认即发。账号 100% 你自己掌控，封号风险低，省 95% 工时。",
               )}
               status="coming-soon"
-              statusLabel={t("landing.services.tax.status", "Coming soon")}
-              ctaLabel={t("landing.services.tax.cta", "留邮箱抢先体验")}
+              statusLabel={t("landing.services.publish.status", "Phase 1.B · 第 4-6 周")}
+              ctaLabel={t("landing.services.publish.cta", "留微信抢先体验")}
               onCta={() =>
-                openWaitlist(
-                  "tax-filing",
-                  t("landing.services.tax.title", "AI 报税助手"),
+                openWaitlistFor(
+                  "any",
+                  t("landing.services.publish.title", "自动发布"),
                 )
               }
             />
             <ServiceCard
-              icon={ServiceIcons["video-editing"]}
-              title={t("landing.services.video.title", "自动剪辑")}
+              icon={ServiceIcons.engage}
+              title={t("landing.services.engage.title", "互动管理")}
               desc={t(
-                "landing.services.video.desc",
-                "Drop a long take. Get a tight cut with timing, transitions, and captions. Eco mode keeps it lean.",
+                "landing.services.engage.desc",
+                "评论 AI 自动起草 → 你审 → 一键发。私信 AI 初筛（订房咨询 vs 闲聊）→ 订房咨询直接打到你。前 100 条人工 sample，后续闭环自学习。",
               )}
               status="coming-soon"
-              statusLabel={t("landing.services.video.status", "Coming soon")}
-              ctaLabel={t("landing.services.video.cta", "留邮箱抢先体验")}
+              statusLabel={t("landing.services.engage.status", "Phase 1.C · 第 6-8 周")}
+              ctaLabel={t("landing.services.engage.cta", "留微信抢先体验")}
               onCta={() =>
-                openWaitlist(
-                  "video-editing",
-                  t("landing.services.video.title", "自动剪辑"),
+                openWaitlistFor(
+                  "any",
+                  t("landing.services.engage.title", "互动管理"),
                 )
               }
+            />
+            <ServiceCard
+              icon={ServiceIcons.roi}
+              title={t("landing.services.roi.title", "ROI 归因")}
+              desc={t(
+                "landing.services.roi.desc",
+                "每天看：「这周新增 X 间订单从小红书来 / 内容投入产出比 Y」。Phase 1 老板每来订单 30 秒标来源；Phase 2 与携程/Airbnb 自动直连归因。",
+              )}
+              status="live"
+              statusLabel={t("landing.services.roi.status", "已上线 · 手动归因")}
+              ctaLabel={t("landing.services.roi.cta", "看示例")}
+              onCta={openContactDemo}
             />
           </div>
         </div>
 
         {/* Why greentokey */}
         <h2 className="text-2xl font-display font-medium text-center mb-6">
-          {t("landing.why.heading", "Why greentokey")}
+          {t("landing.why.heading", "为啥找我们做")}
         </h2>
         <ValueProps />
 
@@ -122,13 +143,13 @@ function Welcome() {
           <p className="font-display text-base text-secondary">
             {t(
               "landing.footer.tagline",
-              "One subscription. Transparent compute. Visible carbon.",
+              "AI 替代 MCN，更稳更便宜，民宿主自己掌控。",
             )}
           </p>
           <p>
             {t(
               "landing.footer.attribution",
-              "Built for indie hackers / solo founders / vibe coders who care. Open source CoAI fork · Apache 2.0.",
+              "首阶段只做大理环洱海 · 优质池 1K+ 民宿主 · 单档 ¥1980/月不分级 · 30 天 50% 退款承诺",
             )}
           </p>
         </div>

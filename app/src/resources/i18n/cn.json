@@ -1666,124 +1666,105 @@
     }
   },
   "landing": {
-    "eyebrow": "可持续 · BYOK · 独立开发者作品",
+    "eyebrow": "民宿 · 小红书运营 · 全托管",
     "headline": {
-      "before": "可持续的 AI 服务平台,",
-      "middle": "为",
-      "accent": "独立开发者"
+      "before": "你做民宿，",
+      "middle": "我做",
+      "accent": "你的小红书。"
     },
-    "sub": "一个订阅 · 多个服务 · 碳可见 · 零 prompt 留存",
+    "sub": "AI 帮你写文案、出图、自动发布、应对评论私信。每月 ¥1980 全托管，比本地 MCN 更稳更便宜。先做大理环洱海。",
     "cta": {
-      "cny": "立即开通 ¥99/月",
-      "usd": "Subscribe $15/mo",
-      "fineprint": "中国 · 支付宝 / Global · card via LemonSqueezy"
+      "demo": "联系预约 demo",
+      "pricing": "了解套餐 ¥1980/月",
+      "fineprint": "首批客户高接触陪跑 · 30 天 50% 退款承诺 · 不打折不分级"
+    },
+    "contact": {
+      "title": "联系预约 demo"
     },
     "services": {
-      "heading": "服务",
-      "sub": "今天:多模型对话。即将上线:报税、剪辑。全部包含在一个订阅里。",
-      "chat": {
-        "title": "多模型对话",
-        "desc": "GPT-4o、Claude、Gemini、DeepSeek 等 — 按任务挑最合适的模型。每次回复后显示碳排放估算。",
-        "status": "订阅含",
-        "cta": "试用"
+      "heading": "全闭环 4 个环节",
+      "sub": "从写到发到回到归因，¥1980/月一价全包。前 6 周 concierge 模式陪跑，后台逐步自动化。",
+      "content": {
+        "title": "内容生成",
+        "desc": "上传 5-10 张原片 + 1 句房型说明 → AI 写小红书爆款文案、出优化封面图、配 hashtag。每周 5-7 篇。学你已有爆款的语气和风格。",
+        "status": "已上线 · 陪跑模式",
+        "cta": "看示例"
       },
-      "tax": {
-        "title": "AI 报税助手",
-        "desc": "几分钟搞定个人所得税。读你的工资单与流水,自动识别专项扣除,生成申报材料。",
-        "status": "即将上线",
-        "cta": "留邮箱抢先体验"
+      "publish": {
+        "title": "自动发布",
+        "desc": "内容生成后自动出现在你小红书草稿箱。手机收到通知 → 一键确认即发。账号 100% 你自己掌控，封号风险低，省 95% 工时。",
+        "status": "Phase 1.B · 第 4-6 周",
+        "cta": "留微信抢先体验"
       },
-      "video": {
-        "title": "自动剪辑",
-        "desc": "丢一段长素材进来,自动出节奏紧凑的剪辑版本 — 转场、字幕、配速一次到位。Eco Mode 走小模型 + 缓存。",
-        "status": "即将上线",
-        "cta": "留邮箱抢先体验"
+      "engage": {
+        "title": "互动管理",
+        "desc": "评论 AI 自动起草 → 你审 → 一键发。私信 AI 初筛（订房咨询 vs 闲聊）→ 订房咨询直接打到你。前 100 条人工 sample，后续闭环自学习。",
+        "status": "Phase 1.C · 第 6-8 周",
+        "cta": "留微信抢先体验"
+      },
+      "roi": {
+        "title": "ROI 归因",
+        "desc": "每天看：「这周新增 X 间订单从小红书来 / 内容投入产出比 Y」。Phase 1 老板每来订单 30 秒标来源；Phase 2 与携程/Airbnb 自动直连归因。",
+        "status": "已上线 · 手动归因",
+        "cta": "看示例"
       }
     },
     "why": {
-      "heading": "为什么选 greentokey",
-      "carbon": {
-        "title": "碳可见",
-        "body": "每次对话显示实时 CO₂ 估算。月度可持续 dashboard。方法论开源可查。",
-        "link": "查看方法论 →"
+      "heading": "为啥找我们做",
+      "replace-mcn": {
+        "title": "替代本地 MCN",
+        "body": "你给本地工作室付 ¥2-5K/月，3 个月退订是常事。我们用 AI 把那套活儿做实，¥1980/月不分级，效果不稳定时 30 天 50% 退款。"
       },
-      "privacy": {
-        "title": "零 prompt 留存",
-        "body": "我们永不存你的 prompt。网关开源 + 硬成本上限,失控循环不会刷爆你的余额。"
+      "vertical": {
+        "title": "民宿垂直 AI",
+        "body": "我们不是通用 AI 工具。AI 学过的是大理民宿爆款的语料：洱海、苍山、旅拍、蜜月、亲子、季节性玩法。先做大理一个区域，做透了再扩。"
       },
-      "bundle": {
-        "title": "一个订阅,多个服务",
-        "body": "一次付费。今天用对话。报税与剪辑上线那天自动解锁。"
+      "your-account": {
+        "title": "账号 100% 你掌控",
+        "body": "我们不接管你的小红书账号。内容生成后推到你手机草稿箱，你一键确认即发。封号风险低，账号永远是你的。"
       }
     },
-    "waitlist": {
-      "title": "加入等待列表",
-      "desc": "留下邮箱,服务上线我们第一时间通知你。",
-      "placeholder": "you@example.com",
-      "submit": "通知我",
-      "cancel": "取消",
-      "ok": "已加入等待列表",
-      "ok-desc": "{{name}} 上线时第一时间发邮件给你。",
-      "dup": "已在等待列表",
-      "invalid": "请输入正确的邮箱。",
-      "rate-limited": "请求过多,请一分钟后再试。",
-      "network": "网络错误,请检查连接。",
-      "server": "暂时无法处理,请稍后重试。"
-    },
     "footer": {
-      "tagline": "一个订阅。透明计算。可见碳。",
-      "attribution": "为关心可持续的独立开发者 / Solo founder / Vibe coder 而建。开源 CoAI fork · Apache 2.0。"
+      "tagline": "AI 替代 MCN，更稳更便宜，民宿主自己掌控。",
+      "attribution": "首阶段只做大理环洱海 · 优质池 1K+ 民宿主 · 单档 ¥1980/月不分级 · 30 天 50% 退款承诺"
     }
   },
   "pricing-page": {
-    "tagline": "可持续 · BYOK · 独立开发者作品",
-    "headline-1": "一个统一月费。",
-    "headline-2": "你的 keys。",
-    "headline-3": "零加价。",
-    "subheadline": "用你自己的 OpenAI / Claude / Gemini keys。我们给你统一 UI、费用上限、隐私层和可见的碳足迹。你直接付给供应商。",
-    "starter": "Starter",
+    "tagline": "民宿 · 小红书运营 · 全托管",
+    "headline-1": "¥1980 一价全包，",
+    "headline-2": "替你的本地 MCN。",
+    "subheadline": "AI 帮你写 + 帮你发 + 帮你回 + 帮你看效果。每月 ¥1980 不分级、不打折、首批客户高接触陪跑。30 天若入住率没看到提升，无理由退 50%。",
+    "starter": "民宿全托管",
     "month": "月",
-    "starter-tagline": "你需要的全有,不需要的一概没有。",
-    "feature-byok": "BYOK,用你自己的 API keys",
-    "feature-models": "覆盖所有主流模型 — GPT、Claude、Gemini、Llama",
-    "feature-zero": "零 prompt 留存,我们永不看你的数据",
-    "feature-cap": "硬性费用上限,杜绝意外账单",
-    "feature-carbon": "每条对话碳足迹 + 月度仪表盘",
-    "feature-cancel": "随时取消 — 当期内保留全部权限",
-    "disclaimer": "按月计费。LemonSqueezy 提供支付。含适用税费。",
-    "value-wallet-title": "Wallet 钱包",
-    "value-wallet-body": "把你散在 ChatGPT Plus + Claude Pro + Cursor + 散装 API 上的 $50-150/月,压成一套统一月费。Keys 你自己带;我们只收 UI + 运维的钱。",
-    "value-privacy-title": "Privacy 隐私",
-    "value-privacy-body": "网关层配置零留存,不记录 prompt,方法学公开。你的对话只在你和模型供应商之间。",
-    "value-planet-title": "Planet 地球",
-    "value-planet-body": "每条对话显示 ~CO₂g 估算。月度可持续仪表盘。可选 Eco Mode 自动路由小模型 + cache。无 greenwashing — 方法学页面公开。",
-    "faq-title": "你可能想问",
-    "faq-byok-q": "BYOK 到底是什么?",
-    "faq-byok-a": "你跟各家供应商(OpenAI、Anthropic、Google 等)各自持有 API keys,按他们公开标价直接付费 — 我们不抽成。我们是上面的 UI + 费用上限 + 隐私层。",
-    "faq-cancel-q": "可以随时取消吗?",
-    "faq-cancel-a": "可以。账户里一键取消。你已付费的当期内保留完整访问权,期满后自动降级到免费档 — 不会有意外扣款。",
-    "faq-refund-q": "可以退款吗?",
-    "faq-refund-a": "首次扣款 14 天内联系客服,无条件退款。之后,因我们的服务问题导致的退款逐案处理。",
-    "faq-data-q": "你们存我对话的什么数据?",
-    "faq-data-a": "用于计费透明的元数据(时间戳、模型、token 数)。不存 prompt 内容、不存回答内容。网关层关闭了 prompt 日志。",
-    "trust-ls": "LemonSqueezy 提供支付",
-    "trust-cancel": "随时取消",
-    "trust-no-lockin": "无供应商锁定 — keys 始终是你的",
-    "loading": "正在加载套餐…",
-    "upgrade": "升级到 Starter",
-    "current-plan": "当前套餐",
-    "until": "至",
-    "past-due": "你上次付款未成功。",
-    "update-payment": "更新支付方式",
-    "on-trial": "试用中",
-    "auto-bills": "自动续费",
-    "cancelled": "已取消",
-    "access-until": "访问权至",
-    "resume": "恢复订阅",
-    "error-unauthorized": "登录已过期,请重新登录后再升级。",
-    "error-misconfigured": "结账尚未配置完毕,请联系客服。",
-    "error-network": "无法连接服务器,检查网络后重试。",
-    "error-unknown": "暂时打不开结账,请稍后再试。"
+    "starter-tagline": "单档全功能，没有进阶/旗舰/企业等让你纠结的版本。",
+    "feature-content": "每月 20+ 篇可发布小红书内容（文案 + 优化封面 + hashtag）",
+    "feature-style": "AI 学你已有爆款的风格 — 上传 5+ 篇当 few-shot 例子",
+    "feature-publish": "自动发布：内容自动到你手机草稿箱，一键确认即发",
+    "feature-engage": "评论 / 私信 AI 草稿，你审一键发，订房咨询直接打到你",
+    "feature-roi": "每日 ROI dashboard：本周 X 间订单从小红书来",
+    "feature-concierge": "首批 5 客户高接触陪跑（founder 当面教 + 调 prompt）",
+    "feature-refund": "30 天若入住率没看到提升，无理由退 50%",
+    "cta-demo": "加微信预约 demo",
+    "disclaimer": "首批不开放自助下单 · founder 一对一沟通后开通 · 微信支付 / 支付宝 / 银行转账皆可",
+    "value-replace-title": "替代 MCN",
+    "value-replace-body": "你给本地工作室付 ¥2-5K/月、3 个月退订是常态。我们用 AI 把那套活儿做实，更稳更便宜，还有 30 天 50% 退款保障。",
+    "value-vertical-title": "民宿垂直",
+    "value-vertical-body": "AI 学过的不是通用语料，是大理民宿爆款数据：洱海、苍山、旅拍、蜜月、亲子、季节性玩法。先做大理一个区域，做透了再扩。",
+    "value-control-title": "你掌控账号",
+    "value-control-body": "我们不接管你的小红书账号。内容生成后推到你手机草稿箱，你一键确认即发。封号风险低，账号永远是你的。",
+    "faq-title": "常见问题",
+    "faq-vs-mcn-q": "你们和我现在用的 MCN 工作室有什么区别？",
+    "faq-vs-mcn-a": "MCN 是人工写，受限于一个写手的小红书理解。我们用 AI + 民宿垂直语料 + 老板自己的爆款 few-shot，输出更稳。价格 ¥1980/月通常比本地工作室便宜，还有 30 天退款保障。最大的差别是『你掌控账号』 — 我们不要你的密码。",
+    "faq-account-q": "我自己已经有小红书账号怎么办？要给你们密码吗？",
+    "faq-account-a": "不需要。我们生成的内容会自动出现在你账号草稿箱，你打开手机一键确认即可发布。整个过程账号 100% 在你手里，零封号风险。",
+    "faq-cancel-q": "可以随时取消吗？",
+    "faq-cancel-a": "随时。提前 1 天微信告诉我们就行。当月已付费用持续到月底，下月不再扣费。30 天内若入住率没改善，无理由退 50%。",
+    "faq-data-q": "你们会留我的什么数据？",
+    "faq-data-a": "你上传的房源照片 + 历史爆款用于 AI 学习风格，不外传。AI 生成的内容版权归你。你的小红书账号、订房系统数据、客人信息我们 0 接触。",
+    "trust-concierge": "首批 5 客户高接触陪跑",
+    "trust-refund": "30 天 50% 退款承诺",
+    "trust-account": "账号永远在你手里",
+    "contact-title": "联系预约 demo"
   },
   "dashboard": {
     "welcome-back": "欢迎回来",

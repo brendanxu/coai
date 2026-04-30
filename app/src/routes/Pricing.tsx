@@ -1,34 +1,41 @@
 /**
- * /pricing — public pricing page. Single-tier MVP ($15/mo Starter).
+ * /pricing — public pricing page. v0.8 民宿 wedge.
  *
- * Layout (matches Welcome.tsx idiom):
- *   1. Hero — headline + sub + tagline strip
- *   2. Pricing card — features list + UpgradeCTA dispatch
- *   3. Three value props (Wallet / Privacy / Planet)
- *   4. FAQ (4 questions, plain-language answers)
- *   5. Trust strip — payment processor + cancel anytime
+ * 单档 ¥1980/月含全闭环（生成 + 自动发布 + 互动 + ROI 归因）。
  *
- * Mounting: registered in router.tsx as "/pricing" (public — no auth wall).
- * Anonymous visitors see the Upgrade CTA; the click flow detects unauth at
- * /api/payment/checkout and surfaces a "session expired, please sign in" toast
- * via UpgradeCTA's surfaceCheckoutError().
+ * Layout:
+ *   1. Hero — headline + sub
+ *   2. Pricing card — features list + 联系预约 demo CTA (NOT direct subscribe)
+ *   3. Three value props (替代 MCN / 民宿垂直 / 老板自己掌控)
+ *   4. FAQ (4 questions about 民宿 SaaS)
+ *   5. Trust strip — concierge mode + 退款承诺
+ *
+ * 为啥不是 LemonSqueezy 直接 checkout: Concierge-first delivery (v4 brief).
+ * 首批 5 客户走"加微信预约 demo → founder 当面陪跑 → 老板付 ¥1980/月" 流程，
+ * 不是匿名注册扣款。直到 Quality Gate (Week 10-12) 验证产品能 retain 客户，
+ * 才上自助 checkout。这是 PG 说的 "do things that don't scale"。
  */
 
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  ArrowRight,
+  BadgeCheck,
   Check,
-  KeyRound,
-  Leaf,
-  Shield,
-  ShieldCheck,
+  HandCoins,
   RefreshCcw,
-  CreditCard,
+  Smartphone,
+  Trees,
 } from "lucide-react";
 
-import UpgradeCTA from "@/components/Pricing/UpgradeCTA.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import WaitlistDialog from "@/components/Marketing/WaitlistDialog.tsx";
 
 function Pricing() {
   const { t } = useTranslation();
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+
+  const openContactDemo = () => setWaitlistOpen(true);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -36,20 +43,19 @@ function Pricing() {
         {/* ---- Hero ---- */}
         <div className="text-center space-y-6 mb-12">
           <p className="text-sm tracking-widest uppercase text-muted-foreground">
-            {t("pricing-page.tagline", "Sustainable · BYOK · Indie-built")}
+            {t("pricing-page.tagline", "民宿 · 小红书运营 · 全托管")}
           </p>
           <h1 className="text-4xl md:text-6xl leading-tight font-display">
-            {t("pricing-page.headline-1", "One flat fee.")}{" "}
-            <span style={{ color: "hsl(var(--primary))" }}>
-              {t("pricing-page.headline-2", "Your keys.")}
-            </span>
+            {t("pricing-page.headline-1", "¥1980 一价全包，")}
             <br />
-            {t("pricing-page.headline-3", "Zero markup.")}
+            <span style={{ color: "hsl(var(--primary))" }}>
+              {t("pricing-page.headline-2", "替你的本地 MCN。")}
+            </span>
           </h1>
           <p className="text-lg text-secondary max-w-2xl mx-auto leading-relaxed">
             {t(
               "pricing-page.subheadline",
-              "Bring your own OpenAI / Claude / Gemini keys. We give you the UI, the cost cap, the privacy layer — and visible carbon. You pay providers directly.",
+              "AI 帮你写 + 帮你发 + 帮你回 + 帮你看效果。每月 ¥1980 不分级、不打折、首批客户高接触陪跑。30 天若入住率没看到提升，无理由退 50%。",
             )}
           </p>
         </div>
@@ -58,39 +64,82 @@ function Pricing() {
         <div className="max-w-md mx-auto rounded-xl border border-border bg-card p-8 space-y-6 mb-20 shadow-sm">
           <div className="space-y-1">
             <p className="text-sm tracking-wide uppercase text-muted-foreground">
-              {t("pricing-page.starter", "Starter")}
+              {t("pricing-page.starter", "民宿全托管")}
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-display">$15</span>
+              <span className="text-5xl font-display">¥1980</span>
               <span className="text-muted-foreground">
-                /{t("pricing-page.month", "month")}
+                /{t("pricing-page.month", "月")}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
               {t(
                 "pricing-page.starter-tagline",
-                "Everything you need. Nothing you don't.",
+                "单档全功能，没有进阶/旗舰/企业等让你纠结的版本。",
               )}
             </p>
           </div>
 
           <ul className="space-y-3 text-sm">
-            <FeatureRow text={t("pricing-page.feature-byok", "Bring your own API keys (BYOK)")} />
-            <FeatureRow text={t("pricing-page.feature-models", "All major models — GPT, Claude, Gemini, Llama")} />
-            <FeatureRow text={t("pricing-page.feature-zero", "Zero prompt retention — we never see your data")} />
-            <FeatureRow text={t("pricing-page.feature-cap", "Hard cost cap — no surprise bills")} />
-            <FeatureRow text={t("pricing-page.feature-carbon", "Per-chat carbon footprint + monthly dashboard")} />
-            <FeatureRow text={t("pricing-page.feature-cancel", "Cancel anytime — keep access until period ends")} />
+            <FeatureRow
+              text={t(
+                "pricing-page.feature-content",
+                "每月 20+ 篇可发布小红书内容（文案 + 优化封面 + hashtag）",
+              )}
+            />
+            <FeatureRow
+              text={t(
+                "pricing-page.feature-style",
+                "AI 学你已有爆款的风格 — 上传 5+ 篇当 few-shot 例子",
+              )}
+            />
+            <FeatureRow
+              text={t(
+                "pricing-page.feature-publish",
+                "自动发布：内容自动到你手机草稿箱，一键确认即发",
+              )}
+            />
+            <FeatureRow
+              text={t(
+                "pricing-page.feature-engage",
+                "评论 / 私信 AI 草稿，你审一键发，订房咨询直接打到你",
+              )}
+            />
+            <FeatureRow
+              text={t(
+                "pricing-page.feature-roi",
+                "每日 ROI dashboard：本周 X 间订单从小红书来",
+              )}
+            />
+            <FeatureRow
+              text={t(
+                "pricing-page.feature-concierge",
+                "首批 5 客户高接触陪跑（founder 当面教 + 调 prompt）",
+              )}
+            />
+            <FeatureRow
+              text={t(
+                "pricing-page.feature-refund",
+                "30 天若入住率没看到提升，无理由退 50%",
+              )}
+            />
           </ul>
 
           <div className="pt-2">
-            <UpgradeCTA className="w-full" />
+            <Button
+              size="lg"
+              onClick={openContactDemo}
+              className="w-full px-8 py-6 text-base"
+            >
+              {t("pricing-page.cta-demo", "加微信预约 demo")}
+              <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
           </div>
 
           <p className="text-xs text-muted-foreground text-center">
             {t(
               "pricing-page.disclaimer",
-              "Billed monthly. Powered by LemonSqueezy. Includes applicable tax.",
+              "首批不开放自助下单 · founder 一对一沟通后开通 · 微信支付 / 支付宝 / 银行转账皆可",
             )}
           </p>
         </div>
@@ -98,27 +147,27 @@ function Pricing() {
         {/* ---- 3 value props ---- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
           <ValueProp
-            icon={<KeyRound className="w-5 h-5" />}
-            title={t("pricing-page.value-wallet-title", "Wallet")}
+            icon={<BadgeCheck className="w-5 h-5" />}
+            title={t("pricing-page.value-replace-title", "替代 MCN")}
             body={t(
-              "pricing-page.value-wallet-body",
-              "Compress $50–150/mo across ChatGPT Plus + Claude Pro + Cursor + scattered API into one flat fee. You bring the keys; we charge for the UI + ops.",
+              "pricing-page.value-replace-body",
+              "你给本地工作室付 ¥2-5K/月、3 个月退订是常态。我们用 AI 把那套活儿做实，更稳更便宜，还有 30 天 50% 退款保障。",
             )}
           />
           <ValueProp
-            icon={<Shield className="w-5 h-5" />}
-            title={t("pricing-page.value-privacy-title", "Privacy")}
+            icon={<Trees className="w-5 h-5" />}
+            title={t("pricing-page.value-vertical-title", "民宿垂直")}
             body={t(
-              "pricing-page.value-privacy-body",
-              "Configured zero-retention through the gateway. No prompt logging. Public methodology. Your conversations stay between you and your provider.",
+              "pricing-page.value-vertical-body",
+              "AI 学过的不是通用语料，是大理民宿爆款数据：洱海、苍山、旅拍、蜜月、亲子、季节性玩法。先做大理一个区域，做透了再扩。",
             )}
           />
           <ValueProp
-            icon={<Leaf className="w-5 h-5" />}
-            title={t("pricing-page.value-planet-title", "Planet")}
+            icon={<Smartphone className="w-5 h-5" />}
+            title={t("pricing-page.value-control-title", "你掌控账号")}
             body={t(
-              "pricing-page.value-planet-body",
-              "Each chat shows ~CO₂g. Monthly sustainability dashboard. Optional Eco Mode routes to smaller models + cache. No greenwashing — methodology page is public.",
+              "pricing-page.value-control-body",
+              "我们不接管你的小红书账号。内容生成后推到你手机草稿箱，你一键确认即发。封号风险低，账号永远是你的。",
             )}
           />
         </div>
@@ -126,46 +175,46 @@ function Pricing() {
         {/* ---- FAQ ---- */}
         <div className="max-w-2xl mx-auto mb-16 space-y-6">
           <h2 className="text-2xl font-display text-center">
-            {t("pricing-page.faq-title", "Questions you might have")}
+            {t("pricing-page.faq-title", "常见问题")}
           </h2>
           <FaqItem
             question={t(
-              "pricing-page.faq-byok-q",
-              "What does BYOK actually mean?",
+              "pricing-page.faq-vs-mcn-q",
+              "你们和我现在用的 MCN 工作室有什么区别？",
             )}
             answer={t(
-              "pricing-page.faq-byok-a",
-              "You hold the API keys with each provider (OpenAI, Anthropic, Google, etc.) and pay them directly at their published rates — no markup from us. We're the UI + cost cap + privacy layer on top.",
+              "pricing-page.faq-vs-mcn-a",
+              "MCN 是人工写，受限于一个写手的小红书理解。我们用 AI + 民宿垂直语料 + 老板自己的爆款 few-shot，输出更稳。价格 ¥1980/月通常比本地工作室便宜，还有 30 天退款保障。最大的差别是『你掌控账号』 — 我们不要你的密码。",
+            )}
+          />
+          <FaqItem
+            question={t(
+              "pricing-page.faq-account-q",
+              "我自己已经有小红书账号怎么办？要给你们密码吗？",
+            )}
+            answer={t(
+              "pricing-page.faq-account-a",
+              "不需要。我们生成的内容会自动出现在你账号草稿箱，你打开手机一键确认即可发布。整个过程账号 100% 在你手里，零封号风险。",
             )}
           />
           <FaqItem
             question={t(
               "pricing-page.faq-cancel-q",
-              "Can I cancel anytime?",
+              "可以随时取消吗？",
             )}
             answer={t(
               "pricing-page.faq-cancel-a",
-              "Yes. Cancellation is one click in your account. You keep full access until the end of the period you've paid for, then drop to free tier — no surprise charges.",
-            )}
-          />
-          <FaqItem
-            question={t(
-              "pricing-page.faq-refund-q",
-              "Refunds?",
-            )}
-            answer={t(
-              "pricing-page.faq-refund-a",
-              "Email support within 14 days of your first charge for a no-questions refund. After that, we honor refunds case-by-case for service issues we caused.",
+              "随时。提前 1 天微信告诉我们就行。当月已付费用持续到月底，下月不再扣费。30 天内若入住率没改善，无理由退 50%。",
             )}
           />
           <FaqItem
             question={t(
               "pricing-page.faq-data-q",
-              "What data do you store about my conversations?",
+              "你们会留我的什么数据？",
             )}
             answer={t(
               "pricing-page.faq-data-a",
-              "Conversation metadata (timestamps, model, token counts) for billing transparency. No prompt content, no completion content. The gateway is configured with prompt logging off.",
+              "你上传的房源照片 + 历史爆款用于 AI 学习风格，不外传。AI 生成的内容版权归你。你的小红书账号、订房系统数据、客人信息我们 0 接触。",
             )}
           />
         </div>
@@ -173,12 +222,31 @@ function Pricing() {
         {/* ---- Trust strip ---- */}
         <div className="text-center pt-12 border-t border-border">
           <div className="flex flex-wrap justify-center gap-6 text-xs text-muted-foreground">
-            <TrustItem icon={<CreditCard className="w-3.5 h-3.5" />} text={t("pricing-page.trust-ls", "Powered by LemonSqueezy")} />
-            <TrustItem icon={<RefreshCcw className="w-3.5 h-3.5" />} text={t("pricing-page.trust-cancel", "Cancel anytime")} />
-            <TrustItem icon={<ShieldCheck className="w-3.5 h-3.5" />} text={t("pricing-page.trust-no-lockin", "No vendor lock-in — your keys stay yours")} />
+            <TrustItem
+              icon={<HandCoins className="w-3.5 h-3.5" />}
+              text={t("pricing-page.trust-concierge", "首批 5 客户高接触陪跑")}
+            />
+            <TrustItem
+              icon={<RefreshCcw className="w-3.5 h-3.5" />}
+              text={t("pricing-page.trust-refund", "30 天 50% 退款承诺")}
+            />
+            <TrustItem
+              icon={<Smartphone className="w-3.5 h-3.5" />}
+              text={t("pricing-page.trust-account", "账号永远在你手里")}
+            />
           </div>
         </div>
       </div>
+
+      <WaitlistDialog
+        open={waitlistOpen}
+        onOpenChange={setWaitlistOpen}
+        service="any"
+        serviceTitle={t(
+          "pricing-page.contact-title",
+          "联系预约 demo",
+        )}
+      />
     </div>
   );
 }
