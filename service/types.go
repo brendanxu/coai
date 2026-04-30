@@ -55,7 +55,7 @@ type Service struct {
 type ServiceOrder struct {
 	ID                int64      `json:"id"`
 	OrderNo           string     `json:"order_no"`
-	CoaiUserID        int        `json:"coai_user_id"`
+	CoaiUserID        int64      `json:"coai_user_id"`
 	ServiceID         int64      `json:"service_id"`
 	ServiceSlug       string     `json:"service_slug"`
 	PriceCNYCentsPaid int64      `json:"price_cny_cents_paid"`
