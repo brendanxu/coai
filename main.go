@@ -60,6 +60,8 @@ func registerApiRouter(engine *gin.Engine) {
 		carbon.Register(app)
 		// v0.6.1 waitlist (marketing landing email capture)
 		waitlist.Register(app)
+		// v0.9 newapi pool + api-key binding (greentokey 3-layer Layer 1+2)
+		newapi.Register(app)
 	}
 }
 
