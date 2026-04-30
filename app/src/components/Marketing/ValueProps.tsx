@@ -1,14 +1,14 @@
-import { Leaf, Shield, Layers } from "lucide-react";
+import { Trees, Smartphone, BadgeCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import router from "@/router.tsx";
 
 /**
- * "Why greentokey" — three small cards beneath the service grid that frame
- * the brand promise: visible carbon, zero retention, multi-service bundle.
+ * "为啥找我们做" — v0.8 民宿 wedge 三个核心价值点。
  *
- * The carbon prop links to /methodology so visitors can verify the claim
- * before they pay (this is the moat — "transparent" only matters if it's
- * checkable).
+ * 替换之前的 carbon / privacy / bundle (indie hacker 卖点)，新的 3 点是
+ * 民宿主真正在乎的东西：
+ *  1. 替代 MCN — 更稳更便宜（直接 PK 现有 ¥2-5K/月本地工作室）
+ *  2. 民宿垂直 — 懂洱海 / 旅拍 / 季节 / 客群（vs 通用 AI 不懂民宿）
+ *  3. 老板自己掌控 — 账号 100% 你的，零 RPA 风险（解决信任）
  */
 export default function ValueProps() {
   const { t } = useTranslation();
@@ -16,29 +16,27 @@ export default function ValueProps() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
       <ValueCard
-        icon={<Leaf className="w-5 h-5" />}
-        title={t("landing.why.carbon.title", "Carbon visible")}
+        icon={<BadgeCheck className="w-5 h-5" />}
+        title={t("landing.why.replace-mcn.title", "替代本地 MCN")}
         body={t(
-          "landing.why.carbon.body",
-          "Every chat shows a real-time CO₂ estimate. Monthly dashboard. Public methodology.",
-        )}
-        linkLabel={t("landing.why.carbon.link", "Methodology →")}
-        onLink={() => router.navigate("/methodology")}
-      />
-      <ValueCard
-        icon={<Shield className="w-5 h-5" />}
-        title={t("landing.why.privacy.title", "Zero prompt retention")}
-        body={t(
-          "landing.why.privacy.body",
-          "Your prompts never persist. Open-source gateway. Hard cost cap so a runaway loop can't drain your balance.",
+          "landing.why.replace-mcn.body",
+          "你给本地工作室付 ¥2-5K/月，3 个月退订是常事。我们用 AI 把那套活儿做实，¥1980/月不分级，效果不稳定时 30 天 50% 退款。",
         )}
       />
       <ValueCard
-        icon={<Layers className="w-5 h-5" />}
-        title={t("landing.why.bundle.title", "One subscription, many services")}
+        icon={<Trees className="w-5 h-5" />}
+        title={t("landing.why.vertical.title", "民宿垂直 AI")}
         body={t(
-          "landing.why.bundle.body",
-          "Pay once. Use chat today. Tax filing and auto-edit unlock for you the moment they ship.",
+          "landing.why.vertical.body",
+          "我们不是通用 AI 工具。AI 学过的是大理民宿爆款的语料：洱海、苍山、旅拍、蜜月、亲子、季节性玩法。先做大理一个区域，做透了再扩。",
+        )}
+      />
+      <ValueCard
+        icon={<Smartphone className="w-5 h-5" />}
+        title={t("landing.why.your-account.title", "账号 100% 你掌控")}
+        body={t(
+          "landing.why.your-account.body",
+          "我们不接管你的小红书账号。内容生成后推到你手机草稿箱，你一键确认即发。封号风险低，账号永远是你的。",
         )}
       />
     </div>
