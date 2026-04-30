@@ -13,6 +13,7 @@ import (
 	"chat/manager"
 	"chat/manager/conversation"
 	"chat/middleware"
+	"chat/newapi"
 	"chat/payment"
 	"chat/plans"
 	"chat/utils"
@@ -77,9 +78,12 @@ func main() {
 
 	// greentokey: bridge tables for LemonSqueezy subscription billing (v0.6+).
 	// Runs after middleware.RegisterMiddleware connects DB; idempotent on reboot.
-	// Order: alphabetical by package name (carbon → payment → waitlist).
+	// Order: alphabetical by package name (carbon → newapi → payment → plans → waitlist).
 	if err := carbon.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey carbon migration failed: %s", err))
+	}
+	if err := newapi.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey newapi migration failed: %s", err))
 	}
 	if err := payment.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey payment migration failed: %s", err))
@@ -89,6 +93,13 @@ func main() {
 	}
 	if err := waitlist.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey waitlist migration failed: %s", err))
+	}
+	if !newapi.IsConfigured() {
+		// Boot-time visibility: greentokey starts cleanly even if NewAPI
+		// integration is intentionally deferred (e.g. dev / test). The
+		// payment provisioning hook degrades to "log + skip" rather than
+		// fail on a per-purchase basis.
+		globals.Warn("newapi: admin_access_token not configured — purchase → key provisioning will no-op")
 	}
 
 	utils.RegisterStaticRoute(app)
