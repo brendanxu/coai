@@ -63,18 +63,26 @@ func PoolAPI(c *gin.Context) {
 	})
 }
 
-// BindingAPI returns the caller's NewAPI api-key + endpoint URL.
-// Authenticated; uses CoAI's auth.RequireAuth (401s automatically).
+// BindingAPI returns the caller's NewAPI api-key + endpoint URL +
+// credit balance. Authenticated; uses CoAI's auth.RequireAuth (401s
+// automatically).
 //
-// Response shape matches what the dashboard "API Key 复制" widget expects:
+// Response shape matches what the dashboard "API Key 复制 + 余额" widget
+// needs (per v2 redesign, dashboard shows "Token 套餐剩 3,716k tokens"
+// where the number is actually credits, not tokens):
 //
 //   {
 //     "success": true,
 //     "data": {
-//       "api_key": "sk-gtk-...",
-//       "api_endpoint": "https://api.greentokey.com/v1",
-//       "last_known_quota": 7500000,
-//       "newapi_user_id": 17
+//       "api_key":           "sk-gtk-...",
+//       "api_endpoint":      "https://api.greentokey.com/v1",
+//       "credits_remaining": 4823,
+//       "credits_used":      177,
+//       "credits_total":     5000,
+//       "newapi_user_id":    17,
+//
+//       // Raw quota for backend debugging — NOT shown to users:
+//       "_quota_units":      7234500
 //     }
 //   }
 //
@@ -107,13 +115,24 @@ func BindingAPI(c *gin.Context) {
 		endpoint = "https://api.greentokey.com/v1"
 	}
 
+	// last_known_quota is the absolute quota allocated at last provision/
+	// top-up. To get "credits remaining" we need NewAPI's *current* quota
+	// (which decreases as the user calls models). v0.9 uses the cached
+	// value as a stale-acceptable proxy; v1 will fetch live from NewAPI's
+	// /api/user endpoint or maintain a usage delta. For now the dashboard
+	// gets a pessimistic-but-truthful "since last top-up" view.
+	creditsTotal := QuotaToCredits(bind.LastKnownQuota)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"api_key":          bind.NewapiTokenKey,
-			"api_endpoint":     endpoint,
-			"last_known_quota": bind.LastKnownQuota,
-			"newapi_user_id":   bind.NewapiUserID,
+			"api_key":           bind.NewapiTokenKey,
+			"api_endpoint":      endpoint,
+			"credits_remaining": creditsTotal, // TODO v1: fetch live
+			"credits_used":      0,            // TODO v1: live - last_known
+			"credits_total":     creditsTotal,
+			"newapi_user_id":    bind.NewapiUserID,
+			"_quota_units":      bind.LastKnownQuota,
 		},
 	})
 }

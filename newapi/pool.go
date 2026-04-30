@@ -35,6 +35,12 @@ type ModelEntry struct {
 	// AverageLatencyMs is the latency of the primary channel for this
 	// model (NewAPI's response_time field). 0 if not measured yet.
 	AverageLatencyMs int `json:"average_latency_ms"`
+	// CreditTier is greentokey's pricing tier ("light"/"standard"/"premium")
+	// for this model — surfaced to the dashboard so users see "1 次 ≈
+	// 1 credit" or "1 次 ≈ 3 credits" badge per model.
+	CreditTier      string  `json:"credit_tier"`
+	CreditTierLabel string  `json:"credit_tier_label"`  // "轻量" / "标准" / "高级"
+	CreditPerCall   float64 `json:"credit_per_call"`    // 0.5 / 1.0 / 3.0
 }
 
 // PoolSnapshot is the high-level view consumed by /api/gtk/v1/pool.
@@ -179,12 +185,25 @@ func buildSnapshot(channels []ChannelInfo) *PoolSnapshot {
 
 	models := make([]ModelEntry, 0, len(picks))
 	for _, p := range picks {
+		tier := CreditTierFor(p.modelName)
+		var tierKey string
+		switch tier {
+		case TierLight:
+			tierKey = "light"
+		case TierStandard:
+			tierKey = "standard"
+		case TierPremium:
+			tierKey = "premium"
+		}
 		models = append(models, ModelEntry{
 			Model:            p.modelName,
 			Provider:         p.Provider,
 			ProviderLabel:    p.ProviderLabel,
 			IsSub2API:        p.IsSub2API,
 			AverageLatencyMs: p.ResponseTime,
+			CreditTier:       tierKey,
+			CreditTierLabel:  tier.Label(),
+			CreditPerCall:    tier.Multiplier(),
 		})
 	}
 	// Stable order: by provider then model name. Dashboard grid gets a

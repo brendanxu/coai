@@ -372,29 +372,50 @@ func upsertSubscription(db *sql.DB, p *webhookPayload) error {
 	return upsertLsMapping(db, userID, p, renewsAt, clearCancelled)
 }
 
-// quotaUnitsForLevel converts a CoAI subscription level into NewAPI's
-// internal quota units. NewAPI quota model: $1 ≈ 500_000 units (configurable
-// per-channel via channel.token_per_dollar; the default is 500k).
+// creditsForLevel + quotaUnitsForLevel translate a subscription level
+// into the user-facing credit allowance and the corresponding NewAPI
+// quota unit count.
 //
-// v0.9 mapping table (placeholder — should move to gtk_plan.quota_units once
-// LS variant_id → plan lookup is wired):
+// Credit semantics (locked 2026-04-30, see newapi/credit.go):
+//   1 credit = 1500 NewAPI quota units
+//   ¥99/月 = $15/月 = 5000 credits = 7,500,000 quota units
 //
-//	levelStarter (1)  → $15 cap        = 7_500_000 units / month
-//	levelIndie   (2)  → ¥199/mo cap   ≈ 14_000_000 units / month
-//	levelMinsu   (3)  → ¥1980/mo cap  ≈ 138_500_000 units / month
+// Per-call burn (assuming 1k input + 1k output):
+//   轻量 (light)    0.5 credits   — DeepSeek-chat / Qwen-flash etc.
+//   标准 (standard) 1.0 credits   — DeepSeek-r1 / Claude Haiku / GPT-4o-mini
+//   高级 (premium)  3.0 credits   — GPT-4o / Claude Sonnet / Claude Opus
 //
-// For v0.9 only levelStarter is wired; the rest exist for documentation.
-func quotaUnitsForLevel(level int) int64 {
+// v0.9 levels (placeholder; v1 will move to gtk_plan.credits):
+//
+//   levelStarter (1)  →  5,000 credits / month  → ¥99 or $15
+//   levelPro     (2)  → 20,000 credits / month  → ¥299 or $45
+//   levelScale   (3)  → 80,000 credits / month  → ¥999 or $145
+//
+// Only level 1 is wired in v0.9; 2/3 documented for forward compat.
+func creditsForLevel(level int) int64 {
 	switch level {
-	case 1: // starter $15/mo
-		return 7_500_000
-	case 2: // indie ¥199/mo
-		return 14_000_000
-	case 3: // 民宿 ¥1980/mo
-		return 138_500_000
+	case 1: // Starter ¥99 / $15
+		return 5_000
+	case 2: // Pro ¥299 / $45
+		return 20_000
+	case 3: // Scale ¥999 / $145
+		return 80_000
 	default:
 		return 0
 	}
+}
+
+// quotaUnitsForLevel returns NewAPI internal quota for a level, derived
+// from creditsForLevel(level) * QuotaPerCredit. Single source of truth:
+// edit creditsForLevel and the conversion stays consistent.
+//
+// We intentionally hardcode 1500 here (= newapi.QuotaPerCredit) rather
+// than import the constant — keeps payment package free of newapi build
+// dependency for unit tests. If the constant ever changes (it shouldn't,
+// it's a pricing decision not an engineering knob), update both places.
+func quotaUnitsForLevel(level int) int64 {
+	const quotaPerCredit = 1500 // mirror of newapi.QuotaPerCredit
+	return creditsForLevel(level) * quotaPerCredit
 }
 
 func upsertLsMapping(db *sql.DB, userID int64, p *webhookPayload, renewsAt time.Time, clearCancelled bool) error {
