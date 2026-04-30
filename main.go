@@ -14,6 +14,7 @@ import (
 	"chat/manager/conversation"
 	"chat/middleware"
 	"chat/payment"
+	"chat/plans"
 	"chat/utils"
 	"chat/waitlist"
 	"fmt"
@@ -78,6 +79,9 @@ func main() {
 	// Runs after middleware.RegisterMiddleware connects DB; idempotent on reboot.
 	if err := payment.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey payment migration failed: %s", err))
+	}
+	if err := plans.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey plans migration failed: %s", err))
 	}
 	if err := waitlist.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey waitlist migration failed: %s", err))
