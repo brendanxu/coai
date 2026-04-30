@@ -77,6 +77,10 @@ func main() {
 
 	// greentokey: bridge tables for LemonSqueezy subscription billing (v0.6+).
 	// Runs after middleware.RegisterMiddleware connects DB; idempotent on reboot.
+	// Order: alphabetical by package name (carbon → payment → waitlist).
+	if err := carbon.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey carbon migration failed: %s", err))
+	}
 	if err := payment.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey payment migration failed: %s", err))
 	}
