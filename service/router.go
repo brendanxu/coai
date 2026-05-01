@@ -31,6 +31,8 @@ import (
 func Register(app *gin.RouterGroup) {
 	app.GET("/gtk/v1/services", CatalogAPI)
 	app.POST("/gtk/v1/service/order", CreateOrderAPI)
+	// Authenticated — execute the agent for a paid order. v0.10 ④.
+	app.POST("/gtk/v1/service/run/:order_no", RunOrderAPI)
 	// Admin-only — flip an order to refunded status (no actual money
 	// moved; founder handles the LS / hupijiao dashboard refund
 	// separately). v0.10 ② per recommendation 11.Q5.
