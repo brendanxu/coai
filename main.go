@@ -99,6 +99,14 @@ func main() {
 	if err := service.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey service migration failed: %s", err))
 	}
+	// Idempotent catalog seed runs after service.Migrate. Existing
+	// rows are never overwritten — operators can edit via SQL or admin
+	// UI and their changes win on the next boot.
+	if err := service.SeedCatalog(connection.DB); err != nil {
+		// Log but don't panic — catalog seed is best-effort. A single
+		// bad row shouldn't keep the gateway from booting.
+		globals.Warn(fmt.Sprintf("greentokey service seed: %s", err))
+	}
 	if err := waitlist.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey waitlist migration failed: %s", err))
 	}

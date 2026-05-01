@@ -31,6 +31,15 @@ import (
 func Register(app *gin.RouterGroup) {
 	app.GET("/gtk/v1/services", CatalogAPI)
 	app.POST("/gtk/v1/service/order", CreateOrderAPI)
+	// Authenticated — execute the agent for a paid order. v0.10 ④.
+	app.POST("/gtk/v1/service/run/:order_no", RunOrderAPI)
+	// Admin-only — flip an order to refunded status (no actual money
+	// moved; founder handles the LS / hupijiao dashboard refund
+	// separately). v0.10 ② per recommendation 11.Q5.
+	app.POST("/gtk/v1/admin/refund", RefundAPI)
+	// Public — hupijiao webhook target. Auth is HMAC-MD5 against
+	// hupijiao.merchant_secret (verified inside the handler).
+	app.POST("/gtk/v1/service/hupijiao-callback", HupijiaoCallbackAPI)
 }
 
 // CatalogAPI returns the public service catalog. Public — no auth gate.
@@ -112,21 +121,59 @@ func CreateOrderAPI(c *gin.Context) {
 		return
 	}
 
-	// v0.9 stub. v0.10 will fill checkout_url with:
-	//   - LemonSqueezy: hosted checkout URL via newapi/checkout.go pattern
-	//   - hupijiao: API call → returns code_url for QR rendering
-	//   - manual: empty string (concierge handles offline)
+	// Fill checkout payload by provider. The order row is already
+	// inserted at this point — if checkout building fails, the order
+	// stays in pending_payment for manual cleanup. Better than
+	// leaving the customer without an order_no to reference.
+	resp := gin.H{
+		"order_no":         orderNo,
+		"price_cny_cents":  svc.PriceCNYCents,
+		"price_display":    FormatPriceCNY(svc.PriceCNYCents),
+		"included_credits": svc.IncludedCredits,
+		"service_name":     svc.Name,
+		"service_slug":     svc.Slug,
+	}
+
+	switch req.PaymentProvider {
+	case "lemonsqueezy":
+		checkoutURL, err := BuildLSServiceCheckoutURL(coaiUserID, orderNo, svc)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success":  false,
+				"message":  "build LS checkout URL failed: " + err.Error(),
+				"order_no": orderNo, // surface so customer can reach support
+			})
+			return
+		}
+		resp["checkout_url"] = checkoutURL
+
+	case "hupijiao":
+		qr, err := BuildHupijiaoQR(coaiUserID, orderNo, svc)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success":  false,
+				"message":  "build hupijiao QR failed: " + err.Error(),
+				"order_no": orderNo,
+			})
+			return
+		}
+		// Frontend picks code_url (mobile, deep-link tap) vs qr_png_url
+		// (desktop, scan with phone) based on UA detection.
+		resp["alipay_code_url"] = qr.CodeURL
+		resp["alipay_qr_png_url"] = qr.QRPNGURL
+		resp["hupijiao_trade_no"] = qr.TradeNo
+
+	case "manual":
+		// Concierge / offline settlement. tana or founder calls the
+		// customer, takes payment via wechat / bank transfer / cash,
+		// then PATCHes the order to status='paid' via the admin
+		// endpoint (not yet built — Subsystem B work).
+		resp["concierge"] = true
+		resp["concierge_message"] = "我们将与您联系完成付款"
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": gin.H{
-			"order_no":         orderNo,
-			"checkout_url":     "",
-			"checkout_pending": true,
-			"price_cny_cents":  svc.PriceCNYCents,
-			"price_display":    FormatPriceCNY(svc.PriceCNYCents),
-			"included_credits": svc.IncludedCredits,
-			"service_name":     svc.Name,
-			"service_slug":     svc.Slug,
-		},
+		"data":    resp,
 	})
 }

@@ -3,6 +3,7 @@ package payment
 import (
 	"chat/globals"
 	"chat/newapi"
+	"chat/service"
 	"chat/utils"
 	"context"
 	"crypto/hmac"
@@ -49,6 +50,8 @@ const (
 	eventResumed       = "subscription_resumed"
 	eventCancelled     = "subscription_cancelled"
 	eventPaymentFailed = "subscription_payment_failed"
+	eventOrderCreated  = "order_created" // v0.10 ③ — fired for service-order one-shots AND for first-month subscriptions
+	eventSubPayment    = "subscription_payment_success" // v0.10 ③ — fired on monthly renewals; deferred handling
 )
 
 // webhookPayload is a partial map of LS's webhook envelope. We only decode
@@ -281,6 +284,14 @@ func isDupErr(err error) bool {
 }
 
 func dispatch(db *sql.DB, p *webhookPayload) error {
+	// v0.10 ③ — branch on greentokey_order_no presence in custom_data.
+	// Service orders carry it (set by service/checkout.go); Layer 2
+	// 套餐 subscriptions don't. Either path is idempotent.
+	if orderNo := serviceOrderNoFromCustomData(p.Meta.CustomData); orderNo != "" {
+		return dispatchServiceOrder(db, p, orderNo)
+	}
+
+	// Layer 2 套餐 path — original behavior unchanged.
 	switch p.Meta.EventName {
 	case eventCreated, eventUpdated, eventResumed:
 		return upsertSubscription(db, p)
@@ -293,6 +304,63 @@ func dispatch(db *sql.DB, p *webhookPayload) error {
 	default:
 		// Unknown event_name. Ack with 200 (don't 4xx — LS would mark endpoint broken).
 		logf(globals.Info, "unknown_event", "event_type", p.Meta.EventName)
+		return nil
+	}
+}
+
+// serviceOrderNoFromCustomData extracts greentokey_order_no if present.
+// Returns empty string if absent (Layer 2 套餐 path).
+func serviceOrderNoFromCustomData(custom map[string]interface{}) string {
+	raw, ok := custom["greentokey_order_no"]
+	if !ok {
+		return ""
+	}
+	switch v := raw.(type) {
+	case string:
+		return v
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+// dispatchServiceOrder handles webhooks belonging to Layer 3 service
+// orders (custom_data has greentokey_order_no).
+//
+// v0.10 first-cut handling:
+//   - order_created           → MarkOrderPaid (one-shot or first-month)
+//   - subscription_created    → MarkOrderPaid (covers first-month);
+//                                NOTE: does NOT call upsertSubscription
+//                                because that path is for Layer 2 token
+//                                packs, not Layer 3 service orders.
+//   - subscription_cancelled  → log only; the order itself is already
+//                                paid, founder handles refund via
+//                                /api/gtk/v1/admin/refund if needed.
+//   - subscription_payment_success → DEFERRED. Each monthly renewal
+//                                should create a NEW gtk_service_order
+//                                row + flip it to paid. v0.11 cron job
+//                                or follow-up commit handles this. For
+//                                v0.10 first deploy: log + ack so LS
+//                                stops retrying.
+//   - other                   → log + ack.
+func dispatchServiceOrder(db *sql.DB, p *webhookPayload, orderNo string) error {
+	switch p.Meta.EventName {
+	case eventOrderCreated, eventCreated:
+		return service.MarkOrderPaid(db, orderNo, p.Data.ID, "lemonsqueezy")
+	case eventCancelled:
+		logf(globals.Info, "service_order_subscription_cancelled",
+			"order_no", orderNo, "ls_subscription_id", p.Data.ID,
+			"note", "order itself is already paid; refund via /admin/refund if needed")
+		return nil
+	case eventSubPayment:
+		// TODO v0.11: create new gtk_service_order row for this month
+		// of the existing subscription, flip to paid.
+		logf(globals.Info, "service_order_monthly_renewal_deferred",
+			"order_no", orderNo, "ls_subscription_id", p.Data.ID,
+			"todo", "v0.11 cron creates new monthly order row")
+		return nil
+	default:
+		logf(globals.Info, "service_order_event_acked",
+			"order_no", orderNo, "event", p.Meta.EventName)
 		return nil
 	}
 }
