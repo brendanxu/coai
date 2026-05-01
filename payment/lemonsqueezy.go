@@ -2,7 +2,9 @@ package payment
 
 import (
 	"chat/globals"
+	"chat/newapi"
 	"chat/utils"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -343,10 +345,77 @@ func upsertSubscription(db *sql.DB, p *webhookPayload) error {
 		return fmt.Errorf("activate: %w", err)
 	}
 
+	// v0.9: also provision (or top-up) NewAPI user + token so the user gets
+	// an api-key (sk-xxx) the moment payment succeeds. Failure here is
+	// LOGGED-NOT-FATAL: the user has already paid + CoAI subscription is
+	// active; a follow-up retry queue (TODO gtk_newapi_pending_provisions)
+	// re-tries provisioning. Returning an error here would 500 the webhook
+	// → LemonSqueezy retries → potential double-activate. Better to ack +
+	// retry async.
+	if newapi.IsConfigured() {
+		spec := newapi.PlanSpec{
+			Code:       "starter",
+			QuotaUnits: quotaUnitsForLevel(levelStarter),
+			// 1-day grace past LS renews_at — protects users from instant
+			// access loss if the next-month webhook is briefly delayed.
+			ExpiresAt: renewsAt.Add(24 * time.Hour),
+		}
+		if _, err := newapi.ProvisionForPlan(context.Background(), db, userID, spec); err != nil {
+			logf(globals.Warn, "newapi_provision_failed",
+				"user_id", userID, "ls_subscription_id", p.Data.ID, "err", err)
+		}
+	}
+
 	// Upsert the audit/mapping row. Existing cancelled_at gets cleared on resumed
 	// (resumed = un-cancellation), preserved on update (re-billing of an active sub).
 	clearCancelled := p.Meta.EventName == eventResumed
 	return upsertLsMapping(db, userID, p, renewsAt, clearCancelled)
+}
+
+// creditsForLevel + quotaUnitsForLevel translate a subscription level
+// into the user-facing credit allowance and the corresponding NewAPI
+// quota unit count.
+//
+// Credit semantics (locked 2026-04-30, see newapi/credit.go):
+//   1 credit = 1500 NewAPI quota units
+//   ¥99/月 = $15/月 = 5000 credits = 7,500,000 quota units
+//
+// Per-call burn (assuming 1k input + 1k output):
+//   轻量 (light)    0.5 credits   — DeepSeek-chat / Qwen-flash etc.
+//   标准 (standard) 1.0 credits   — DeepSeek-r1 / Claude Haiku / GPT-4o-mini
+//   高级 (premium)  3.0 credits   — GPT-4o / Claude Sonnet / Claude Opus
+//
+// v0.9 levels (placeholder; v1 will move to gtk_plan.credits):
+//
+//   levelStarter (1)  →  5,000 credits / month  → ¥99 or $15
+//   levelPro     (2)  → 20,000 credits / month  → ¥299 or $45
+//   levelScale   (3)  → 80,000 credits / month  → ¥999 or $145
+//
+// Only level 1 is wired in v0.9; 2/3 documented for forward compat.
+func creditsForLevel(level int) int64 {
+	switch level {
+	case 1: // Starter ¥99 / $15
+		return 5_000
+	case 2: // Pro ¥299 / $45
+		return 20_000
+	case 3: // Scale ¥999 / $145
+		return 80_000
+	default:
+		return 0
+	}
+}
+
+// quotaUnitsForLevel returns NewAPI internal quota for a level, derived
+// from creditsForLevel(level) * QuotaPerCredit. Single source of truth:
+// edit creditsForLevel and the conversion stays consistent.
+//
+// We intentionally hardcode 1500 here (= newapi.QuotaPerCredit) rather
+// than import the constant — keeps payment package free of newapi build
+// dependency for unit tests. If the constant ever changes (it shouldn't,
+// it's a pricing decision not an engineering knob), update both places.
+func quotaUnitsForLevel(level int) int64 {
+	const quotaPerCredit = 1500 // mirror of newapi.QuotaPerCredit
+	return creditsForLevel(level) * quotaPerCredit
 }
 
 func upsertLsMapping(db *sql.DB, userID int64, p *webhookPayload, renewsAt time.Time, clearCancelled bool) error {

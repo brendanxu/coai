@@ -13,8 +13,10 @@ import (
 	"chat/manager"
 	"chat/manager/conversation"
 	"chat/middleware"
+	"chat/newapi"
 	"chat/payment"
 	"chat/plans"
+	"chat/service"
 	"chat/utils"
 	"chat/waitlist"
 	"fmt"
@@ -59,6 +61,10 @@ func registerApiRouter(engine *gin.Engine) {
 		carbon.Register(app)
 		// v0.6.1 waitlist (marketing landing email capture)
 		waitlist.Register(app)
+		// v0.9 newapi pool + api-key binding (greentokey 3-layer Layer 1+2)
+		newapi.Register(app)
+		// v0.9 service catalog + order (greentokey 3-layer Layer 3)
+		service.Register(app)
 	}
 }
 
@@ -77,9 +83,12 @@ func main() {
 
 	// greentokey: bridge tables for LemonSqueezy subscription billing (v0.6+).
 	// Runs after middleware.RegisterMiddleware connects DB; idempotent on reboot.
-	// Order: alphabetical by package name (carbon → payment → waitlist).
+	// Order: alphabetical by package name (carbon → newapi → payment → plans → service → waitlist).
 	if err := carbon.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey carbon migration failed: %s", err))
+	}
+	if err := newapi.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey newapi migration failed: %s", err))
 	}
 	if err := payment.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey payment migration failed: %s", err))
@@ -87,8 +96,18 @@ func main() {
 	if err := plans.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey plans migration failed: %s", err))
 	}
+	if err := service.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey service migration failed: %s", err))
+	}
 	if err := waitlist.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey waitlist migration failed: %s", err))
+	}
+	if !newapi.IsConfigured() {
+		// Boot-time visibility: greentokey starts cleanly even if NewAPI
+		// integration is intentionally deferred (e.g. dev / test). The
+		// payment provisioning hook degrades to "log + skip" rather than
+		// fail on a per-purchase basis.
+		globals.Warn("newapi: admin_access_token not configured — purchase → key provisioning will no-op")
 	}
 
 	utils.RegisterStaticRoute(app)
