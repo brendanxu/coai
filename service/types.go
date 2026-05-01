@@ -67,6 +67,10 @@ type ServiceOrder struct {
 	PaymentProvider   string `json:"payment_provider"` // lemonsqueezy|hupijiao|manual
 	LSOrderID         string `json:"ls_order_id,omitempty"`
 	HupijiaoTradeNo   string `json:"hupijiao_trade_no,omitempty"`
+	// SubscriptionID is set when this order is part of a recurring
+	// LemonSqueezy subscription (billing_type=monthly services).
+	// Nil for one_time and per_use service orders.
+	SubscriptionID    *int64 `json:"subscription_id,omitempty"`
 	Status            string `json:"status"` // pending_payment|paid|running|completed|refunded|failed
 	PaidAt            string `json:"paid_at,omitempty"`
 	CompletedAt       string `json:"completed_at,omitempty"`

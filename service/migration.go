@@ -117,6 +117,7 @@ func migrateMySQL(db *sql.DB) error {
 		  payment_provider      VARCHAR(32)  NOT NULL,
 		  ls_order_id           VARCHAR(64),
 		  hupijiao_trade_no     VARCHAR(64),
+		  subscription_id       INT          NULL,
 		  status                VARCHAR(32)  NOT NULL DEFAULT 'pending_payment',
 		  paid_at               DATETIME     NULL,
 		  completed_at          DATETIME     NULL,
@@ -128,14 +129,50 @@ func migrateMySQL(db *sql.DB) error {
 		  UNIQUE KEY uniq_ls_order (ls_order_id),
 		  KEY idx_order_user (coai_user_id, created_at),
 		  KEY idx_order_service (service_id),
+		  KEY idx_order_subscription (subscription_id),
 		  KEY idx_order_status (status),
 		  FOREIGN KEY (coai_user_id) REFERENCES auth(id) ON DELETE CASCADE,
-		  FOREIGN KEY (service_id) REFERENCES gtk_service(id) ON DELETE RESTRICT
+		  FOREIGN KEY (service_id) REFERENCES gtk_service(id) ON DELETE RESTRICT,
+		  FOREIGN KEY (subscription_id) REFERENCES gtk_ls_subscription(id) ON DELETE SET NULL
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 	`); err != nil {
 		return fmt.Errorf("create gtk_service_order: %w", err)
 	}
+
+	// Idempotent ALTER for upgrade-in-place: if gtk_service_order was
+	// created by an earlier service.Migrate (pre-subscription_id),
+	// add the column + FK now. INFORMATION_SCHEMA check avoids "duplicate
+	// column" errors on a fresh table where CREATE TABLE above already
+	// added the column.
+	if err := addColumnIfMissing(db, "gtk_service_order", "subscription_id",
+		"INT NULL AFTER hupijiao_trade_no"); err != nil {
+		return fmt.Errorf("add subscription_id column: %w", err)
+	}
 	return nil
+}
+
+// addColumnIfMissing runs ALTER TABLE ... ADD COLUMN only if the column
+// doesn't already exist. Used for backwards-compatible migrations on
+// MySQL where CREATE TABLE IF NOT EXISTS is a no-op for existing tables.
+// SQLite engine skips this — fresh CREATE TABLE always fires there.
+func addColumnIfMissing(db *sql.DB, table, column, columnDef string) error {
+	if globals.SqliteEngine {
+		return nil
+	}
+	var count int
+	row := globals.QueryRowDb(db, `
+		SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+		WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+	`, table, column)
+	if err := row.Scan(&count); err != nil {
+		return fmt.Errorf("check column %s.%s: %w", table, column, err)
+	}
+	if count > 0 {
+		return nil
+	}
+	_, err := globals.ExecDb(db, fmt.Sprintf(
+		"ALTER TABLE %s ADD COLUMN %s %s", table, column, columnDef))
+	return err
 }
 
 func migrateSQLite(db *sql.DB) error {
@@ -197,6 +234,7 @@ func migrateSQLite(db *sql.DB) error {
 		                         CHECK (payment_provider IN ('lemonsqueezy','hupijiao','manual')),
 		  ls_order_id           TEXT    UNIQUE,
 		  hupijiao_trade_no     TEXT,
+		  subscription_id       INTEGER,
 		  status                TEXT    NOT NULL DEFAULT 'pending_payment'
 		                         CHECK (status IN ('pending_payment','paid','running','completed','refunded','failed')),
 		  paid_at               DATETIME,
