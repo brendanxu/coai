@@ -35,6 +35,9 @@ func Register(app *gin.RouterGroup) {
 	// moved; founder handles the LS / hupijiao dashboard refund
 	// separately). v0.10 ② per recommendation 11.Q5.
 	app.POST("/gtk/v1/admin/refund", RefundAPI)
+	// Public — hupijiao webhook target. Auth is HMAC-MD5 against
+	// hupijiao.merchant_secret (verified inside the handler).
+	app.POST("/gtk/v1/service/hupijiao-callback", HupijiaoCallbackAPI)
 }
 
 // CatalogAPI returns the public service catalog. Public — no auth gate.
