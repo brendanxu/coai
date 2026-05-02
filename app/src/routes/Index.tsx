@@ -132,7 +132,46 @@ function ToolBar() {
   );
 }
 
+// MARKETING_ROUTES — public-facing pages owned by the v0.7 design system.
+// These render without CoAI's NavBar / ToolBar so 民宿主 don't see app
+// cruft (chat / model / account icons that mean nothing to them).
+//
+// Each marketing page wraps its own content in <Header /> + <Footer />
+// from components/Marketing/. The CoAI sidebar + top bar are reserved
+// for app routes (chat / model / account / dashboard / admin).
+//
+// Add a new public marketing path here when adding /privacy /terms /
+// /about / /blog etc. — keeps the rule single-source.
+const MARKETING_PATHS = new Set([
+  "/",
+  "/pricing",
+  "/contact",
+  "/privacy",
+  "/terms",
+  "/about",
+]);
+
+function isMarketingRoute(pathname: string): boolean {
+  return MARKETING_PATHS.has(pathname);
+}
+
 function Home() {
+  const location = useLocation();
+  const marketing = isMarketingRoute(location.pathname);
+
+  if (marketing) {
+    // Pure marketing layout — NO NavBar, NO ToolBar, NO floating chat.
+    // The route's own Header + Footer (from components/Marketing/) own
+    // the entire viewport. Customers see a coherent marketing site.
+    return (
+      <ErrorBoundary>
+        <Outlet />
+      </ErrorBoundary>
+    );
+  }
+
+  // App layout — CoAI's full chrome (top bar + left sidebar + floating
+  // chat). Reserved for /chat /model /account /dashboard /admin/*.
   return (
     <ErrorBoundary>
       <NavBar />
@@ -140,7 +179,7 @@ function Home() {
         <ToolBar />
         <Outlet />
       </div>
-      {/* v0.6.1 — global floating chat. Renders on every child route.
+      {/* v0.6.1 — global floating chat. Renders on every app route.
           Auto-hides on /chat where the full chat UI is already on screen. */}
       <ChatFloating />
     </ErrorBoundary>
