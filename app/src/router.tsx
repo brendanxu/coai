@@ -22,6 +22,10 @@ const Wallet = lazyFactor(() => import("@/routes/Wallet.tsx"));
 const Account = lazyFactor(() => import("@/routes/Account.tsx"));
 const Pricing = lazyFactor(() => import("@/routes/Pricing.tsx"));
 const Contact = lazyFactor(() => import("@/routes/Contact.tsx"));
+// v0.11 design-restore — broader product surface (Token 套餐 + 服务市场 + 模型池)
+const Pool = lazyFactor(() => import("@/routes/Pool.tsx"));
+const TokenPlans = lazyFactor(() => import("@/routes/TokenPlans.tsx"));
+const Services = lazyFactor(() => import("@/routes/Services.tsx"));
 
 const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
@@ -175,6 +179,44 @@ const router = createBrowserRouter([
         element: (
           <Suspense>
             <Contact />
+          </Suspense>
+        ),
+      },
+      // v0.11 design-restore — Token 套餐 / 服务市场 / 模型池 routes.
+      // /services/mansu deep-link goes to legacy /pricing (民宿 detail page).
+      {
+        id: "pool",
+        path: "pool",
+        element: (
+          <Suspense>
+            <Pool />
+          </Suspense>
+        ),
+      },
+      {
+        id: "token-plans",
+        path: "token-plans",
+        element: (
+          <Suspense>
+            <TokenPlans />
+          </Suspense>
+        ),
+      },
+      {
+        id: "services",
+        path: "services",
+        element: (
+          <Suspense>
+            <Services />
+          </Suspense>
+        ),
+      },
+      {
+        id: "services-mansu",
+        path: "services/mansu",
+        element: (
+          <Suspense>
+            <Pricing />
           </Suspense>
         ),
       },

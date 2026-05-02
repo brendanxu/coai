@@ -1793,5 +1793,26 @@
     "close": "关闭聊天",
     "panel-title": "聊天",
     "panel-label": "悬浮聊天面板"
+  },
+  "nav": {
+    "home": "首页",
+    "token": "Token 套餐",
+    "services": "服务市场",
+    "pool": "模型池",
+    "pricing": "民宿套餐",
+    "contact": "联系",
+    "cta": "预约 demo"
+  },
+  "footer": {
+    "tagline": "民宿主的小红书运营官 · 大理环洱海首发",
+    "product": "产品",
+    "contact": "联系",
+    "legal": "条款",
+    "privacy": "隐私政策",
+    "terms": "服务条款",
+    "rights": "保留所有权利",
+    "icp": "ICP 备案: 待备案",
+    "book-demo": "预约 demo",
+    "hours": "周一至周日 9:00-21:00"
   }
 }

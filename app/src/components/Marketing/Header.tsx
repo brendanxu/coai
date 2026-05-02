@@ -1,10 +1,38 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Globe } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/components/ui/lib/utils.ts";
+
+// Lightweight 2-locale switcher: zh/en. We only display these two
+// in marketing — other locales (ja/ru/tw) are CoAI legacy, not part
+// of greentokey's go-to-market plan.
+function LangToggle() {
+  const { i18n } = useTranslation();
+  const isEn = (i18n.language || "").toLowerCase().startsWith("en");
+  const next = isEn ? "cn" : "en";
+  const onClick = () => {
+    i18n.changeLanguage(next);
+    try {
+      localStorage.setItem("language", next);
+    } catch {
+      // localStorage may be unavailable (private mode); ignore.
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+      aria-label="切换语言 / Toggle language"
+    >
+      <Globe className="w-3.5 h-3.5" />
+      {isEn ? "中文" : "EN"}
+    </button>
+  );
+}
 
 /**
  * Marketing-side top navigation header.
@@ -25,10 +53,13 @@ export default function Header() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Nav matches v0.7 Claude Design (redesign-v2.html line 864):
+  // Token 套餐 / 服务市场 / 模型池 / 仪表盘 / 文档.
+  // 仪表盘 + 文档 are post-login views; we surface them only after auth.
   const navItems = [
-    { to: "/", label: t("nav.home", "首页") },
-    { to: "/#services", label: t("nav.services", "服务") },
-    { to: "/pricing", label: t("nav.pricing", "定价") },
+    { to: "/token-plans", label: t("nav.token", "Token 套餐") },
+    { to: "/services", label: t("nav.services", "服务市场") },
+    { to: "/pool", label: t("nav.pool", "模型池") },
     { to: "/contact", label: t("nav.contact", "联系") },
   ];
 
@@ -68,8 +99,9 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* CTA + mobile toggle */}
+        {/* Lang toggle + CTA + mobile toggle */}
         <div className="flex items-center gap-2">
+          <LangToggle />
           <Link to="/contact" className="hidden sm:inline-flex">
             <Button size="sm" className="rounded-full px-4">
               {t("nav.cta", "预约 demo")}
@@ -79,7 +111,7 @@ export default function Header() {
             type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
             className="md:hidden p-2 -mr-2 rounded-md hover:bg-muted"
-            aria-label="菜单"
+            aria-label="菜单 / Menu"
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>

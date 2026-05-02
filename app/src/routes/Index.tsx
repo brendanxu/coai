@@ -152,6 +152,11 @@ const MARKETING_PATHS = new Set([
   "/privacy",
   "/terms",
   "/about",
+  // v0.11 design-restore additions
+  "/pool",
+  "/token-plans",
+  "/services",
+  "/services/mansu",
 ]);
 
 function isMarketingRoute(pathname: string): boolean {

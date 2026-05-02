@@ -45,18 +45,18 @@ export default function Footer() {
             </h4>
             <ul className="space-y-1.5">
               <li>
-                <Link to="/" className="hover:text-foreground text-muted-foreground">
-                  {t("nav.home", "首页")}
+                <Link to="/token-plans" className="hover:text-foreground text-muted-foreground">
+                  {t("nav.token", "Token 套餐")}
                 </Link>
               </li>
               <li>
-                <Link to="/pricing" className="hover:text-foreground text-muted-foreground">
-                  {t("nav.pricing", "定价")}
+                <Link to="/services" className="hover:text-foreground text-muted-foreground">
+                  {t("nav.services", "服务市场")}
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="hover:text-foreground text-muted-foreground">
-                  {t("nav.contact", "联系")}
+                <Link to="/pool" className="hover:text-foreground text-muted-foreground">
+                  {t("nav.pool", "模型池")}
                 </Link>
               </li>
             </ul>

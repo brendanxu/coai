@@ -1800,5 +1800,159 @@
     "close": "Close chat",
     "panel-title": "Chat",
     "panel-label": "Floating chat panel"
+  },
+  "nav": {
+    "home": "Home",
+    "token": "Token Plans",
+    "services": "Services",
+    "pool": "Model Pool",
+    "pricing": "Pricing",
+    "contact": "Contact",
+    "cta": "Book demo"
+  },
+  "hero": {
+    "eyebrow": "One Key, one model pool · One marketplace, one set of services",
+    "line1": "Aggregated AI compute,",
+    "line2": "plug-and-play",
+    "line3": " agent services.",
+    "sub": "Token plan: one API key for GPT, Claude, DeepSeek, Qwen, and more — based on NewAPI, sub2API official-API support coming. Services: Xiaohongshu management, content packs, DIY agents — pay per use, infrastructure underneath.",
+    "cta-token": "View Token plans",
+    "cta-market": "Browse marketplace",
+    "trust": {
+      "models": "models in pool",
+      "services": "service categories",
+      "key": "key, full pool"
+    },
+    "rail": {
+      "label": "Live grid",
+      "realtime": "Realtime",
+      "heading": "Model pool · Live",
+      "delta": "{{count}} models online · avg latency {{ms}}ms",
+      "loading": "Loading…",
+      "cta": "Copy my API Key"
+    }
+  },
+  "pool": {
+    "eyebrow": "Live grid · Realtime",
+    "heading": "Model Pool",
+    "sub": "After buying a Token plan, your single API key reaches every model below. Underlying NewAPI routing picks the cheapest available channel automatically. Latency is a 1-hour rolling average.",
+    "loading": "Loading…",
+    "stats": {
+      "models": "Models online",
+      "channels": "Channels active",
+      "latency": "Avg latency"
+    },
+    "col": {
+      "model": "Model",
+      "provider": "Provider",
+      "tier": "Tier",
+      "latency": "Latency"
+    },
+    "disclaimer": "Snapshot taken at "
+  },
+  "token": {
+    "eyebrow": "Token Plan · Pool access",
+    "heading": {
+      "line1": "One Key,",
+      "line2": "the whole pool."
+    },
+    "sub": "OpenAI-compatible endpoint, Bearer auth. Switch GPT/Claude/DeepSeek/Qwen by changing only the model field — no account swaps, no key swaps. Routed via NewAPI; sub2API bridge to official APIs is in progress.",
+    "plan": {
+      "name": "Standard",
+      "badge": "Single tier",
+      "month": "month",
+      "tagline": "5,000 credits · ~5,000 standard calls · all models in pool",
+      "feat": {
+        "1": "One sk-xxx API key, OpenAI-compatible",
+        "2": "5,000 credits/mo, ¥0.02 per standard call (≈1k+1k tokens)",
+        "3": "Switch models by changing the model field — routing + billing automatic",
+        "4": "Light/Standard/Premium tiers: DeepSeek/Qwen 0.5×, Claude-haiku 1×, GPT-4o/Sonnet 3×",
+        "5": "Dashboard with live balance · usage breakdown · model distribution"
+      },
+      "cta": "Contact to activate",
+      "disclaimer": "Early customers get 1:1 onboarding · WeChat Pay / Alipay / Bank Transfer all accepted · LemonSqueezy card checkout coming soon"
+    },
+    "why": {
+      "one": {
+        "title": "One Key, all models",
+        "body": "No more separate keys, separate billing, separate dashboards for each provider. One integration, all done."
+      },
+      "two": {
+        "title": "Credit abstraction",
+        "body": "We absorb the 75× cost spread between official APIs and sub2API. Light/standard/premium tiers are transparent; the spread isn't your problem."
+      },
+      "three": {
+        "title": "Pool auto-routing",
+        "body": "NewAPI underneath picks the cheapest available channel per call. If one provider is down, you don't see it."
+      }
+    },
+    "pool-link": "View full model pool"
+  },
+  "services": {
+    "eyebrow": "Service Marketplace",
+    "heading": "AI services, paid by outcome.",
+    "sub": "Service = our tuned prompt + token pack. Compute is the substrate, but you see priced outcomes: '¥19 single Xiaohongshu post', '¥299 monthly 30-post pack', '¥1980/mo full management'.",
+    "loading": "Loading…",
+    "empty": "Stay tuned — first services launching soon",
+    "tile": {
+      "cta": "View details"
+    }
+  },
+  "footer": {
+    "tagline": "Aggregated AI compute · plug-and-play agent services",
+    "product": "Product",
+    "contact": "Contact",
+    "legal": "Legal",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "rights": "All rights reserved",
+    "icp": "ICP filing: pending",
+    "book-demo": "Book demo",
+    "hours": "Mon-Sun 9:00-21:00"
+  },
+  "lead": {
+    "title": "Book a demo",
+    "desc": "Drop your contact info; we'll reach out within 24 hours via WeChat or phone to chat about your homestay and Xiaohongshu situation.",
+    "eyebrow": "BOOK A DEMO",
+    "heading": {
+      "line1": "Tell us about your homestay,",
+      "line2": "we'll see how to help."
+    },
+    "lede": "Leave your contact info — the founder will reach out within 24 hours via WeChat or phone. We'll start by asking about your current situation and looking at your existing Xiaohongshu account, then judge whether this service is right for you. We'll say no if it isn't.",
+    "fields": {
+      "wechat": "WeChat ID",
+      "phone": "Phone",
+      "homestay": "Homestay name",
+      "loc": "Location",
+      "notes": "What you want to know / your biggest pain point",
+      "preferred": "preferred",
+      "alt": "if WeChat is inconvenient",
+      "optional": "optional",
+      "wechat-ph": "your-wechat-id",
+      "homestay-ph": "e.g. \"Erhai Flower House\"",
+      "loc-ph": "e.g. \"Shuanglang, Dali\"",
+      "notes-ph": "e.g. Writing 3 Xiaohongshu posts a week is exhausting and results aren't great"
+    },
+    "errors": {
+      "no-channel": "Please leave at least a WeChat ID or phone number",
+      "rate": "Please try again later (max 5 submissions per minute)",
+      "network": "Network error — please check your connection",
+      "server": "Server busy, please try again",
+      "invalid": "Invalid input — please review and resubmit"
+    },
+    "success": {
+      "title": "Got it!"
+    },
+    "thanks": {
+      "title": "Submitted",
+      "body": "We'll be in touch within 24 hours via the contact you provided. To reach us directly: add the founder's WeChat to chat about your homestay.",
+      "again": "Submit another"
+    },
+    "hint": {
+      "channel": "Fill at least one — WeChat preferred (faster)"
+    },
+    "cancel": "Cancel",
+    "submit": "Submit, we'll contact you",
+    "disclaimer": "We only use your info to respond to this inquiry. No bulk SMS, never sold to third parties."
   }
 }
