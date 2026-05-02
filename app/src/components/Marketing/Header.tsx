@@ -5,21 +5,21 @@ import { Menu, X, Globe } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/components/ui/lib/utils.ts";
+import { setLanguage } from "@/i18n.ts";
 
 // Lightweight 2-locale switcher: zh/en. We only display these two
 // in marketing — other locales (ja/ru/tw) are CoAI legacy, not part
 // of greentokey's go-to-market plan.
+//
+// Uses the project's existing setLanguage helper (i18n.ts) so the
+// memory backend + i18n.changeLanguage stay in sync. setLanguage also
+// validates against supportedLanguages.
 function LangToggle() {
   const { i18n } = useTranslation();
   const isEn = (i18n.language || "").toLowerCase().startsWith("en");
   const next = isEn ? "cn" : "en";
   const onClick = () => {
-    i18n.changeLanguage(next);
-    try {
-      localStorage.setItem("language", next);
-    } catch {
-      // localStorage may be unavailable (private mode); ignore.
-    }
+    setLanguage(i18n, next);
   };
   return (
     <button
