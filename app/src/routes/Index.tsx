@@ -10,13 +10,16 @@ import {
   LibraryBig,
   User,
 } from "lucide-react";
-import React from "react";
+import React, { useEffect } from "react";
 import Icon from "@/components/utils/Icon.tsx";
 import router from "@/router.tsx";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/components/ui/lib/utils.ts";
-import { useSelector } from "react-redux";
-import { selectAdmin } from "@/store/auth.ts";
+import { useDispatch, useSelector } from "react-redux";
+import { selectAdmin, validateToken } from "@/store/auth.ts";
+import { tokenField } from "@/conf/bootstrap.ts";
+import { getMemory } from "@/utils/memory.ts";
+import type { AppDispatch } from "@/store/index.ts";
 import {
   hideToolbarSelector,
   hideToolbarTextSelector,
@@ -157,15 +160,32 @@ function isMarketingRoute(pathname: string): boolean {
 
 function Home() {
   const location = useLocation();
+  const dispatch: AppDispatch = useDispatch();
   const marketing = isMarketingRoute(location.pathname);
+
+  // Auth state hydration on app start. Was previously bootstrapped from
+  // NavBar.tsx's useEffect, but marketing routes don't render NavBar
+  // anymore, so the gate at routes/Home.tsx (returns null until init=true)
+  // would hang forever. Call validateToken here so init flips to true
+  // regardless of which layout branch we render. Idempotent — repeats
+  // are harmless.
+  useEffect(() => {
+    validateToken(dispatch, getMemory(tokenField));
+  }, [dispatch]);
 
   if (marketing) {
     // Pure marketing layout — NO NavBar, NO ToolBar, NO floating chat.
     // The route's own Header + Footer (from components/Marketing/) own
     // the entire viewport. Customers see a coherent marketing site.
+    //
+    // Wrapper provides the full viewport sizing that .main used to
+    // contribute (height/width). Marketing pages use flex-col so
+    // Footer can sit at bottom of short pages.
     return (
       <ErrorBoundary>
-        <Outlet />
+        <div className="flex flex-col min-h-screen w-full">
+          <Outlet />
+        </div>
       </ErrorBoundary>
     );
   }
