@@ -80,7 +80,7 @@ export default function ContactDialog({
     if (!wechat.trim() && !phone.trim()) {
       setInlineError(
         t(
-          "contact.errors.no-channel",
+          "lead.errors.no-channel",
           "请至少填写微信号或手机号 (我们用来联系你)",
         ),
       );
@@ -105,7 +105,7 @@ export default function ContactDialog({
       const result = await submitLead(payload);
       if (result.ok) {
         toast(
-          t("contact.success.title", "已收到！"),
+          t("lead.success.title", "已收到！"),
           {
             description: result.message,
           },
@@ -117,12 +117,12 @@ export default function ContactDialog({
       // Surface server-provided message when present (already in Chinese).
       const fallback =
         result.kind === "rate-limited"
-          ? t("contact.errors.rate", "请稍后再试 (1 分钟内最多 5 次)")
+          ? t("lead.errors.rate", "请稍后再试 (1 分钟内最多 5 次)")
           : result.kind === "network"
-            ? t("contact.errors.network", "网络异常，请检查连接后重试")
+            ? t("lead.errors.network", "网络异常，请检查连接后重试")
             : result.kind === "server"
-              ? t("contact.errors.server", "服务器忙，请稍后再试")
-              : t("contact.errors.invalid", "信息有误，请检查后重新提交");
+              ? t("lead.errors.server", "服务器忙，请稍后再试")
+              : t("lead.errors.invalid", "信息有误，请检查后重新提交");
       setInlineError(result.message || fallback);
     } finally {
       setSubmitting(false);
@@ -135,12 +135,12 @@ export default function ContactDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
-              {t("contact.title", "预约 demo")}
+              {t("lead.title", "预约 demo")}
               {contextLabel ? ` · ${contextLabel}` : ""}
             </DialogTitle>
             <DialogDescription>
               {t(
-                "contact.desc",
+                "lead.desc",
                 "留下你的联系方式，我们 24 小时内通过微信或电话和你聊聊你的民宿和小红书运营情况。",
               )}
             </DialogDescription>
@@ -149,16 +149,16 @@ export default function ContactDialog({
           <div className="py-4 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="contact-wechat">
-                {t("contact.fields.wechat", "微信号")}
+                {t("lead.fields.wechat", "微信号")}
                 <span className="ml-1 text-xs text-muted-foreground">
-                  ({t("contact.fields.preferred", "推荐")})
+                  ({t("lead.fields.preferred", "推荐")})
                 </span>
               </Label>
               <Input
                 id="contact-wechat"
                 autoFocus
                 placeholder={t(
-                  "contact.fields.wechat-ph",
+                  "lead.fields.wechat-ph",
                   "your-wechat-id",
                 )}
                 value={wechat}
@@ -170,9 +170,9 @@ export default function ContactDialog({
 
             <div className="space-y-1.5">
               <Label htmlFor="contact-phone">
-                {t("contact.fields.phone", "手机号")}
+                {t("lead.fields.phone", "手机号")}
                 <span className="ml-1 text-xs text-muted-foreground">
-                  ({t("contact.fields.alt", "微信不方便填这个")})
+                  ({t("lead.fields.alt", "微信不方便填这个")})
                 </span>
               </Label>
               <Input
@@ -191,15 +191,15 @@ export default function ContactDialog({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="contact-homestay">
-                  {t("contact.fields.homestay", "民宿名")}
+                  {t("lead.fields.homestay", "民宿名")}
                   <span className="ml-1 text-xs text-muted-foreground">
-                    ({t("contact.fields.optional", "选填")})
+                    ({t("lead.fields.optional", "选填")})
                   </span>
                 </Label>
                 <Input
                   id="contact-homestay"
                   placeholder={t(
-                    "contact.fields.homestay-ph",
+                    "lead.fields.homestay-ph",
                     "比如「洱海花房」",
                   )}
                   value={homestayName}
@@ -210,15 +210,15 @@ export default function ContactDialog({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="contact-loc">
-                  {t("contact.fields.loc", "位置")}
+                  {t("lead.fields.loc", "位置")}
                   <span className="ml-1 text-xs text-muted-foreground">
-                    ({t("contact.fields.optional", "选填")})
+                    ({t("lead.fields.optional", "选填")})
                   </span>
                 </Label>
                 <Input
                   id="contact-loc"
                   placeholder={t(
-                    "contact.fields.loc-ph",
+                    "lead.fields.loc-ph",
                     "比如「大理双廊」",
                   )}
                   value={homestayLoc}
@@ -231,16 +231,16 @@ export default function ContactDialog({
 
             <div className="space-y-1.5">
               <Label htmlFor="contact-notes">
-                {t("contact.fields.notes", "想了解什么 / 现在最大的痛点")}
+                {t("lead.fields.notes", "想了解什么 / 现在最大的痛点")}
                 <span className="ml-1 text-xs text-muted-foreground">
-                  ({t("contact.fields.optional", "选填")})
+                  ({t("lead.fields.optional", "选填")})
                 </span>
               </Label>
               <textarea
                 id="contact-notes"
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 placeholder={t(
-                  "contact.fields.notes-ph",
+                  "lead.fields.notes-ph",
                   "比如：现在每周自己写 3 篇小红书太累，效果一般",
                 )}
                 value={notes}
@@ -263,11 +263,11 @@ export default function ContactDialog({
               onClick={() => handleClose(false)}
               disabled={submitting}
             >
-              {t("contact.cancel", "取消")}
+              {t("lead.cancel", "取消")}
             </Button>
             <Button type="submit" disabled={submitting}>
               {submitting && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
-              {t("contact.submit", "提交，等我联系你")}
+              {t("lead.submit", "提交，等我联系你")}
             </Button>
           </DialogFooter>
         </form>

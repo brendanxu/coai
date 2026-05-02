@@ -41,7 +41,7 @@ export default function Contact() {
     if (!wechat.trim() && !phone.trim()) {
       setInlineError(
         t(
-          "contact.errors.no-channel",
+          "lead.errors.no-channel",
           "请至少填写微信号或手机号 (我们用来联系你)",
         ),
       );
@@ -61,7 +61,7 @@ export default function Contact() {
     try {
       const result = await submitLead(payload);
       if (result.ok) {
-        toast(t("contact.success.title", "已收到！"), {
+        toast(t("lead.success.title", "已收到！"), {
           description: result.message,
         });
         setSubmitted(true);
@@ -69,12 +69,12 @@ export default function Contact() {
       }
       const fallback =
         result.kind === "rate-limited"
-          ? t("contact.errors.rate", "请稍后再试 (1 分钟内最多 5 次)")
+          ? t("lead.errors.rate", "请稍后再试 (1 分钟内最多 5 次)")
           : result.kind === "network"
-            ? t("contact.errors.network", "网络异常，请检查连接后重试")
+            ? t("lead.errors.network", "网络异常，请检查连接后重试")
             : result.kind === "server"
-              ? t("contact.errors.server", "服务器忙，请稍后再试")
-              : t("contact.errors.invalid", "信息有误，请检查后重新提交");
+              ? t("lead.errors.server", "服务器忙，请稍后再试")
+              : t("lead.errors.invalid", "信息有误，请检查后重新提交");
       setInlineError(result.message || fallback);
     } finally {
       setSubmitting(false);
@@ -89,18 +89,18 @@ export default function Contact() {
         {/* Hero */}
         <div className="text-center mb-10 md:mb-14">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-3">
-            {t("contact.eyebrow", "预约 demo")}
+            {t("lead.eyebrow", "预约 demo")}
           </p>
           <h1 className="font-display text-3xl md:text-5xl font-medium leading-tight mb-4">
-            {t("contact.heading.line1", "聊聊你的民宿，")}
+            {t("lead.heading.line1", "聊聊你的民宿，")}
             <br />
             <span className="text-[hsl(var(--gt-moss))]">
-              {t("contact.heading.line2", "我们看怎么帮上你。")}
+              {t("lead.heading.line2", "我们看怎么帮上你。")}
             </span>
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto">
             {t(
-              "contact.lede",
+              "lead.lede",
               "留下联系方式 — founder 24 小时内通过微信或电话和你聊。我们会先问你民宿的现状、看你已有的小红书账号，再判断这套服务对你是否合适。不合适会直接说不合适。",
             )}
           </p>
@@ -110,17 +110,17 @@ export default function Contact() {
           <div className="rounded-2xl border border-border/60 bg-muted/30 p-8 md:p-10 text-center space-y-3">
             <div className="text-3xl">✓</div>
             <h2 className="font-display text-xl font-medium">
-              {t("contact.thanks.title", "提交成功")}
+              {t("lead.thanks.title", "提交成功")}
             </h2>
             <p className="text-muted-foreground text-sm">
               {t(
-                "contact.thanks.body",
+                "lead.thanks.body",
                 "我们会在 24 小时内通过你留的联系方式与你沟通。如果想直接联系：加 founder 微信即可（聊聊你的民宿现状）。",
               )}
             </p>
             <div className="pt-2">
               <Button variant="outline" onClick={() => setSubmitted(false)}>
-                {t("contact.thanks.again", "再提交一个")}
+                {t("lead.thanks.again", "再提交一个")}
               </Button>
             </div>
           </div>
@@ -130,7 +130,7 @@ export default function Contact() {
               <div className="space-y-1.5">
                 <Label htmlFor="page-wechat" className="flex items-center gap-1.5">
                   <MessageCircle className="w-3.5 h-3.5" />
-                  {t("contact.fields.wechat", "微信号")}
+                  {t("lead.fields.wechat", "微信号")}
                 </Label>
                 <Input
                   id="page-wechat"
@@ -144,7 +144,7 @@ export default function Contact() {
               <div className="space-y-1.5">
                 <Label htmlFor="page-phone" className="flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5" />
-                  {t("contact.fields.phone", "手机号")}
+                  {t("lead.fields.phone", "手机号")}
                 </Label>
                 <Input
                   id="page-phone"
@@ -161,7 +161,7 @@ export default function Contact() {
             </div>
             <p className="text-xs text-muted-foreground -mt-2">
               {t(
-                "contact.hint.channel",
+                "lead.hint.channel",
                 "至少填一个 — 微信优先（更快）",
               )}
             </p>
@@ -169,11 +169,11 @@ export default function Contact() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="page-homestay">
-                  {t("contact.fields.homestay", "民宿名")}
+                  {t("lead.fields.homestay", "民宿名")}
                 </Label>
                 <Input
                   id="page-homestay"
-                  placeholder={t("contact.fields.homestay-ph", "比如「洱海花房」")}
+                  placeholder={t("lead.fields.homestay-ph", "比如「洱海花房」")}
                   value={homestayName}
                   onChange={(e) => setHomestayName(e.target.value)}
                   disabled={submitting}
@@ -183,11 +183,11 @@ export default function Contact() {
               <div className="space-y-1.5">
                 <Label htmlFor="page-loc" className="flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5" />
-                  {t("contact.fields.loc", "位置")}
+                  {t("lead.fields.loc", "位置")}
                 </Label>
                 <Input
                   id="page-loc"
-                  placeholder={t("contact.fields.loc-ph", "比如「大理双廊」")}
+                  placeholder={t("lead.fields.loc-ph", "比如「大理双廊」")}
                   value={homestayLoc}
                   onChange={(e) => setHomestayLoc(e.target.value)}
                   disabled={submitting}
@@ -198,13 +198,13 @@ export default function Contact() {
 
             <div className="space-y-1.5">
               <Label htmlFor="page-notes">
-                {t("contact.fields.notes", "想了解什么 / 现在最大的痛点")}
+                {t("lead.fields.notes", "想了解什么 / 现在最大的痛点")}
               </Label>
               <textarea
                 id="page-notes"
                 className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 placeholder={t(
-                  "contact.fields.notes-ph",
+                  "lead.fields.notes-ph",
                   "比如：现在每周自己写 3 篇小红书太累，效果一般",
                 )}
                 value={notes}
@@ -229,11 +229,11 @@ export default function Contact() {
                 disabled={submitting}
               >
                 {submitting && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
-                {t("contact.submit", "提交，等我联系你")}
+                {t("lead.submit", "提交，等我联系你")}
               </Button>
               <p className="text-xs text-center text-muted-foreground mt-3">
                 {t(
-                  "contact.disclaimer",
+                  "lead.disclaimer",
                   "我们只用你留的信息回复你这次咨询，不会群发短信、不会卖给第三方。",
                 )}
               </p>
