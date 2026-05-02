@@ -10,6 +10,7 @@ import (
 	"chat/cli"
 	"chat/connection"
 	"chat/globals"
+	"chat/lead"
 	"chat/manager"
 	"chat/manager/conversation"
 	"chat/middleware"
@@ -65,6 +66,8 @@ func registerApiRouter(engine *gin.Engine) {
 		newapi.Register(app)
 		// v0.9 service catalog + order (greentokey 3-layer Layer 3)
 		service.Register(app)
+		// v0.10.2 marketing-side lead capture (民宿主 demo 预约)
+		lead.Register(app)
 	}
 }
 
@@ -83,9 +86,12 @@ func main() {
 
 	// greentokey: bridge tables for LemonSqueezy subscription billing (v0.6+).
 	// Runs after middleware.RegisterMiddleware connects DB; idempotent on reboot.
-	// Order: alphabetical by package name (carbon → newapi → payment → plans → service → waitlist).
+	// Order: alphabetical by package name (carbon → lead → newapi → payment → plans → service → waitlist).
 	if err := carbon.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey carbon migration failed: %s", err))
+	}
+	if err := lead.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey lead migration failed: %s", err))
 	}
 	if err := newapi.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey newapi migration failed: %s", err))
