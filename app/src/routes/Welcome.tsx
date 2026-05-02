@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 import HeroSection from "@/components/Marketing/HeroSection.tsx";
 import ServiceCard from "@/components/Marketing/ServiceCard.tsx";
 import ValueProps from "@/components/Marketing/ValueProps.tsx";
-import WaitlistDialog from "@/components/Marketing/WaitlistDialog.tsx";
+import ContactDialog from "@/components/Marketing/ContactDialog.tsx";
+import Header from "@/components/Marketing/Header.tsx";
+import Footer from "@/components/Marketing/Footer.tsx";
 import { ServiceIcons } from "@/components/Marketing/icons.tsx";
 
 import router from "@/router.tsx";
@@ -27,32 +29,28 @@ import router from "@/router.tsx";
  */
 function Welcome() {
   const { t } = useTranslation();
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
-  const [waitlistService, setWaitlistService] = useState<{
-    slug: "tax-filing" | "video-editing" | "any";
-    title: string;
-  }>({ slug: "any", title: "" });
+  const [contactOpen, setContactOpen] = useState(false);
+  const [contactCtx, setContactCtx] = useState<string>("");
 
+  // Open dialog for general "demo 预约" — no specific service context.
   const openContactDemo = () => {
-    setWaitlistService({
-      slug: "any",
-      title: t("landing.contact.title", "联系预约 demo"),
-    });
-    setWaitlistOpen(true);
+    setContactCtx("");
+    setContactOpen(true);
+  };
+
+  // Open dialog tagged with a specific service the customer was reading
+  // about (e.g. "自动发布"). The label is surfaced into the lead's notes
+  // so founder follow-up knows which feature pulled them in.
+  const openContactFor = (label: string) => {
+    setContactCtx(label);
+    setContactOpen(true);
   };
 
   const goPricing = () => router.navigate("/pricing");
 
-  const openWaitlistFor = (
-    slug: "tax-filing" | "video-editing" | "any",
-    title: string,
-  ) => {
-    setWaitlistService({ slug, title });
-    setWaitlistOpen(true);
-  };
-
   return (
     <div className="flex-1 overflow-y-auto">
+      <Header />
       <div className="max-w-5xl mx-auto px-6 py-12 md:py-20">
         <HeroSection
           onContactDemo={openContactDemo}
@@ -60,7 +58,7 @@ function Welcome() {
         />
 
         {/* Service grid — 4 个民宿闭环环节 */}
-        <div className="space-y-4 mb-20">
+        <div id="services" className="space-y-4 mb-20 scroll-mt-20">
           <h2 className="text-2xl font-display font-medium text-center">
             {t("landing.services.heading", "全闭环 4 个环节")}
           </h2>
@@ -94,8 +92,7 @@ function Welcome() {
               statusLabel={t("landing.services.publish.status", "Phase 1.B · 第 4-6 周")}
               ctaLabel={t("landing.services.publish.cta", "留微信抢先体验")}
               onCta={() =>
-                openWaitlistFor(
-                  "any",
+                openContactFor(
                   t("landing.services.publish.title", "自动发布"),
                 )
               }
@@ -111,8 +108,7 @@ function Welcome() {
               statusLabel={t("landing.services.engage.status", "Phase 1.C · 第 6-8 周")}
               ctaLabel={t("landing.services.engage.cta", "留微信抢先体验")}
               onCta={() =>
-                openWaitlistFor(
-                  "any",
+                openContactFor(
                   t("landing.services.engage.title", "互动管理"),
                 )
               }
@@ -155,11 +151,13 @@ function Welcome() {
         </div>
       </div>
 
-      <WaitlistDialog
-        open={waitlistOpen}
-        onOpenChange={setWaitlistOpen}
-        service={waitlistService.slug}
-        serviceTitle={waitlistService.title}
+      <Footer />
+
+      <ContactDialog
+        open={contactOpen}
+        onOpenChange={setContactOpen}
+        source="home"
+        contextLabel={contactCtx}
       />
     </div>
   );

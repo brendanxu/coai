@@ -29,16 +29,19 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
-import WaitlistDialog from "@/components/Marketing/WaitlistDialog.tsx";
+import ContactDialog from "@/components/Marketing/ContactDialog.tsx";
+import Header from "@/components/Marketing/Header.tsx";
+import Footer from "@/components/Marketing/Footer.tsx";
 
 function Pricing() {
   const { t } = useTranslation();
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
 
-  const openContactDemo = () => setWaitlistOpen(true);
+  const openContactDemo = () => setContactOpen(true);
 
   return (
     <div className="flex-1 overflow-y-auto">
+      <Header />
       <div className="max-w-5xl mx-auto px-6 py-12 md:py-20">
         {/* ---- Hero ---- */}
         <div className="text-center space-y-6 mb-12">
@@ -238,14 +241,12 @@ function Pricing() {
         </div>
       </div>
 
-      <WaitlistDialog
-        open={waitlistOpen}
-        onOpenChange={setWaitlistOpen}
-        service="any"
-        serviceTitle={t(
-          "pricing-page.contact-title",
-          "联系预约 demo",
-        )}
+      <Footer />
+
+      <ContactDialog
+        open={contactOpen}
+        onOpenChange={setContactOpen}
+        source="pricing"
       />
     </div>
   );

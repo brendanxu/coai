@@ -21,6 +21,7 @@ const Model = lazyFactor(() => import("@/routes/Model.tsx"));
 const Wallet = lazyFactor(() => import("@/routes/Wallet.tsx"));
 const Account = lazyFactor(() => import("@/routes/Account.tsx"));
 const Pricing = lazyFactor(() => import("@/routes/Pricing.tsx"));
+const Contact = lazyFactor(() => import("@/routes/Contact.tsx"));
 
 const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
@@ -164,6 +165,16 @@ const router = createBrowserRouter([
         element: (
           <Suspense>
             <Pricing />
+          </Suspense>
+        ),
+      },
+      // v0.10.2 — public lead-capture page (民宿主 demo 预约)
+      {
+        id: "contact",
+        path: "contact",
+        element: (
+          <Suspense>
+            <Contact />
           </Suspense>
         ),
       },
