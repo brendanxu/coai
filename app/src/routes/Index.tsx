@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/tooltip.tsx";
 import NavBar from "@/components/app/NavBar.tsx";
 import { HIDE_CREDIT_UI } from "@/conf/env.ts";
+import { activeTheme, getTheme } from "@/components/ThemeProvider.tsx";
 // v0.6.1 — global floating chat must mount inside RouterProvider so it can
 // call useLocation. Index.tsx is the layout that wraps every child route,
 // making it the natural mount point.
@@ -177,6 +178,24 @@ function Home() {
   useEffect(() => {
     validateToken(dispatch, getMemory(tokenField));
   }, [dispatch]);
+
+  // v0.11 — force light theme on marketing routes via the existing
+  // ThemeProvider plumbing. CoAI's defaultTheme is "dark"; visitors
+  // with no localStorage land on dark, which breaks the v0.7 light-first
+  // Claude Design (warm cream + ink umber + moss accent). On marketing
+  // exit, restore whatever the user had before (or system default).
+  //
+  // Use activeTheme() so the .light/.dark class on documentElement +
+  // memory + themeEvent stay in sync — manual class swaps left the
+  // ThemeProvider out of sync on hot navigation.
+  useEffect(() => {
+    if (!marketing) return;
+    const prev = getTheme();
+    activeTheme("light");
+    return () => {
+      activeTheme(prev);
+    };
+  }, [marketing]);
 
   if (marketing) {
     // Pure marketing layout — NO NavBar, NO ToolBar, NO floating chat.
