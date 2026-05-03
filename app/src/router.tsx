@@ -26,6 +26,9 @@ const Contact = lazyFactor(() => import("@/routes/Contact.tsx"));
 const Pool = lazyFactor(() => import("@/routes/Pool.tsx"));
 const TokenPlans = lazyFactor(() => import("@/routes/TokenPlans.tsx"));
 const Services = lazyFactor(() => import("@/routes/Services.tsx"));
+// v0.12 — legal pages (Tier 1 block 1)
+const Privacy = lazyFactor(() => import("@/routes/Privacy.tsx"));
+const Terms = lazyFactor(() => import("@/routes/Terms.tsx"));
 
 const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
@@ -217,6 +220,26 @@ const router = createBrowserRouter([
         element: (
           <Suspense>
             <Pricing />
+          </Suspense>
+        ),
+      },
+      // v0.12 Tier 1 block 1 — public legal pages (ICP filing prerequisite,
+      // payment platform requirement, customer trust)
+      {
+        id: "privacy",
+        path: "privacy",
+        element: (
+          <Suspense>
+            <Privacy />
+          </Suspense>
+        ),
+      },
+      {
+        id: "terms",
+        path: "terms",
+        element: (
+          <Suspense>
+            <Terms />
           </Suspense>
         ),
       },
