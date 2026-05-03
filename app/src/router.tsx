@@ -29,6 +29,8 @@ const Services = lazyFactor(() => import("@/routes/Services.tsx"));
 // v0.12 — legal pages (Tier 1 block 1)
 const Privacy = lazyFactor(() => import("@/routes/Privacy.tsx"));
 const Terms = lazyFactor(() => import("@/routes/Terms.tsx"));
+// v0.12 Tier 1 block 2 — developer docs hub (single comprehensive page)
+const Docs = lazyFactor(() => import("@/routes/Docs.tsx"));
 
 const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
@@ -240,6 +242,17 @@ const router = createBrowserRouter([
         element: (
           <Suspense>
             <Terms />
+          </Suspense>
+        ),
+      },
+      // v0.12 Tier 1 block 2 — developer docs (publicly reachable; not
+      // in primary nav since marketing audience is 民宿主, not devs)
+      {
+        id: "docs",
+        path: "docs",
+        element: (
+          <Suspense>
+            <Docs />
           </Suspense>
         ),
       },
