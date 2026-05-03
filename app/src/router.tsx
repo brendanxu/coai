@@ -31,6 +31,8 @@ const Privacy = lazyFactor(() => import("@/routes/Privacy.tsx"));
 const Terms = lazyFactor(() => import("@/routes/Terms.tsx"));
 // v0.12 Tier 1 block 2 — developer docs hub (single comprehensive page)
 const Docs = lazyFactor(() => import("@/routes/Docs.tsx"));
+// v0.12 Tier 1 block 4 — DIY agent runner (post-purchase)
+const ServiceRun = lazyFactor(() => import("@/routes/ServiceRun.tsx"));
 
 const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
@@ -253,6 +255,18 @@ const router = createBrowserRouter([
         element: (
           <Suspense>
             <Docs />
+          </Suspense>
+        ),
+      },
+      // v0.12 Tier 1 block 4 — DIY agent runner. order_no carries
+      // the order identity; backend may not be live at v0.12 ship —
+      // the page falls back to a demo placeholder on 404.
+      {
+        id: "service-run",
+        path: "services/run/:order_no",
+        element: (
+          <Suspense>
+            <ServiceRun />
           </Suspense>
         ),
       },
