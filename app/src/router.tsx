@@ -58,6 +58,8 @@ const AdminSubscription = lazyFactor(
   () => import("@/routes/admin/Subscription.tsx"),
 );
 const AdminLogger = lazyFactor(() => import("@/routes/admin/Logger.tsx"));
+// v0.12 Tier 1 block 5 — founder concierge workspace for 民宿 wedge
+const AdminMansu = lazyFactor(() => import("@/routes/admin/Mansu.tsx"));
 
 const router = createBrowserRouter([
   {
@@ -405,6 +407,16 @@ const router = createBrowserRouter([
             element: (
               <Suspense>
                 <AdminLogger />
+              </Suspense>
+            ),
+          },
+          // v0.12 Tier 1 block 5 — 民宿 concierge workspace (founder-only)
+          {
+            id: "admin-mansu",
+            path: "mansu",
+            element: (
+              <Suspense>
+                <AdminMansu />
               </Suspense>
             ),
           },
