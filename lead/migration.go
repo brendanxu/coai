@@ -65,8 +65,12 @@ func migrateSQLite(db *sql.DB) error {
 		  homestay_loc    TEXT,
 		  notes           TEXT,
 		  source          TEXT    NOT NULL DEFAULT 'home',
-		  status          TEXT    NOT NULL DEFAULT 'new'
-		                   CHECK (status IN ('new','contacted','converted','dropped','spam')),
+		  -- v0.13: removed SQLite CHECK constraint; v0.13 expanded the
+		  -- kanban enum (new/contacted/signed/running/done/lost) and the
+		  -- inline CHECK list would block fresh dev DBs from accepting
+		  -- the new statuses. App-layer validation in lead/admin.go is
+		  -- the single source of truth (validStatuses map).
+		  status          TEXT    NOT NULL DEFAULT 'new',
 		  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		  updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		  contacted_at    DATETIME

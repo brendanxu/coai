@@ -68,6 +68,8 @@ func registerApiRouter(engine *gin.Engine) {
 		service.Register(app)
 		// v0.10.2 marketing-side lead capture (民宿主 demo 预约)
 		lead.Register(app)
+		// v0.13 admin-side lead pipeline kanban (/admin/mansu)
+		lead.RegisterAdmin(app)
 	}
 }
 
