@@ -26,6 +26,13 @@ const Contact = lazyFactor(() => import("@/routes/Contact.tsx"));
 const Pool = lazyFactor(() => import("@/routes/Pool.tsx"));
 const TokenPlans = lazyFactor(() => import("@/routes/TokenPlans.tsx"));
 const Services = lazyFactor(() => import("@/routes/Services.tsx"));
+// v0.12 — legal pages (Tier 1 block 1)
+const Privacy = lazyFactor(() => import("@/routes/Privacy.tsx"));
+const Terms = lazyFactor(() => import("@/routes/Terms.tsx"));
+// v0.12 Tier 1 block 2 — developer docs hub (single comprehensive page)
+const Docs = lazyFactor(() => import("@/routes/Docs.tsx"));
+// v0.12 Tier 1 block 4 — DIY agent runner (post-purchase)
+const ServiceRun = lazyFactor(() => import("@/routes/ServiceRun.tsx"));
 
 const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
@@ -51,6 +58,8 @@ const AdminSubscription = lazyFactor(
   () => import("@/routes/admin/Subscription.tsx"),
 );
 const AdminLogger = lazyFactor(() => import("@/routes/admin/Logger.tsx"));
+// v0.12 Tier 1 block 5 — founder concierge workspace for 民宿 wedge
+const AdminMansu = lazyFactor(() => import("@/routes/admin/Mansu.tsx"));
 
 const router = createBrowserRouter([
   {
@@ -220,6 +229,49 @@ const router = createBrowserRouter([
           </Suspense>
         ),
       },
+      // v0.12 Tier 1 block 1 — public legal pages (ICP filing prerequisite,
+      // payment platform requirement, customer trust)
+      {
+        id: "privacy",
+        path: "privacy",
+        element: (
+          <Suspense>
+            <Privacy />
+          </Suspense>
+        ),
+      },
+      {
+        id: "terms",
+        path: "terms",
+        element: (
+          <Suspense>
+            <Terms />
+          </Suspense>
+        ),
+      },
+      // v0.12 Tier 1 block 2 — developer docs (publicly reachable; not
+      // in primary nav since marketing audience is 民宿主, not devs)
+      {
+        id: "docs",
+        path: "docs",
+        element: (
+          <Suspense>
+            <Docs />
+          </Suspense>
+        ),
+      },
+      // v0.12 Tier 1 block 4 — DIY agent runner. order_no carries
+      // the order identity; backend may not be live at v0.12 ship —
+      // the page falls back to a demo placeholder on 404.
+      {
+        id: "service-run",
+        path: "services/run/:order_no",
+        element: (
+          <Suspense>
+            <ServiceRun />
+          </Suspense>
+        ),
+      },
       {
         id: "login",
         path: "/login",
@@ -355,6 +407,16 @@ const router = createBrowserRouter([
             element: (
               <Suspense>
                 <AdminLogger />
+              </Suspense>
+            ),
+          },
+          // v0.12 Tier 1 block 5 — 民宿 concierge workspace (founder-only)
+          {
+            id: "admin-mansu",
+            path: "mansu",
+            element: (
+              <Suspense>
+                <AdminMansu />
               </Suspense>
             ),
           },

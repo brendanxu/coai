@@ -59,6 +59,11 @@ export default function Footer() {
                   {t("nav.pool", "模型池")}
                 </Link>
               </li>
+              <li>
+                <Link to="/docs" className="hover:text-foreground text-muted-foreground">
+                  {t("footer.docs", "API 文档")}
+                </Link>
+              </li>
             </ul>
           </div>
 

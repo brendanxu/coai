@@ -31,7 +31,10 @@ export let blobEndpoint =
 export let docsEndpoint =
   localStorage.getItem("docs_url") ||
   import.meta.env.VITE_DOCS_ENDPOINT ||
-  "https://coai.dev";
+  // v0.12 block 2: internal /docs page (single comprehensive ref).
+  // Account-page "learn more" CTA respects this and uses Link for
+  // same-origin paths. Override via VITE_DOCS_ENDPOINT or admin setting.
+  "/docs";
 export let buyLink =
   localStorage.getItem("buy_link") || import.meta.env.VITE_BUY_LINK || "";
 
@@ -111,9 +114,10 @@ export function setAppLogo(logo: string): void {
 export function setDocsUrl(url: string): void {
   /**
    * set the docs url in localStorage
-   * greentokey: docs not yet hosted; fall back to project landing
+   * greentokey v0.12: defaults to internal /docs; admin can override with
+   * an external Notion / GitBook / etc URL when we outgrow single-page docs.
    */
-  url = url.trim() || "https://greentokey.com";
+  url = url.trim() || "/docs";
   setMemory("docs_url", url);
   docsEndpoint = url;
 }
