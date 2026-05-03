@@ -1,6 +1,7 @@
 import "@/assets/pages/package.less";
 import { ScrollArea } from "@/components/ui/scroll-area.tsx";
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { cn } from "@/components/ui/lib/utils.ts";
 import Avatar from "@/components/Avatar.tsx";
 import { useDispatch, useSelector } from "react-redux";
@@ -412,6 +413,15 @@ function Account() {
           icon={<Plug />}
         >
           <div className={`api-dialog`}>
+            {/* v0.12 block 3 — base_url hint above sk-key field. CoAI's
+                default UX assumes devs read external docs; greentokey
+                surfaces the one piece of config they always forget. */}
+            <div className="mb-2 text-xs text-muted-foreground">
+              {t("api.base-url-label", "Base URL")}
+              <code className="ml-2 px-1.5 py-0.5 rounded bg-muted text-foreground font-mono">
+                https://api.greentokey.com/v1
+              </code>
+            </div>
             <div className={`api-wrapper flex flex-row space-x-1`}>
               <Button
                 variant={`outline`}
@@ -475,16 +485,26 @@ function Account() {
                 </AlertDialogContent>
               </AlertDialog>
 
+              {/* v0.12 block 3 — internal Link for same-origin /docs;
+                  external <a target=_blank> only when admin overrode
+                  docsEndpoint to a hosted destination. */}
               <Button
                 variant={`outline`}
                 size={`default-sm`}
                 className={`text-xs`}
                 asChild
               >
-                <a href={docsEndpoint} target={`_blank`}>
-                  <ExternalLink className={`h-3.5 w-3.5 mr-2`} />
-                  {t("api.learn-more")}
-                </a>
+                {docsEndpoint.startsWith("/") ? (
+                  <Link to={docsEndpoint}>
+                    <ExternalLink className={`h-3.5 w-3.5 mr-2`} />
+                    {t("api.learn-more")}
+                  </Link>
+                ) : (
+                  <a href={docsEndpoint} target={`_blank`} rel="noreferrer">
+                    <ExternalLink className={`h-3.5 w-3.5 mr-2`} />
+                    {t("api.learn-more")}
+                  </a>
+                )}
               </Button>
             </div>
           </div>
