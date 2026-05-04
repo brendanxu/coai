@@ -419,6 +419,108 @@ func executeAgent(ctx context.Context, agent *Agent, userInput string) (string, 
 	return parsed.Choices[0].Message.Content, credits, nil
 }
 
+// executeAgentWithImages is the multimodal variant of executeAgent.
+// Builds the OpenAI-format multipart user message:
+//
+//   "messages": [
+//     {"role": "system", "content": "<agent system_prompt>"},
+//     {"role": "user", "content": [
+//       {"type": "text", "text": "<userInput>"},
+//       {"type": "image_url", "image_url": {"url": "<url>"}}, ...
+//     ]}
+//   ]
+//
+// When imageURLs is empty, falls back to the simpler executeAgent so
+// non-vision agents still work. The agent's PreferredModel must be
+// vision-capable (gpt-4o, claude-3-5-sonnet, gemini-1.5-pro, etc.) for
+// the upstream call to succeed when images are present.
+func executeAgentWithImages(ctx context.Context, agent *Agent, userInput string, imageURLs []string) (string, int, error) {
+	if len(imageURLs) == 0 {
+		return executeAgent(ctx, agent, userInput)
+	}
+
+	runnerKey := viper.GetString("service.runner_api_key")
+	if runnerKey == "" {
+		return "", 0, errAgentNotConfigured
+	}
+	endpoint := viper.GetString("service.runner_endpoint")
+	if endpoint == "" {
+		endpoint = viper.GetString("newapi.public_endpoint")
+		if endpoint == "" {
+			endpoint = "https://api.greentokey.com/v1"
+		}
+	}
+	endpoint = strings.TrimRight(endpoint, "/") + "/chat/completions"
+
+	// Compose the multimodal content array. Text first so the model
+	// reads instructions before processing images.
+	content := []map[string]interface{}{
+		{"type": "text", "text": userInput},
+	}
+	for _, url := range imageURLs {
+		content = append(content, map[string]interface{}{
+			"type":      "image_url",
+			"image_url": map[string]string{"url": url},
+		})
+	}
+
+	body := map[string]interface{}{
+		"model": agent.PreferredModel,
+		"messages": []map[string]interface{}{
+			{"role": "system", "content": agent.SystemPrompt},
+			{"role": "user", "content": content},
+		},
+		"stream": false,
+	}
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		return "", 0, fmt.Errorf("marshal multimodal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return "", 0, fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+runnerKey)
+
+	resp, err := agentRunHTTPClient.Do(req)
+	if err != nil {
+		return "", 0, fmt.Errorf("upstream: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", 0, fmt.Errorf("read upstream body: %w", err)
+	}
+	if resp.StatusCode/100 != 2 {
+		return "", 0, fmt.Errorf("upstream HTTP %d: %s", resp.StatusCode, truncateRuntime(respBytes, 200))
+	}
+
+	var parsed struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+		Usage struct {
+			PromptTokens     int `json:"prompt_tokens"`
+			CompletionTokens int `json:"completion_tokens"`
+		} `json:"usage"`
+	}
+	if err := json.Unmarshal(respBytes, &parsed); err != nil {
+		return "", 0, fmt.Errorf("parse upstream: %w (raw: %s)", err, truncateRuntime(respBytes, 200))
+	}
+	if len(parsed.Choices) == 0 {
+		return "", 0, errors.New("upstream returned no choices")
+	}
+
+	credits := computeRunCredits(agent.MinTier,
+		parsed.Usage.PromptTokens+parsed.Usage.CompletionTokens)
+	return parsed.Choices[0].Message.Content, credits, nil
+}
+
 // computeRunCredits maps total_tokens × tier_multiplier into the
 // integer-credits unit gtk_service_order tracks. Mirror of newapi.QuotaToCredits
 // but for outcome-tier rather than per-call cost. Always rounds UP so

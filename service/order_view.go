@@ -30,6 +30,7 @@ import (
 	"chat/auth"
 	"chat/connection"
 	"chat/globals"
+	"crypto/subtle"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -40,6 +41,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+// constantTimeEq compares two strings in constant time. Avoids timing
+// side-channels when verifying the per-order access token.
+func constantTimeEq(a, b string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+}
 
 // CustomerOrderView is the JSON shape returned to the /services/run
 // page. Field names match the frontend ServiceOrder type in
@@ -58,28 +68,87 @@ type CustomerOrderView struct {
 }
 
 // CustomerResultText is one of the discriminated-union shapes the
-// frontend renders. v0.14 only emits this kind.
+// frontend renders. Used as the fallback when the agent output isn't
+// parseable as a structured rednote-post.
 type CustomerResultText struct {
 	Kind    string `json:"kind"`    // "text"
 	Content string `json:"content"`
 }
 
-// GetOrderForCustomerAPI returns the order row shaped for the customer-
-// facing runner page. Auth-gated to the owner; we don't want a leaked
-// order_no URL to expose someone else's purchase metadata.
-func GetOrderForCustomerAPI(c *gin.Context) {
+// CustomerResultRednote is the structured 小红书 post shape the
+// frontend renders with title + body + tags + image grid. Matches the
+// `rednote-post` discriminator in app/src/api/service-order.ts.
+type CustomerResultRednote struct {
+	Kind   string   `json:"kind"` // "rednote-post"
+	Title  string   `json:"title"`
+	Body   string   `json:"body"`
+	Tags   []string `json:"tags"`
+	Images []string `json:"images"`
+}
+
+// resolveOrderAccess gates customer endpoints with two-track auth:
+//   1. ?token=<access_token> matching the order row's access_token
+//      column → bypass login (anonymous-friendly URL we share in WeChat)
+//   2. Authenticated session → must be the order owner
+//
+// Returns the resolved owner user_id (so subsequent SQL can scope
+// correctly) or writes the failure envelope and returns 0/false.
+func resolveOrderAccess(c *gin.Context, orderNo string) (int64, bool) {
+	if token := strings.TrimSpace(c.Query("token")); token != "" {
+		ownerID, ok := verifyOrderToken(connection.DB, orderNo, token)
+		if ok {
+			return ownerID, true
+		}
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"message": "invalid or revoked access token",
+		})
+		return 0, false
+	}
 	user := auth.RequireAuth(c)
 	if user == nil {
-		return
+		return 0, false
 	}
-	userID := user.GetID(connection.DB)
+	return user.GetID(connection.DB), true
+}
 
+// verifyOrderToken returns (owner_user_id, true) when the token matches
+// the order row. Constant-time compare to keep timing attacks out of
+// scope (paranoid for a 24-byte URL secret, but cheap).
+func verifyOrderToken(db *sql.DB, orderNo, suppliedToken string) (int64, bool) {
+	row := globals.QueryRowDb(db,
+		`SELECT coai_user_id, COALESCE(access_token, '') FROM gtk_service_order WHERE order_no = ?`,
+		orderNo)
+	var ownerID int64
+	var stored string
+	if err := row.Scan(&ownerID, &stored); err != nil {
+		return 0, false
+	}
+	if stored == "" {
+		return 0, false // pre-v0.15 row with no token; only login works
+	}
+	if !constantTimeEq(stored, suppliedToken) {
+		return 0, false
+	}
+	return ownerID, true
+}
+
+// GetOrderForCustomerAPI returns the order row shaped for the customer-
+// facing runner page. Authed via session OR ?token=...; the URL token
+// is set on order creation and shareable in WeChat without forcing
+// the customer to register.
+func GetOrderForCustomerAPI(c *gin.Context) {
 	orderNo := c.Param("order_no")
 	if orderNo == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": "missing order_no",
 		})
+		return
+	}
+
+	userID, ok := resolveOrderAccess(c, orderNo)
+	if !ok {
 		return
 	}
 
@@ -108,19 +177,19 @@ func GetOrderForCustomerAPI(c *gin.Context) {
 // RunOrderFormAPI accepts the multipart form posted by ServiceRun.tsx
 // and synchronously runs the agent. v0.10's RunOrderAPI keeps its JSON
 // contract; this one wraps the same runtime with form-shaped inputs.
+// Authed via session OR ?token=... (same model as GetOrderForCustomerAPI).
 func RunOrderFormAPI(c *gin.Context) {
-	user := auth.RequireAuth(c)
-	if user == nil {
-		return
-	}
-	userID := user.GetID(connection.DB)
-
 	orderNo := c.Param("order_no")
 	if orderNo == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": "missing order_no",
 		})
+		return
+	}
+
+	userID, ok := resolveOrderAccess(c, orderNo)
+	if !ok {
 		return
 	}
 
@@ -161,26 +230,28 @@ func RunOrderFormAPI(c *gin.Context) {
 		return
 	}
 
-	// Image uploads accepted but dropped in v0.14 — record the count
-	// so the agent prompt can mention "user attached N reference photos"
-	// even though we can't read pixels yet.
-	var fileCount int
-	if c.Request.MultipartForm != nil && c.Request.MultipartForm.File != nil {
-		for _, files := range c.Request.MultipartForm.File {
-			fileCount += len(files)
-		}
+	// v0.15: persist uploaded images to disk and pass URLs to the
+	// vision-capable agent. saveUploads sniffs MIME, validates size,
+	// returns publicly-fetchable URLs that NewAPI / OpenAI can resolve.
+	imageURLs, err := saveUploads(orderNo, c.Request.MultipartForm)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "上传失败: " + err.Error(),
+		})
+		return
 	}
 
 	// Build user_input string (the v0.10 runtime takes a single string).
-	userInput := composeUserInput(theme, extra, fileCount)
+	userInput := composeUserInput(theme, extra, len(imageURLs))
 
 	// Save inputs JSON before running so the agent can reference it
 	// (and so a crash mid-run leaves a record of what was submitted).
 	inputsJSON, _ := json.Marshal(map[string]interface{}{
-		"theme":      theme,
-		"extra":      extra,
-		"file_count": fileCount,
-		// note: actual file bytes intentionally not stored — see header doc
+		"theme":       theme,
+		"extra":       extra,
+		"file_count":  len(imageURLs),
+		"image_urls":  imageURLs,
 	})
 
 	// Reuse the existing runtime helpers. Status path is the same.
@@ -199,7 +270,7 @@ func RunOrderFormAPI(c *gin.Context) {
 		return
 	}
 
-	output, creditsUsed, err := executeAgent(c.Request.Context(), agent, userInput)
+	output, creditsUsed, err := executeAgentWithImages(c.Request.Context(), agent, userInput, imageURLs)
 	if err != nil {
 		releaseRunLock(connection.DB, orderNo, runID)
 		globals.Warn(fmt.Sprintf("service: form-run failed for %s: %v", orderNo, err))
@@ -328,13 +399,78 @@ func composeUserInput(theme, extra string, fileCount int) string {
 	return b.String()
 }
 
+// mustResultJSON returns a json.RawMessage matching the frontend
+// ServiceResult discriminated union. v0.15: tries to parse a JSON-
+// fenced block (xhs-copy-writer v2 emits this) into a rednote-post
+// shape; falls back to {kind:"text"} when the agent didn't comply.
 func mustResultJSON(output string) json.RawMessage {
+	if rednote, ok := tryParseRednote(output); ok {
+		if b, err := json.Marshal(rednote); err == nil {
+			return b
+		}
+	}
 	v := CustomerResultText{Kind: "text", Content: output}
 	b, err := json.Marshal(v)
 	if err != nil {
 		return json.RawMessage(`null`)
 	}
 	return b
+}
+
+// tryParseRednote scans the agent output for a ```json … ``` fenced
+// block (most reliable — every modern model honors that contract) and
+// validates the parsed shape has at least title + body. tags + images
+// fall back to empty slices if the model omits them.
+//
+// Robust to common drift: trailing prose after the fence, single vs
+// triple backtick, leading "Here you go:" preamble.
+func tryParseRednote(output string) (CustomerResultRednote, bool) {
+	var empty CustomerResultRednote
+	raw := strings.TrimSpace(output)
+	if raw == "" {
+		return empty, false
+	}
+	// Try fenced block first.
+	if start := strings.Index(raw, "```"); start >= 0 {
+		// Skip "```" + optional language tag (json/JSON/JSon).
+		rest := raw[start+3:]
+		if nl := strings.IndexByte(rest, '\n'); nl >= 0 {
+			rest = rest[nl+1:]
+		}
+		end := strings.Index(rest, "```")
+		if end >= 0 {
+			raw = strings.TrimSpace(rest[:end])
+		}
+	}
+	// Fast-fail: must start with `{`.
+	if !strings.HasPrefix(raw, "{") {
+		return empty, false
+	}
+	var parsed struct {
+		Title  string   `json:"title"`
+		Body   string   `json:"body"`
+		Tags   []string `json:"tags"`
+		Images []string `json:"images"`
+	}
+	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+		return empty, false
+	}
+	if strings.TrimSpace(parsed.Title) == "" || strings.TrimSpace(parsed.Body) == "" {
+		return empty, false
+	}
+	if parsed.Tags == nil {
+		parsed.Tags = []string{}
+	}
+	if parsed.Images == nil {
+		parsed.Images = []string{}
+	}
+	return CustomerResultRednote{
+		Kind:   "rednote-post",
+		Title:  parsed.Title,
+		Body:   parsed.Body,
+		Tags:   parsed.Tags,
+		Images: parsed.Images,
+	}, true
 }
 
 // buildResultView is the fallback shape if the post-run reload fails.

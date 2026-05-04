@@ -114,25 +114,51 @@ func NewOrderNo() string {
 // retroactive catalog edits don't change historical orders. This is the
 // same denormalization pattern as gtk_app_usage_log.
 func CreateOrder(db *sql.DB, coaiUserID int64, svc *Service, paymentProvider string) (string, error) {
+	orderNo, _, err := CreateOrderWithToken(db, coaiUserID, svc, paymentProvider)
+	return orderNo, err
+}
+
+// CreateOrderWithToken is the v0.15 variant: also returns the per-order
+// access_token so the caller (router.go) can bake it into the
+// /services/run/<order_no>?token=... URL it shares with the customer
+// in WeChat. The token is generated server-side and stored on the row;
+// it never expires (the URL is the secret).
+func CreateOrderWithToken(db *sql.DB, coaiUserID int64, svc *Service, paymentProvider string) (string, string, error) {
 	if svc == nil {
-		return "", errors.New("service: CreateOrder requires non-nil service")
+		return "", "", errors.New("service: CreateOrder requires non-nil service")
 	}
 	switch paymentProvider {
 	case "lemonsqueezy", "hupijiao", "manual":
 	default:
-		return "", fmt.Errorf("service: unknown payment_provider %q", paymentProvider)
+		return "", "", fmt.Errorf("service: unknown payment_provider %q", paymentProvider)
 	}
 
 	orderNo := NewOrderNo()
-	_, err := globals.ExecDb(db, `
+	accessToken, err := newAccessToken()
+	if err != nil {
+		return "", "", fmt.Errorf("service: generate access_token: %w", err)
+	}
+	if _, err := globals.ExecDb(db, `
 		INSERT INTO gtk_service_order (
 		  order_no, coai_user_id, service_id, service_slug,
-		  price_cny_cents_paid, credits_granted, payment_provider, status
-		) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending_payment')
+		  price_cny_cents_paid, credits_granted, payment_provider,
+		  access_token, status
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending_payment')
 	`, orderNo, coaiUserID, svc.ID, svc.Slug,
-		svc.PriceCNYCents, svc.IncludedCredits, paymentProvider)
-	if err != nil {
-		return "", fmt.Errorf("service: insert order: %w", err)
+		svc.PriceCNYCents, svc.IncludedCredits, paymentProvider,
+		accessToken); err != nil {
+		return "", "", fmt.Errorf("service: insert order: %w", err)
 	}
-	return orderNo, nil
+	return orderNo, accessToken, nil
+}
+
+// newAccessToken returns a 32-char hex token (16 random bytes). Long
+// enough to brute-force-resist (2^128 keyspace) without bloating the
+// shareable URL beyond what fits in a WeChat message.
+func newAccessToken() (string, error) {
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(buf), nil
 }

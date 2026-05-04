@@ -46,11 +46,15 @@ export type FetchResult =
 
 export type FetchErrorKind = "not-found" | "unauthorized" | "network" | "server" | "unknown";
 
-export async function fetchServiceOrder(orderNo: string): Promise<FetchResult> {
+export async function fetchServiceOrder(
+  orderNo: string,
+  accessToken?: string,
+): Promise<FetchResult> {
   try {
+    const params = accessToken ? { token: accessToken } : undefined;
     const resp = await axios.get<{ success: boolean; data?: ServiceOrder; message?: string }>(
       `/api/gtk/v1/service-order/${encodeURIComponent(orderNo)}`,
-      { timeout: 8000 },
+      { timeout: 8000, params },
     );
     if (resp.data.success && resp.data.data) {
       return { ok: true, order: resp.data.data };
@@ -73,6 +77,7 @@ export type SubmitResult =
 export async function submitServiceRun(
   orderNo: string,
   input: SubmitInput,
+  accessToken?: string,
 ): Promise<SubmitResult> {
   try {
     const form = new FormData();
@@ -84,10 +89,11 @@ export async function submitServiceRun(
         form.append(f.name, f.data);
       }
     }
+    const params = accessToken ? { token: accessToken } : undefined;
     const resp = await axios.post<{ success: boolean; data?: ServiceOrder; message?: string }>(
       `/api/gtk/v1/service-order/${encodeURIComponent(orderNo)}/run`,
       form,
-      { timeout: 30000 },
+      { timeout: 60000, params },
     );
     if (resp.data.success && resp.data.data) {
       return { ok: true, order: resp.data.data };

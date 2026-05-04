@@ -20,6 +20,7 @@ import (
 	"chat/auth"
 	"chat/connection"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -118,7 +119,7 @@ func CreateOrderAPI(c *gin.Context) {
 	}
 
 	coaiUserID := user.GetID(connection.DB)
-	orderNo, err := CreateOrder(connection.DB, coaiUserID, svc, req.PaymentProvider)
+	orderNo, accessToken, err := CreateOrderWithToken(connection.DB, coaiUserID, svc, req.PaymentProvider)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -138,6 +139,11 @@ func CreateOrderAPI(c *gin.Context) {
 		"included_credits": svc.IncludedCredits,
 		"service_name":     svc.Name,
 		"service_slug":     svc.Slug,
+		// v0.15: shareable runner URL with access_token baked in.
+		// Founder copies this to send to the customer in WeChat
+		// (or surfaces it in /admin/mansu's order link column).
+		"access_token": accessToken,
+		"runner_url":   fmt.Sprintf("/services/run/%s?token=%s", orderNo, accessToken),
 	}
 
 	switch req.PaymentProvider {

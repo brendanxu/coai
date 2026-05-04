@@ -26,6 +26,41 @@ import (
 	"net/url"
 )
 
+// registerStorageRoute serves /storage/orders/<order_no>/<file> from
+// the on-disk volume mounted at /storage (or storage.root override).
+// Path traversal is prevented by gin's filepath.Clean on c.File.
+func registerStorageRoute(engine *gin.Engine) {
+	root := viper.GetString("storage.root")
+	if root == "" {
+		root = "/storage"
+	}
+	engine.GET("/storage/orders/:order_no/:file", func(c *gin.Context) {
+		orderNo := c.Param("order_no")
+		file := c.Param("file")
+		// Reject any path containing separators in either segment —
+		// gin's :param normally doesn't accept slashes, but defense in
+		// depth is cheap.
+		if orderNo == "" || file == "" ||
+			containsAnyByte(orderNo, "/\\") ||
+			containsAnyByte(file, "/\\") {
+			c.JSON(400, gin.H{"status": false, "message": "invalid path"})
+			return
+		}
+		c.File(fmt.Sprintf("%s/orders/%s/%s", root, orderNo, file))
+	})
+}
+
+func containsAnyByte(s, chars string) bool {
+	for i := 0; i < len(s); i++ {
+		for j := 0; j < len(chars); j++ {
+			if s[i] == chars[j] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func readCorsOrigins() {
 	origins := viper.GetStringSlice("allow_origins")
 	if len(origins) > 0 {
@@ -126,6 +161,10 @@ func main() {
 		globals.Warn("newapi: admin_access_token not configured — purchase → key provisioning will no-op")
 	}
 
+	// v0.15: serve customer order uploads from the /storage volume.
+	// Registered BEFORE RegisterStaticRoute so the catch-all SPA
+	// fallback doesn't swallow /storage/* requests.
+	registerStorageRoute(app)
 	utils.RegisterStaticRoute(app)
 	registerApiRouter(app)
 	readCorsOrigins()

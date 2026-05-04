@@ -159,6 +159,14 @@ func migrateMySQL(db *sql.DB) error {
 		"TEXT NULL AFTER agent_output"); err != nil {
 		return fmt.Errorf("add agent_inputs column: %w", err)
 	}
+	// v0.15: anonymous-friendly access token. URL-as-secret pattern lets
+	// founder share /services/run/<order_no>?token=... in WeChat without
+	// the customer creating an account. NULL means "auth required" for
+	// orders created before v0.15.
+	if err := addColumnIfMissing(db, "gtk_service_order", "access_token",
+		"VARCHAR(48) NULL AFTER agent_inputs"); err != nil {
+		return fmt.Errorf("add access_token column: %w", err)
+	}
 	return nil
 }
 
@@ -255,6 +263,9 @@ func migrateSQLite(db *sql.DB) error {
 		  -- /services/run page can render results on refresh.
 		  agent_output          TEXT,
 		  agent_inputs          TEXT,
+		  -- v0.15: per-order access token for the anonymous-friendly
+		  -- /services/run URL. NULL = require login.
+		  access_token          TEXT,
 		  refund_reason         TEXT,
 		  created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		  updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

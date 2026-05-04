@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   CheckCircle2,
@@ -43,6 +43,11 @@ import {
  */
 export default function ServiceRun() {
   const { order_no } = useParams<{ order_no: string }>();
+  const [searchParams] = useSearchParams();
+  // v0.15: ?token=... in the URL lets the customer bypass login. Founder
+  // shares this URL in WeChat right after a manual concierge sale; the
+  // token is the per-order secret minted at order creation.
+  const accessToken = searchParams.get("token") || undefined;
   const { t } = useTranslation();
   const [order, setOrder] = useState<ServiceOrder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +66,7 @@ export default function ServiceRun() {
     let pollTimer: number | null = null;
 
     async function load() {
-      const resp = await fetchServiceOrder(order_no!);
+      const resp = await fetchServiceOrder(order_no!, accessToken);
       if (cancelled) return;
       if (resp.ok) {
         setOrder(resp.order);
@@ -86,7 +91,7 @@ export default function ServiceRun() {
       cancelled = true;
       if (pollTimer) window.clearInterval(pollTimer);
     };
-  }, [order_no, order?.status]);
+  }, [order_no, order?.status, accessToken]);
 
   async function onSubmit() {
     if (!order_no) return;
@@ -98,7 +103,7 @@ export default function ServiceRun() {
     const resp = await submitServiceRun(order_no, {
       fields: { theme, extra },
       files: files ? Array.from(files).map((f) => ({ name: "image", data: f })) : undefined,
-    });
+    }, accessToken);
     setSubmitting(false);
     if (resp.ok) {
       setOrder(resp.order);

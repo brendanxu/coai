@@ -38,6 +38,10 @@ type SeedAgent struct {
 	MinTier        string // light | standard | premium
 	InputsSchema   string // JSON-Schema string; "" = no validation
 	Status         string // active | draft | retired
+	// Version: bump when SystemPrompt or PreferredModel changes so the
+	// seed function UPGRADES existing rows in place. Seed is idempotent
+	// — INSERT on first boot, UPDATE only when seed.Version > db.version.
+	Version int
 }
 
 // SeedService is the strawman service definition. agent_slug must
@@ -71,29 +75,40 @@ var agentSeeds = []SeedAgent{
 		Slug:           "xhs-copy-writer",
 		Name:           "小红书内容生成器",
 		Description:    "为民宿主生成高转化的小红书 caption + 标签 + emoji，针对 1-3 张房型/场景照片的输入。",
-		PreferredModel: "deepseek-chat",
-		MinTier:        "light",
+		// v0.15: switched to gpt-4o-mini for vision capability — the
+		// runner now passes uploaded image URLs in multimodal format.
+		// Falls back gracefully when no images attached.
+		PreferredModel: "gpt-4o-mini",
+		MinTier:        "standard",
 		Status:         "active",
-		// InputsSchema deliberately empty for v0.10 — runtime accepts
-		// free-form input. v0.11 should add a JSON Schema validator
-		// to lock the input shape (image URLs + theme tags).
-		InputsSchema: "",
+		Version:        2,
+		InputsSchema:   "",
 		SystemPrompt: `你是专门为云南大理民宿运营的小红书内容生成器。
 
-任务：根据用户上传的房间/场景照片描述 + 主题词，生成 1 篇小红书 caption（150-300 字），包含：
-1. 一个抓眼球的开头钩子（避开"姐妹们"、"宝子们"这种通用开场）
-2. 3-4 段身临其境的场景描写（强调五感：视觉/触觉/嗅觉）
-3. 实用信息块（位置/价格区间/适合人群），用 emoji 分隔
-4. 5-8 个中文标签（包含 #大理民宿 #大理 #洱海 + 主题词的相关变体）
-5. 结尾 CTA：引导私信详询而非直接报价
+输入：
+- 主题词（用户的发文方向）
+- 备注（可选的卖点/避雷点）
+- 0-12 张照片（房型/场景/食物/路线，可视）
+
+任务：生成 1 篇可直接发布的小红书 post，包含标题、正文、标签、配图建议。
 
 风格要求：
 - 真实感优先于销售感。不要写"超值"、"限时"、"性价比"这些营销词
 - 民宿主的人设是亲切的本地老板，不是营销号
 - 季节感强：四季的大理是不同产品，按当前月份调整意境
 - 避开"网红"、"出片"等已经被滥用的词
+- 看到图片时，让正文具体描述图中可见的细节（窗外景、家具材质、食物色泽等）
 
-输出格式：直接给 caption 文本，不要解释或加 markdown 包装。`,
+输出格式：必须输出一个 JSON 代码块，且只输出一个，外面用 ` + "```json" + `…` + "```" + ` 包裹。结构：
+
+{
+  "title": "≤20 字抓眼球标题，避开'姐妹们''宝子们'通用开场",
+  "body": "150-300 字正文。3-4 段身临其境场景描写（强调五感）+ 实用信息块（位置/价格区间/适合人群，用 emoji 分隔）+ 结尾引导私信",
+  "tags": ["大理民宿", "大理", "洱海", "...主题相关 5-8 个，不要带 # 号"],
+  "images": ["原样回传输入的图片 URL，按你建议的发布顺序排列"]
+}
+
+不要输出 JSON 外的任何解释文字。如果没有图片输入，images 字段返回空数组 []。`,
 	},
 	{
 		Slug:           "mansu-managed-orchestrator",
@@ -187,23 +202,48 @@ func SeedCatalog(db *sql.DB) error {
 	return nil
 }
 
-// seedAgent inserts or skips. Returns nil if skipped (already exists).
+// seedAgent inserts on first boot, UPGRADES on later boots when
+// seed.Version > db.version. This lets us rev system prompts across
+// deploys without losing other admin-side edits.
 func seedAgent(db *sql.DB, a SeedAgent) error {
-	exists, err := agentExists(db, a.Slug)
+	if a.Version <= 0 {
+		a.Version = 1
+	}
+	row := globals.QueryRowDb(db, `SELECT version FROM gtk_agent WHERE slug = ?`, a.Slug)
+	var existing int
+	switch err := row.Scan(&existing); {
+	case errors.Is(err, sql.ErrNoRows):
+		_, err := globals.ExecDb(db, `
+			INSERT INTO gtk_agent
+			  (slug, name, description, system_prompt, preferred_model,
+			   min_tier, inputs_schema, status, version)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, a.Slug, a.Name, a.Description, a.SystemPrompt, a.PreferredModel,
+			a.MinTier, nullableString(a.InputsSchema), a.Status, a.Version)
+		return err
+	case err != nil:
+		return fmt.Errorf("check agent version: %w", err)
+	}
+	if a.Version <= existing {
+		return nil // db already at or beyond seed version; no-op.
+	}
+	// Upgrade in place. Preserve the row id (and any FK relationships
+	// pointing at it).
+	_, err := globals.ExecDb(db, `
+		UPDATE gtk_agent
+		SET name = ?, description = ?, system_prompt = ?,
+		    preferred_model = ?, min_tier = ?, inputs_schema = ?,
+		    status = ?, version = ?
+		WHERE slug = ?
+	`, a.Name, a.Description, a.SystemPrompt, a.PreferredModel,
+		a.MinTier, nullableString(a.InputsSchema), a.Status, a.Version, a.Slug)
 	if err != nil {
-		return fmt.Errorf("check agent exists: %w", err)
+		return fmt.Errorf("upgrade agent %s v%d→v%d: %w",
+			a.Slug, existing, a.Version, err)
 	}
-	if exists {
-		return nil
-	}
-	_, err = globals.ExecDb(db, `
-		INSERT INTO gtk_agent
-		  (slug, name, description, system_prompt, preferred_model,
-		   min_tier, inputs_schema, status, version)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-	`, a.Slug, a.Name, a.Description, a.SystemPrompt, a.PreferredModel,
-		a.MinTier, nullableString(a.InputsSchema), a.Status)
-	return err
+	globals.Info(fmt.Sprintf("service: upgraded agent %s v%d→v%d",
+		a.Slug, existing, a.Version))
+	return nil
 }
 
 // seedService inserts or skips. Same idempotency contract as seedAgent.
