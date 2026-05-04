@@ -40,6 +40,12 @@ func Register(app *gin.RouterGroup) {
 	// Public — hupijiao webhook target. Auth is HMAC-MD5 against
 	// hupijiao.merchant_secret (verified inside the handler).
 	app.POST("/gtk/v1/service/hupijiao-callback", HupijiaoCallbackAPI)
+
+	// v0.14 — customer-facing order view + form-based runner.
+	// Sister pair to /service/order + /service/run/:order_no for the
+	// /services/run/:order_no UI. AUTH (owner-only) inside handlers.
+	app.GET("/gtk/v1/service-order/:order_no", GetOrderForCustomerAPI)
+	app.POST("/gtk/v1/service-order/:order_no/run", RunOrderFormAPI)
 }
 
 // CatalogAPI returns the public service catalog. Public — no auth gate.

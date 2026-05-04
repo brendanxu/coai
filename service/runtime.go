@@ -300,6 +300,22 @@ func finalizeRun(db *sql.DB, order *ServiceOrder, runID string, creditsUsed int)
 	return remaining, nil
 }
 
+// persistRunOutput stores the agent's output + the customer inputs on
+// the order row so the /services/run page can render the result on
+// refresh / reopen. Called from RunOrderFormAPI (v0.14) right after
+// finalizeRun. Best-effort — a failure here doesn't break the response,
+// just means the customer can't reload to see it again.
+func persistRunOutput(db *sql.DB, orderNo, output, inputsJSON string) {
+	_, err := globals.ExecDb(db, `
+		UPDATE gtk_service_order
+		SET agent_output = ?, agent_inputs = ?
+		WHERE order_no = ?
+	`, output, inputsJSON, orderNo)
+	if err != nil {
+		globals.Warn(fmt.Sprintf("service: persistRunOutput failed for %s: %v", orderNo, err))
+	}
+}
+
 // statusCodeForRunErr maps loadRunnableOrder errors to HTTP responses.
 func statusCodeForRunErr(c *gin.Context, err error) {
 	switch {

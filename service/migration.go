@@ -148,6 +148,17 @@ func migrateMySQL(db *sql.DB) error {
 		"INT NULL AFTER hupijiao_trade_no"); err != nil {
 		return fmt.Errorf("add subscription_id column: %w", err)
 	}
+	// v0.14: persist agent output so the /services/run page can render
+	// the result on refresh / reopen, not just inside the synchronous
+	// POST response. Idempotent — does nothing if column exists.
+	if err := addColumnIfMissing(db, "gtk_service_order", "agent_output",
+		"MEDIUMTEXT NULL AFTER agent_run_id"); err != nil {
+		return fmt.Errorf("add agent_output column: %w", err)
+	}
+	if err := addColumnIfMissing(db, "gtk_service_order", "agent_inputs",
+		"TEXT NULL AFTER agent_output"); err != nil {
+		return fmt.Errorf("add agent_inputs column: %w", err)
+	}
 	return nil
 }
 
@@ -240,6 +251,10 @@ func migrateSQLite(db *sql.DB) error {
 		  paid_at               DATETIME,
 		  completed_at          DATETIME,
 		  agent_run_id          TEXT,
+		  -- v0.14: agent output + customer inputs persisted so the
+		  -- /services/run page can render results on refresh.
+		  agent_output          TEXT,
+		  agent_inputs          TEXT,
 		  refund_reason         TEXT,
 		  created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		  updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
