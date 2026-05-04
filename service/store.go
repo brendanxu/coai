@@ -162,3 +162,37 @@ func newAccessToken() (string, error) {
 	}
 	return hex.EncodeToString(buf), nil
 }
+
+// CreateConciergeOrder is the v0.16 admin entrypoint for /admin/mansu's
+// "create order" button. Differences from CreateOrder:
+//   - payment_provider hard-coded to "manual" (offline settlement)
+//   - status starts as "paid" not "pending_payment" (founder confirmed
+//     money received outside the system before clicking)
+//   - lead_id linked so the kanban + admin-orders LEFT JOIN works
+//   - coai_user_id is the requesting admin's id (we don't auto-create
+//     CoAI accounts for leads yet; access via runner URL token instead)
+//
+// Returns (order_no, access_token, error). Caller composes the runner
+// URL: /services/run/<order_no>?token=<access_token>.
+func CreateConciergeOrder(db *sql.DB, adminID, leadID int64, svc *Service) (string, string, error) {
+	if svc == nil {
+		return "", "", errors.New("service: CreateConciergeOrder requires non-nil service")
+	}
+	orderNo := NewOrderNo()
+	accessToken, err := newAccessToken()
+	if err != nil {
+		return "", "", fmt.Errorf("service: generate access_token: %w", err)
+	}
+	if _, err := globals.ExecDb(db, `
+		INSERT INTO gtk_service_order (
+		  order_no, coai_user_id, service_id, service_slug,
+		  price_cny_cents_paid, credits_granted, payment_provider,
+		  access_token, lead_id, status, paid_at
+		) VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?, 'paid', CURRENT_TIMESTAMP)
+	`, orderNo, adminID, svc.ID, svc.Slug,
+		svc.PriceCNYCents, svc.IncludedCredits,
+		accessToken, leadID); err != nil {
+		return "", "", fmt.Errorf("service: insert concierge order: %w", err)
+	}
+	return orderNo, accessToken, nil
+}

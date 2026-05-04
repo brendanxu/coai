@@ -47,6 +47,10 @@ func Register(app *gin.RouterGroup) {
 	// /services/run/:order_no UI. AUTH (owner-only) inside handlers.
 	app.GET("/gtk/v1/service-order/:order_no", GetOrderForCustomerAPI)
 	app.POST("/gtk/v1/service-order/:order_no/run", RunOrderFormAPI)
+
+	// v0.16 — admin concierge order creation (founder workflow on
+	// /admin/mansu kanban). AUTH: admin only inside the handler.
+	app.POST("/gtk/v1/admin/leads/:id/create-order", AdminCreateConciergeOrderAPI)
 }
 
 // CatalogAPI returns the public service catalog. Public — no auth gate.

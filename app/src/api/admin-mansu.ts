@@ -65,6 +65,86 @@ export async function patchLeadStatus(
   }
 }
 
+// v0.16 — concierge order creation off the kanban.
+
+export type ServiceCatalogEntry = {
+  slug: string;
+  name: string;
+  description?: string;
+  category: string;
+  price_cny_cents: number;
+  price_display_cny: string;
+  included_credits: number;
+  billing_type: string;
+  display_order: number;
+};
+
+export async function fetchActiveServices(): Promise<ServiceCatalogEntry[]> {
+  // Same public endpoint Services.tsx uses. Public catalog is fine for
+  // admin too — we just need the slug + name + price.
+  try {
+    const resp = await axios.get<{
+      success: boolean;
+      data?: { services?: ServiceCatalogEntry[] };
+    }>("/gtk/v1/services");
+    if (resp.data.success && resp.data.data?.services) {
+      return resp.data.data.services;
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export type ConciergeOrderResult = {
+  ok: true;
+  order_no: string;
+  access_token: string;
+  runner_url: string; // path-only; caller prefixes origin
+  service_name: string;
+  price_display: string;
+} | {
+  ok: false;
+  message: string;
+};
+
+export async function createConciergeOrder(
+  leadId: number,
+  serviceSlug: string,
+  notes: string,
+): Promise<ConciergeOrderResult> {
+  try {
+    const resp = await axios.post<{
+      success: boolean;
+      data?: {
+        order_no: string;
+        access_token: string;
+        runner_url: string;
+        service_name: string;
+        price_display: string;
+      };
+      message?: string;
+    }>(
+      `/api/gtk/v1/admin/leads/${leadId}/create-order`,
+      { service_slug: serviceSlug, notes },
+    );
+    if (resp.data.success && resp.data.data) {
+      return { ok: true, ...resp.data.data };
+    }
+    return { ok: false, message: resp.data.message || "创建失败" };
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      return {
+        ok: false,
+        message:
+          (err as AxiosError<{ message?: string }>).response?.data?.message ||
+          err.message,
+      };
+    }
+    return { ok: false, message: String(err) };
+  }
+}
+
 function mapErr(err: unknown): ListLeadsResult {
   if (axios.isAxiosError(err)) {
     const ax = err as AxiosError<{ message?: string }>;

@@ -85,24 +85,27 @@ func AdminListLeadsAPI(c *gin.Context) {
 	var rows *sql.Rows
 	var err error
 
-	// Pull active_order_no via LEFT JOIN. Match heuristic: same phone
-	// OR same wechat on the auth user that placed the order. There's
-	// no FK from gtk_service_order back to gtk_lead, so this is a
-	// best-effort join until we add lead_id to the order schema.
-	//
-	// Why subquery instead of LEFT JOIN: lead → user → order is a
-	// 1-to-many path. A subquery picks the most recent active order
-	// (status in pending/running) per lead without GROUP BY tricks.
+	// v0.16: prefer the direct lead_id link on gtk_service_order. Falls
+	// back to the wechat/phone=username heuristic so legacy orders
+	// (created before lead_id existed) still surface in the kanban.
+	// Picks the most recent active order so a re-buy supersedes the
+	// completed prior one.
 	const baseSQL = `
 		SELECT
 		  l.id, l.wechat, l.phone, l.homestay_name, l.homestay_loc,
 		  l.notes, l.source, l.status, l.created_at, l.updated_at,
 		  COALESCE((
 		    SELECT o.order_no FROM gtk_service_order o
+		    WHERE o.lead_id = l.id
+		      AND o.status IN ('pending_payment','paid','running','completed')
+		    ORDER BY o.created_at DESC LIMIT 1
+		  ), (
+		    SELECT o.order_no FROM gtk_service_order o
 		    JOIN auth u ON u.id = o.coai_user_id
-		    WHERE (l.wechat <> '' AND u.username = l.wechat)
-		       OR (l.phone <> ''  AND u.username = l.phone)
-		    AND o.status IN ('pending_payment','paid','running','complete')
+		    WHERE o.lead_id IS NULL
+		      AND ((l.wechat <> '' AND u.username = l.wechat)
+		           OR (l.phone <> ''  AND u.username = l.phone))
+		      AND o.status IN ('pending_payment','paid','running','completed')
 		    ORDER BY o.created_at DESC LIMIT 1
 		  ), '') AS active_order_no
 		FROM gtk_lead l

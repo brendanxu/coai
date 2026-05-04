@@ -10,8 +10,18 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog.tsx";
+import {
   ArrowRight,
+  Copy,
   ExternalLink,
+  PackagePlus,
   Phone,
   RotateCw,
 } from "lucide-react";
@@ -21,8 +31,11 @@ import {
   listLeads,
   patchLeadStatus,
   makeDemoLeads,
+  fetchActiveServices,
+  createConciergeOrder,
   type Lead,
   type LeadStatus,
+  type ServiceCatalogEntry,
 } from "@/api/admin-mansu.ts";
 
 /**
@@ -50,6 +63,8 @@ export default function Mansu() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [demoMode, setDemoMode] = useState(false);
+  const [services, setServices] = useState<ServiceCatalogEntry[]>([]);
+  const [orderDialogLead, setOrderDialogLead] = useState<Lead | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -68,6 +83,7 @@ export default function Mansu() {
 
   useEffect(() => {
     refresh();
+    fetchActiveServices().then(setServices);
   }, []);
 
   async function moveLead(lead: Lead, next: LeadStatus) {
@@ -121,9 +137,24 @@ export default function Mansu() {
           </div>
         </CardHeader>
         <CardContent>
-          <KanbanBoard leads={leads} onMove={moveLead} />
+          <KanbanBoard
+            leads={leads}
+            onMove={moveLead}
+            onCreateOrder={(lead) => setOrderDialogLead(lead)}
+          />
         </CardContent>
       </Card>
+
+      <CreateOrderDialog
+        lead={orderDialogLead}
+        services={services}
+        demoMode={demoMode}
+        onClose={() => setOrderDialogLead(null)}
+        onCreated={() => {
+          setOrderDialogLead(null);
+          refresh();
+        }}
+      />
 
       <Card className="admin-card">
         <CardHeader className="select-none">
@@ -156,9 +187,11 @@ const STAGE_ORDER: LeadStatus[] = ["new", "contacted", "signed", "running", "don
 function KanbanBoard({
   leads,
   onMove,
+  onCreateOrder,
 }: {
   leads: Lead[];
   onMove: (lead: Lead, next: LeadStatus) => void;
+  onCreateOrder: (lead: Lead) => void;
 }) {
   const grouped = useMemo(() => {
     const acc: Record<LeadStatus, Lead[]> = {
@@ -194,7 +227,12 @@ function KanbanBoard({
               </p>
             ) : (
               grouped[stage].map((lead) => (
-                <LeadCard key={lead.id} lead={lead} onMove={onMove} />
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  onMove={onMove}
+                  onCreateOrder={onCreateOrder}
+                />
               ))
             )}
           </div>
@@ -207,9 +245,11 @@ function KanbanBoard({
 function LeadCard({
   lead,
   onMove,
+  onCreateOrder,
 }: {
   lead: Lead;
   onMove: (lead: Lead, next: LeadStatus) => void;
+  onCreateOrder: (lead: Lead) => void;
 }) {
   const stage = STAGES[lead.status];
   return (
@@ -262,6 +302,18 @@ function LeadCard({
             <ArrowRight className="w-3 h-3" />
           </Button>
         )}
+        {!lead.active_order_no && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-xs ml-auto"
+            onClick={() => onCreateOrder(lead)}
+            title="创建概念订单"
+          >
+            <PackagePlus className="w-3 h-3 mr-1" />
+            建单
+          </Button>
+        )}
         {lead.active_order_no && (
           <Link
             to={`/services/run/${lead.active_order_no}`}
@@ -274,6 +326,138 @@ function LeadCard({
         )}
       </footer>
     </article>
+  );
+}
+
+function CreateOrderDialog({
+  lead,
+  services,
+  demoMode,
+  onClose,
+  onCreated,
+}: {
+  lead: Lead | null;
+  services: ServiceCatalogEntry[];
+  demoMode: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [serviceSlug, setServiceSlug] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+  const [createdUrl, setCreatedUrl] = useState<string | null>(null);
+
+  // Reset state on open
+  useEffect(() => {
+    if (lead) {
+      setServiceSlug(services[0]?.slug || "");
+      setNotes("");
+      setCreatedUrl(null);
+    }
+  }, [lead, services]);
+
+  if (!lead) return null;
+
+  async function submit() {
+    if (!serviceSlug) return;
+    if (demoMode) {
+      const fakeToken = Math.random().toString(36).slice(2, 18);
+      const fakeOrder = "GTK-DEMO-" + Date.now().toString(36).toUpperCase();
+      setCreatedUrl(`${window.location.origin}/services/run/${fakeOrder}?token=${fakeToken}`);
+      toast.success("Demo: 已模拟下单 (后端未连)");
+      return;
+    }
+    setSubmitting(true);
+    const resp = await createConciergeOrder(lead!.id, serviceSlug, notes);
+    setSubmitting(false);
+    if (resp.ok) {
+      const fullUrl = `${window.location.origin}${resp.runner_url}`;
+      setCreatedUrl(fullUrl);
+      toast.success(`订单已创建 · ${resp.service_name} · ${resp.price_display}`);
+      // Don't auto-close — founder needs to copy the URL first.
+    } else {
+      toast.error(resp.message);
+    }
+  }
+
+  function copyUrl() {
+    if (!createdUrl) return;
+    navigator.clipboard.writeText(createdUrl);
+    toast.success("URL 已复制 — 粘贴到微信发给客户");
+  }
+
+  return (
+    <Dialog open={!!lead} onOpenChange={(open) => { if (!open) { onClose(); if (createdUrl) onCreated(); } }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>创建概念订单</DialogTitle>
+          <DialogDescription>
+            为 <strong>{lead.homestay_name || lead.wechat || lead.phone}</strong> 建一笔
+            <code className="ml-1 px-1 bg-muted rounded text-xs">manual</code> 订单。
+            订单将直接置为 paid 状态(默认你已经收到客户的微信/支付宝转账)。
+          </DialogDescription>
+        </DialogHeader>
+
+        {!createdUrl && (
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="block text-xs font-medium mb-1">选择服务</label>
+              <select
+                value={serviceSlug}
+                onChange={(e) => setServiceSlug(e.target.value)}
+                className="w-full text-sm border border-input rounded-md px-2.5 py-1.5 bg-background"
+              >
+                {services.length === 0 && <option value="">— 无可用服务 —</option>}
+                {services.map((s) => (
+                  <option key={s.slug} value={s.slug}>
+                    {s.name} · {s.price_display_cny}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">备注 (将追加到 lead.notes)</label>
+              <input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="例:微信付款 ¥1980 / 已签约 4 周"
+                className="w-full text-sm border border-input rounded-md px-2.5 py-1.5 bg-background"
+                maxLength={200}
+              />
+            </div>
+          </div>
+        )}
+
+        {createdUrl && (
+          <div className="space-y-3 py-2">
+            <p className="text-sm">订单创建成功 ✓ — 把这个 URL 发给客户:</p>
+            <div className="bg-muted rounded p-2 text-xs font-mono break-all border border-border-soft">
+              {createdUrl}
+            </div>
+            <Button onClick={copyUrl} className="w-full" variant="outline">
+              <Copy className="w-3.5 h-3.5 mr-2" />
+              复制 URL
+            </Button>
+          </div>
+        )}
+
+        <DialogFooter>
+          {!createdUrl && (
+            <>
+              <Button variant="outline" onClick={onClose}>取消</Button>
+              <Button onClick={submit} disabled={!serviceSlug || submitting}>
+                {submitting ? "创建中..." : "创建订单"}
+              </Button>
+            </>
+          )}
+          {createdUrl && (
+            <Button onClick={() => { onClose(); onCreated(); }} className="w-full">
+              完成
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

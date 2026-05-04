@@ -167,7 +167,42 @@ func migrateMySQL(db *sql.DB) error {
 		"VARCHAR(48) NULL AFTER agent_inputs"); err != nil {
 		return fmt.Errorf("add access_token column: %w", err)
 	}
+	// v0.16: link concierge orders directly to the originating lead so
+	// the kanban + admin-orders view can do clean LEFT JOIN without the
+	// brittle wechat/phone=username heuristic. Self-paid orders (real
+	// LemonSqueezy / hupijiao customers) get NULL — they came in via
+	// /services purchase flow, not from a sales-pipeline lead.
+	if err := addColumnIfMissing(db, "gtk_service_order", "lead_id",
+		"BIGINT NULL AFTER access_token"); err != nil {
+		return fmt.Errorf("add lead_id column: %w", err)
+	}
+	if err := addIndexIfMissing(db, "gtk_service_order", "idx_order_lead",
+		"(lead_id, created_at)"); err != nil {
+		return fmt.Errorf("add idx_order_lead: %w", err)
+	}
 	return nil
+}
+
+// addIndexIfMissing creates an index only if it doesn't already exist.
+// SQLite skipped (test schemas don't need the perf index).
+func addIndexIfMissing(db *sql.DB, table, indexName, columns string) error {
+	if globals.SqliteEngine {
+		return nil
+	}
+	var count int
+	row := globals.QueryRowDb(db, `
+		SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+		WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?
+	`, table, indexName)
+	if err := row.Scan(&count); err != nil {
+		return fmt.Errorf("check index %s.%s: %w", table, indexName, err)
+	}
+	if count > 0 {
+		return nil
+	}
+	_, err := globals.ExecDb(db, fmt.Sprintf(
+		"ALTER TABLE %s ADD INDEX %s %s", table, indexName, columns))
+	return err
 }
 
 // addColumnIfMissing runs ALTER TABLE ... ADD COLUMN only if the column
@@ -266,6 +301,9 @@ func migrateSQLite(db *sql.DB) error {
 		  -- v0.15: per-order access token for the anonymous-friendly
 		  -- /services/run URL. NULL = require login.
 		  access_token          TEXT,
+		  -- v0.16: link to gtk_lead for concierge orders (NULL when
+		  -- order came from self-serve LS / hupijiao checkout).
+		  lead_id               INTEGER,
 		  refund_reason         TEXT,
 		  created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		  updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
