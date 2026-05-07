@@ -105,9 +105,11 @@ function DocsCN() {
 
       <div className="callout">
         <p>
-          <strong>BYOK ≠ 中转：</strong>我们不存你的 prompt /
-          response，仅记录元数据（模型名、token 数、时间戳）用于计费。
-          完整透明度策略见{" "}
+          <strong>BYOK ≠ 中转(当前技术状态):</strong>我们当前在应用层
+          不存储 prompt / response 内容,仅记录元数据(模型名、token 数、
+          时间戳)用于计费。这描述的是当前实现状态,不是永久承诺 —
+          配置可在仓库 <code>infra/coai-config.yaml.example</code> +
+          NewAPI dashboard 验证;任何变更会同步更新{" "}
           <a href="/privacy">隐私政策</a>。
         </p>
       </div>
@@ -388,10 +390,14 @@ function DocsEN() {
 
       <div className="callout">
         <p>
-          <strong>BYOK ≠ proxying:</strong> we don&apos;t store prompts or
-          completions. We log only metadata (model, token count, timestamp)
-          for billing. See{" "}
-          <a href="/privacy">privacy policy</a> for details.
+          <strong>BYOK ≠ proxying (current technical state):</strong> under
+          the current configuration we do not store prompts or completions
+          at the application layer; we log only metadata (model, token count,
+          timestamp) for billing. This describes current implementation, not
+          a perpetual commitment — configuration is verifiable in the
+          repository (<code>infra/coai-config.yaml.example</code>) and the
+          NewAPI dashboard, and any change will be reflected in the{" "}
+          <a href="/privacy">privacy policy</a>.
         </p>
       </div>
 

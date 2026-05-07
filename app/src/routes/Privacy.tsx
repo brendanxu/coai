@@ -111,8 +111,10 @@ function PrivacyCN() {
         <li>
           <strong>NewAPI 上游模型供应商</strong>（OpenAI / Anthropic / DeepSeek /
           阿里云 / 智谱 / 月之暗面 等）— 你的 prompt 内容会发送给上游模型 API
-          以生成 response。我们不存储 prompt 文本。上游各家 API 的隐私政策由
-          它们自行公布。
+          以生成 response。<strong>当前技术配置下</strong>,我们不在应用层
+          存储 prompt 文本(NewAPI prompt log 设置见仓库 <code>infra/coai-config.yaml.example</code>)。
+          这是当前实现状态而非永久性合同承诺 — 任何配置变更会同步更新本页。
+          上游各家 API 的隐私政策由它们自行公布。
         </li>
         <li>
           <strong>Cloudflare</strong> — CDN + DDoS 防护。共享：访问日志（IP / UA / URL）。
@@ -292,8 +294,13 @@ function PrivacyEN() {
         <li>
           <strong>NewAPI upstream model providers</strong> (OpenAI / Anthropic /
           DeepSeek / Aliyun / Zhipu / Moonshot, etc.) — your prompt is sent to
-          the upstream model API to generate a response. We do not store prompt
-          text. Upstream privacy policies are published by each provider.
+          the upstream model API to generate a response. <strong>Under the
+          current technical configuration</strong>, we do not store prompt
+          text at the application layer (NewAPI prompt-log settings: see
+          repository <code>infra/coai-config.yaml.example</code>). This
+          describes current implementation, not a binding perpetual commitment
+          — any configuration change will be reflected on this page. Upstream
+          privacy policies are published by each provider.
         </li>
         <li>
           <strong>Cloudflare</strong> — CDN + DDoS protection. Shared: access
