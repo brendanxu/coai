@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { Moon, Sun, Monitor } from "lucide-react";
 
 import { Button } from "./ui/button";
@@ -20,7 +26,7 @@ type ThemeProviderState = {
   toggleTheme?: () => void;
 };
 
-export function activeTheme(theme: Theme) {
+export function activeTheme(theme: Theme, options?: { persist?: boolean }) {
   const root = window.document.documentElement;
 
   root.classList.remove("light", "dark");
@@ -32,7 +38,12 @@ export function activeTheme(theme: Theme) {
   }
 
   root.classList.add(actualTheme);
-  setMemory("theme", theme);
+  // persist defaults true to preserve existing call sites (ThemeToggle etc.).
+  // Marketing-route forcing in Index.tsx passes { persist: false } so the
+  // user's app-route preference (e.g. dark) survives a marketing visit.
+  if (options?.persist !== false) {
+    setMemory("theme", theme);
+  }
   themeEvent.emit(actualTheme);
 }
 
@@ -42,7 +53,11 @@ export function getTheme() {
 
 // system -> dark -> light -> system
 function getNextTheme(current: Theme): Theme {
-  return current === "system" ? "dark" : current === "dark" ? "light" : "system";
+  return current === "system"
+    ? "dark"
+    : current === "dark"
+    ? "light"
+    : "system";
 }
 
 const initialState: ThemeProviderState = {
@@ -68,7 +83,10 @@ export function ThemeProvider({
     () => (getMemory("theme") as Theme) || defaultTheme,
   );
 
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) so the class flip happens synchronously
+  // before paint, batched with sibling layout effects (e.g. Index.tsx's
+  // marketing-route theme override) — prevents a paint between them.
+  useLayoutEffect(() => {
     const root = window.document.documentElement;
 
     root.classList.remove("light", "dark");
@@ -111,7 +129,13 @@ export const useTheme = () => {
   return context;
 };
 
-export function ThemeToggle({ className, size = "icon" }: { className?: string; size?: "icon" | "icon-md" }) {
+export function ThemeToggle({
+  className,
+  size = "icon",
+}: {
+  className?: string;
+  size?: "icon" | "icon-md";
+}) {
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -119,16 +143,28 @@ export function ThemeToggle({ className, size = "icon" }: { className?: string; 
       variant="outline"
       size={size}
       onClick={() => toggleTheme?.()}
-      className={`!m-0 ${className || ''}`}
+      className={`!m-0 ${className || ""}`}
     >
       <Sun
-        className={`h-4 w-4 transition-all ${theme === "light" ? "relative rotate-0 scale-100" : "absolute -rotate-90 scale-0"}`}
+        className={`h-4 w-4 transition-all ${
+          theme === "light"
+            ? "relative rotate-0 scale-100"
+            : "absolute -rotate-90 scale-0"
+        }`}
       />
       <Moon
-        className={`h-4 w-4 transition-all ${theme === "dark" ? "relative rotate-0 scale-100" : "absolute rotate-90 scale-0"}`}
+        className={`h-4 w-4 transition-all ${
+          theme === "dark"
+            ? "relative rotate-0 scale-100"
+            : "absolute rotate-90 scale-0"
+        }`}
       />
       <Monitor
-        className={`h-4 w-4 transition-all ${theme === "system" ? "relative rotate-0 scale-100" : "absolute rotate-90 scale-0"}`}
+        className={`h-4 w-4 transition-all ${
+          theme === "system"
+            ? "relative rotate-0 scale-100"
+            : "absolute rotate-90 scale-0"
+        }`}
       />
     </Button>
   );

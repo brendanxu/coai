@@ -10,7 +10,7 @@ import {
   LibraryBig,
   User,
 } from "lucide-react";
-import React, { useEffect } from "react";
+import React, { useEffect, useLayoutEffect } from "react";
 import Icon from "@/components/utils/Icon.tsx";
 import router from "@/router.tsx";
 import { useTranslation } from "react-i18next";
@@ -188,12 +188,19 @@ function Home() {
   // Use activeTheme() so the .light/.dark class on documentElement +
   // memory + themeEvent stay in sync — manual class swaps left the
   // ThemeProvider out of sync on hot navigation.
-  useEffect(() => {
+  //
+  // FOUC fix (2026-05-08): pass { persist: false } so a marketing visit
+  // does NOT overwrite the user's app-route theme preference in
+  // localStorage. Cold loads are also gated by index.html's inline
+  // script, which sets the .light class before React mounts. This
+  // useLayoutEffect handles SPA navigation (app → marketing) without
+  // an inter-paint flash.
+  useLayoutEffect(() => {
     if (!marketing) return;
     const prev = getTheme();
-    activeTheme("light");
+    activeTheme("light", { persist: false });
     return () => {
-      activeTheme(prev);
+      activeTheme(prev, { persist: false });
     };
   }, [marketing]);
 

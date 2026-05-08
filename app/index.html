@@ -96,9 +96,32 @@
         }
     </style>
     <script>
-        // Set theme based on localStorage and system preference
-        const theme = localStorage.getItem('theme') || 'system';
-        document.documentElement.setAttribute('data-theme', theme);
+        // Sync inline theme bootstrap — runs before any paint, before React mounts.
+        // Marketing routes are always light per the v0.7 design system. Without
+        // this gate, a returning visitor whose last session ended on an app
+        // route (which persists 'dark' to localStorage) sees an ink background
+        // flash before React's Index.tsx useEffect flips them back to light.
+        //
+        // KEEP THIS LIST IN SYNC with MARKETING_PATHS in
+        // src/routes/Index.tsx (single source of truth for SPA navigation).
+        // Inline duplication is intentional — needs to run before module load.
+        (function () {
+            const MARKETING = new Set([
+                '/', '/pricing', '/contact', '/privacy', '/terms', '/about',
+                '/pool', '/token-plans', '/services', '/services/mansu',
+            ]);
+            const path = window.location.pathname;
+            const isMarketing = MARKETING.has(path);
+            const stored = localStorage.getItem('theme') || 'system';
+            // On marketing: force light without writing localStorage (preserve
+            // user pref for next app-route visit). On app: respect user pref.
+            const effective = isMarketing ? 'light' : stored;
+            document.documentElement.setAttribute('data-theme', effective);
+            const klass = effective === 'system'
+                ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                : effective;
+            document.documentElement.classList.add(klass);
+        })();
     </script>
   </head>
   <body>
