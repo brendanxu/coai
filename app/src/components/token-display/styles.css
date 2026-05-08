@@ -1,0 +1,176 @@
+/* ═══════════════════════════════════════════════════════════
+   greentokey · Token Meter — Design Tokens (CoAI integration)
+   Source: Claude Design 2026-05-08, mirrored from sandbox
+   `experiments/token-display/src/styles.css` with two changes:
+     1. Vars + classes are SCOPED under `.gtk-token-meter` instead
+        of `:root`, so they don't collide with CoAI's existing
+        :root tokens in main.less / globals.less.
+     2. Playground-only chrome (.scenarios, .card, .stress, .session*,
+        .composer*, .msg*, .chat) is dropped — CoAI provides the
+        outer layout. Only the meta strip + tags + skeleton ship.
+   To re-skin: edit the `.gtk-token-meter` block. Behavioural timings
+   in `./design-tokens.ts` need to stay in lockstep with `--dur-*`
+   below.
+   =========================================================== */
+
+.gtk-token-meter {
+  /* Surface (only used as fallback within this scope) */
+  --bg-page:      #F7F7F5;
+  --bg-meta:      #FAFAF9;
+
+  /* Text */
+  --fg-primary:   #1F2024;
+  --fg-secondary: #6B7280;
+  --fg-tertiary:  #737884; /* Y=0.192, ~4.05:1 vs bg-page (post 2026-05-08 fix) */
+  --fg-label:     #4B5563;
+
+  /* Border */
+  --border-hair:  rgba(15, 17, 21, 0.06);
+  --border-soft:  rgba(15, 17, 21, 0.10);
+
+  /* Semantic */
+  --ok:           #10B981;
+  --ok-bg:        rgba(16, 185, 129, 0.08);
+  --ok-border:    rgba(16, 185, 129, 0.22);
+  --warn:         #EF4444;
+  --warn-bg:      rgba(239, 68, 68, 0.07);
+  --warn-border:  rgba(239, 68, 68, 0.22);
+
+  /* Type */
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --t-meta:   12px;
+
+  /* Radius */
+  --r-sm:   4px;
+
+  /* Motion (mirror of tokens.animation in design-tokens.ts) */
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --dur-flash:    120ms;
+}
+
+/* ═══ Meta strip ═══ */
+.gtk-token-meter .meta {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  font-family: var(--font-mono);
+  font-size: var(--t-meta);
+  color: var(--fg-secondary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-hair);
+}
+.gtk-token-meter .meta__cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+.gtk-token-meter .meta__cell:first-child { padding-left: 0; }
+.gtk-token-meter .meta__cell + .meta__cell {
+  border-left: 1px solid var(--border-hair);
+}
+.gtk-token-meter .meta__k {
+  color: var(--fg-tertiary);
+  font-size: var(--t-meta);
+  font-family: var(--font-mono);
+}
+.gtk-token-meter .meta__v {
+  color: var(--fg-secondary);
+  font-feature-settings: "tnum";
+}
+.gtk-token-meter .meta__v--cost { color: var(--fg-primary); font-weight: 500; }
+.gtk-token-meter .meta__v--warn { color: var(--warn); font-weight: 500; }
+.gtk-token-meter .meta__model {
+  color: var(--fg-label);
+  font-weight: 500;
+}
+
+/* ═══ Pills ═══ */
+.gtk-token-meter .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--t-meta);
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: var(--r-sm);
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+}
+.gtk-token-meter .tag--cache {
+  color: var(--ok);
+  background: var(--ok-bg);
+  border: 1px solid var(--ok-border);
+}
+.gtk-token-meter .tag--saved {
+  color: var(--ok);
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 1px 0 1px 4px;
+}
+.gtk-token-meter .tag--saved::before {
+  content: "↓";
+  font-size: 10px;
+  margin-right: 2px;
+  opacity: 0.8;
+}
+.gtk-token-meter .tag--warn {
+  color: var(--warn);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+}
+.gtk-token-meter .tag--abort {
+  color: var(--warn);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+}
+
+/* ═══ Streaming dot (subtle pulse) ═══ */
+.gtk-token-meter .stream-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg-tertiary);
+  display: inline-block;
+  animation: gtk-pulse 1.4s var(--ease-out) infinite;
+  margin-right: 6px;
+}
+@keyframes gtk-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+
+/* ═══ End-of-response micro flash on the cost cell ═══ */
+.gtk-token-meter .flash {
+  animation: gtk-flash var(--dur-flash) var(--ease-out);
+}
+@keyframes gtk-flash {
+  0%   { background: rgba(16, 185, 129, 0.12); }
+  100% { background: transparent; }
+}
+
+/* ═══ Skeleton (pre-first-chunk loading) ═══ */
+.gtk-token-meter .meta--skeleton .skel {
+  display: inline-block;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--border-soft);
+  animation: gtk-skel-pulse 1.2s ease-in-out infinite;
+}
+.gtk-token-meter .meta--skeleton .skel + .skel { margin-left: 12px; }
+@keyframes gtk-skel-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .gtk-token-meter .stream-dot,
+  .gtk-token-meter .meta--skeleton .skel { animation: none; }
+}

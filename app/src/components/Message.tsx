@@ -36,6 +36,7 @@ import { selectUsername } from "@/store/auth.ts";
 import { appLogo, HIDE_CREDIT_UI } from "@/conf/env.ts";
 import { motion } from "framer-motion";
 import { ThinkContent } from "@/components/ThinkContent";
+import MessageTokenMeter from "@/components/MessageTokenMeter";
 
 type MessageProps = {
   index: number;
@@ -73,6 +74,12 @@ function MessageSegment(props: MessageProps) {
     >
       <MessageContent {...props} />
       {!HIDE_CREDIT_UI && <MessageQuota message={message} />}
+      {/* greentokey 2026-05-08 — Claude-Design-aligned token meter preview.
+         Renders a richer in/out/cost/cache strip below MessageQuota. Mocks
+         missing fields until the gateway emits structured usage. Toggle off
+         with VITE_TOKEN_METER_PREVIEW=false. See sandbox at
+         experiments/token-display/ for the source of truth. */}
+      <MessageTokenMeter message={message} />
     </div>
   );
 }
