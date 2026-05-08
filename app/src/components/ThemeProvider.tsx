@@ -86,10 +86,31 @@ export function ThemeProvider({
   // useLayoutEffect (not useEffect) so the class flip happens synchronously
   // before paint, batched with sibling layout effects (e.g. Index.tsx's
   // marketing-route theme override) — prevents a paint between them.
+  //
+  // Marketing-route override is duplicated here (in addition to Index.tsx's
+  // own useLayoutEffect) because React fires child layout-effects BEFORE
+  // parent layout-effects in commit phase — so Index.tsx's "light" force
+  // would otherwise be immediately overridden when ThemeProvider (parent)
+  // applies the persisted "dark" preference. KEEP THIS LIST IN SYNC with
+  // src/routes/Index.tsx MARKETING_PATHS and index.html inline-script
+  // MARKETING set. (Triple-duplicated because the index.html copy runs
+  // before any module loads; tolerable for ~10 paths.)
   useLayoutEffect(() => {
     const root = window.document.documentElement;
+    const MARKETING_PATHS_FOR_THEME = new Set([
+      "/", "/pricing", "/contact", "/privacy", "/terms", "/about",
+      "/pool", "/token-plans", "/services", "/services/mansu",
+    ]);
+    const isMarketing = MARKETING_PATHS_FOR_THEME.has(window.location.pathname);
 
     root.classList.remove("light", "dark");
+
+    if (isMarketing) {
+      // Marketing always renders light per v0.7 Claude Design — overrides
+      // both stored "dark" preference and system dark-mode media query.
+      root.classList.add("light");
+      return;
+    }
 
     if (theme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")

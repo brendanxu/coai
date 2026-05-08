@@ -163,6 +163,13 @@
 
     --ink: 38 35% 93%;
     --ink-2: 36 26% 80%;
+    /* In dark theme --ink flips to a light cream (so an "ink card" on a
+       dark page reads as a light-tone surface). Foreground must invert
+       too — without this, --ink-foreground falls through to the :root
+       light value (also light), producing white-on-white in components
+       like Hero.tsx's right-rail Live-grid widget. */
+    --ink-foreground: 28 30% 13% / 0.92;
+    --ink-foreground-soft: 28 30% 13% / 0.62;
 
     --destructive: 8 53% 55%;
     --destructive-foreground: 38 35% 93%;
