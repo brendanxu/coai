@@ -150,7 +150,7 @@ export default function Hero() {
               key={m.model}
               className="flex justify-between items-center gap-2"
             >
-              <span style={{ color: "#BFD9C5" }}>● {m.model}</span>
+              <span style={{ color: "hsl(var(--ink-accent))" }}>● {m.model}</span>
               <span className="opacity-60">
                 {m.average_latency_ms ? `${m.average_latency_ms}ms` : "—"}
               </span>
@@ -169,7 +169,7 @@ export default function Hero() {
                   key={m}
                   className="flex justify-between items-center gap-2 opacity-50"
                 >
-                  <span style={{ color: "#BFD9C5" }}>● {m}</span>
+                  <span style={{ color: "hsl(var(--ink-accent))" }}>● {m}</span>
                   <span>—</span>
                 </div>
               ),

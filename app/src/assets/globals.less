@@ -65,6 +65,11 @@
     --ink-2: 28 22% 18%;                 /* #3A2F23 */
     --ink-foreground: 38 60% 99% / 0.92;
     --ink-foreground-soft: 38 60% 99% / 0.62;
+    /* Accent text on the ink card (e.g. Hero rail "● model" dots).
+       Light-mint in light theme (legible on dark ink bg). Inverts to
+       forest green in .dark (where --ink flips to light cream and the
+       dot text needs to be dark-on-light instead). */
+    --ink-accent: 141 30% 75%;           /* ≈ #BFD9C5 light mint */
 
     /* Status */
     --destructive: 8 53% 49%;            /* brick (warmer than pure red) */
@@ -170,6 +175,7 @@
        like Hero.tsx's right-rail Live-grid widget. */
     --ink-foreground: 28 30% 13% / 0.92;
     --ink-foreground-soft: 28 30% 13% / 0.62;
+    --ink-accent: 141 35% 30%;           /* forest green — readable on light-cream rail bg */
 
     --destructive: 8 53% 55%;
     --destructive-foreground: 38 35% 93%;

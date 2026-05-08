@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/tooltip.tsx";
 import NavBar from "@/components/app/NavBar.tsx";
 import { HIDE_CREDIT_UI } from "@/conf/env.ts";
-import { activeTheme, getTheme } from "@/components/ThemeProvider.tsx";
+import { activeTheme } from "@/components/ThemeProvider.tsx";
 // v0.6.1 — global floating chat must mount inside RouterProvider so it can
 // call useLocation. Index.tsx is the layout that wraps every child route,
 // making it the natural mount point.
@@ -179,29 +179,29 @@ function Home() {
     validateToken(dispatch, getMemory(tokenField));
   }, [dispatch]);
 
-  // v0.11 — force light theme on marketing routes via the existing
-  // ThemeProvider plumbing. CoAI's defaultTheme is "dark"; visitors
-  // with no localStorage land on dark, which breaks the v0.7 light-first
-  // Claude Design (warm cream + ink umber + moss accent). On marketing
-  // exit, restore whatever the user had before (or system default).
+  // SPA-navigation theme refresh (2026-05-09 — auto-switch era).
+  // ThemeProvider's useLayoutEffect handles cold-load + theme-state-change
+  // route-aware theme resolution (marketing → system, app → stored). But
+  // its effect deps are [theme] only — it doesn't re-run on route change.
+  // So when the user SPA-navigates from /chat (stored=dark) to / (marketing),
+  // ThemeProvider's effect doesn't re-fire and the dark class stays on html.
   //
-  // Use activeTheme() so the .light/.dark class on documentElement +
-  // memory + themeEvent stay in sync — manual class swaps left the
-  // ThemeProvider out of sync on hot navigation.
-  //
-  // FOUC fix (2026-05-08): pass { persist: false } so a marketing visit
-  // does NOT overwrite the user's app-route theme preference in
-  // localStorage. Cold loads are also gated by index.html's inline
-  // script, which sets the .light class before React mounts. This
-  // useLayoutEffect handles SPA navigation (app → marketing) without
-  // an inter-paint flash.
+  // This effect bridges that gap: on entering a marketing route via SPA
+  // navigation, dispatch an empty themeEvent to trigger ThemeProvider
+  // logic equivalent. {persist: false} preserves the user's app-route
+  // preference in localStorage.
   useLayoutEffect(() => {
     if (!marketing) return;
-    const prev = getTheme();
-    activeTheme("light", { persist: false });
-    return () => {
-      activeTheme(prev, { persist: false });
-    };
+    // Re-resolve the theme via ThemeProvider's same logic by toggling
+    // through activeTheme. We pass the user's explicit choice if any,
+    // else 'system' (which then resolves via prefers-color-scheme).
+    const prev = getMemory("theme");
+    if (prev === "light" || prev === "dark" || prev === "system") {
+      activeTheme(prev as "light" | "dark" | "system", { persist: false });
+    } else {
+      activeTheme("system", { persist: false });
+    }
+    // No cleanup — ThemeProvider's own effect handles transitions out.
   }, [marketing]);
 
   if (marketing) {

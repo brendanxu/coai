@@ -97,14 +97,20 @@
     </style>
     <script>
         // Sync inline theme bootstrap — runs before any paint, before React mounts.
-        // Marketing routes are always light per the v0.7 design system. Without
-        // this gate, a returning visitor whose last session ended on an app
-        // route (which persists 'dark' to localStorage) sees an ink background
-        // flash before React's Index.tsx useEffect flips them back to light.
+        // Strategy (per founder 2026-05-09):
+        //   - User explicit toggle (Header lang/theme picker) always wins.
+        //   - Marketing routes WITHOUT explicit pref → 'system' (auto-switch
+        //     by the device's prefers-color-scheme: light during day, dark
+        //     at night via iOS/Android Auto-Dark Mode). This is the
+        //     "随着时间自动切换" behavior founder asked for.
+        //   - App routes (chat/admin/etc.) WITHOUT explicit pref → CoAI's
+        //     original 'dark' default to preserve in-app aesthetic.
+        // Visual contrast in dark mode is handled by --ink-foreground +
+        // --ink-accent inversions in src/assets/globals.less .dark block.
         //
         // KEEP THIS LIST IN SYNC with MARKETING_PATHS in
-        // src/routes/Index.tsx (single source of truth for SPA navigation).
-        // Inline duplication is intentional — needs to run before module load.
+        // src/routes/Index.tsx and ThemeProvider.tsx. Inline duplication is
+        // intentional — runs before any module loads.
         (function () {
             const MARKETING = new Set([
                 '/', '/pricing', '/contact', '/privacy', '/terms', '/about',
@@ -112,10 +118,20 @@
             ]);
             const path = window.location.pathname;
             const isMarketing = MARKETING.has(path);
-            const stored = localStorage.getItem('theme') || 'system';
-            // On marketing: force light without writing localStorage (preserve
-            // user pref for next app-route visit). On app: respect user pref.
-            const effective = isMarketing ? 'light' : stored;
+            const stored = localStorage.getItem('theme');
+            const userExplicit = stored === 'light' || stored === 'dark' || stored === 'system';
+            // Effective theme:
+            //   - User explicit -> respect (any route)
+            //   - Marketing + no pref -> 'system' (auto-switch)
+            //   - App + no pref -> 'dark' (CoAI default)
+            let effective;
+            if (userExplicit) {
+                effective = stored;
+            } else if (isMarketing) {
+                effective = 'system';
+            } else {
+                effective = 'dark';
+            }
             document.documentElement.setAttribute('data-theme', effective);
             const klass = effective === 'system'
                 ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')

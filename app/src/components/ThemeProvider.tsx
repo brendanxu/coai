@@ -83,46 +83,68 @@ export function ThemeProvider({
     () => (getMemory("theme") as Theme) || defaultTheme,
   );
 
-  // useLayoutEffect (not useEffect) so the class flip happens synchronously
-  // before paint, batched with sibling layout effects (e.g. Index.tsx's
-  // marketing-route theme override) — prevents a paint between them.
+  // useLayoutEffect (synchronous before paint) so any theme flip happens
+  // before the user sees a paint — batched with sibling layout effects.
   //
-  // Marketing-route override is duplicated here (in addition to Index.tsx's
-  // own useLayoutEffect) because React fires child layout-effects BEFORE
-  // parent layout-effects in commit phase — so Index.tsx's "light" force
-  // would otherwise be immediately overridden when ThemeProvider (parent)
-  // applies the persisted "dark" preference. KEEP THIS LIST IN SYNC with
-  // src/routes/Index.tsx MARKETING_PATHS and index.html inline-script
-  // MARKETING set. (Triple-duplicated because the index.html copy runs
-  // before any module loads; tolerable for ~10 paths.)
+  // Strategy (per founder 2026-05-09 — auto-switch by device dark mode):
+  //   - User explicit toggle (theme state set via Header) always wins.
+  //   - Marketing routes WITHOUT explicit pref → 'system' (auto-switch
+  //     via prefers-color-scheme media query — iOS/Android Auto-Dark
+  //     mode flips at sunset, so the page does too).
+  //   - App routes WITHOUT explicit pref → fall through to theme state
+  //     (defaultTheme="dark", CoAI's original).
+  //
+  // Visual contrast in dark mode is handled by --ink-foreground +
+  // --ink-accent inversions in src/assets/globals.less .dark block.
+  //
+  // MARKETING_PATHS_FOR_THEME mirrors src/routes/Index.tsx MARKETING_PATHS
+  // and index.html inline script — keep all three in sync.
   useLayoutEffect(() => {
     const root = window.document.documentElement;
     const MARKETING_PATHS_FOR_THEME = new Set([
-      "/", "/pricing", "/contact", "/privacy", "/terms", "/about",
-      "/pool", "/token-plans", "/services", "/services/mansu",
+      "/",
+      "/pricing",
+      "/contact",
+      "/privacy",
+      "/terms",
+      "/about",
+      "/pool",
+      "/token-plans",
+      "/services",
+      "/services/mansu",
     ]);
     const isMarketing = MARKETING_PATHS_FOR_THEME.has(window.location.pathname);
+    const userExplicit = !!getMemory("theme"); // toggled at least once
 
     root.classList.remove("light", "dark");
 
-    if (isMarketing) {
-      // Marketing always renders light per v0.7 Claude Design — overrides
-      // both stored "dark" preference and system dark-mode media query.
-      root.classList.add("light");
-      return;
-    }
-
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
+    // Resolve effective base theme:
+    //   - userExplicit && theme is concrete (light/dark) → use it
+    //   - userExplicit && theme is 'system' → resolve via media query
+    //   - !userExplicit && marketing → 'system' (auto-switch)
+    //   - !userExplicit && app → theme state ('dark' default)
+    let resolved: "light" | "dark";
+    if (userExplicit) {
+      resolved =
+        theme === "system"
+          ? window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light"
+          : (theme as "light" | "dark");
+    } else if (isMarketing) {
+      resolved = window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light";
-
-      root.classList.add(systemTheme);
-      return;
+    } else {
+      resolved =
+        theme === "system"
+          ? window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light"
+          : (theme as "light" | "dark");
     }
 
-    root.classList.add(theme);
+    root.classList.add(resolved);
   }, [theme]);
 
   const value = {
