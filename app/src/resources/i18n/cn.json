@@ -1814,5 +1814,138 @@
     "icp": "ICP 备案: 待备案",
     "book-demo": "预约 demo",
     "hours": "周一至周日 9:00-21:00"
+  },
+  "hero": {
+    "eyebrow": "一个 Key 调一池模型 · 一个市场买一组服务",
+    "line1": "聚合 AI 算力，",
+    "line2": "开箱即用",
+    "line3": " 的智能体服务。",
+    "sub": "买 Token 套餐：一个 API Key 通吃 GPT、Claude、DeepSeek、Qwen 等十余款模型，基于 NewAPI，sub2API 即将接入官方 API。买服务：小红书代运营、资料制作、DIY 智能体——按次计费，底层仍是算力。",
+    "cta-token": "查看 Token 套餐",
+    "cta-market": "逛服务市场",
+    "trust": {
+      "models": "模型在池",
+      "services": "类服务上架",
+      "key": "Key 全调用"
+    },
+    "rail": {
+      "label": "Live grid",
+      "realtime": "实时",
+      "heading": "模型池实时",
+      "delta": "{{count}} 个模型在线 · 平均延迟 {{ms}}ms",
+      "loading": "加载中…",
+      "cta": "复制我的 API Key"
+    }
+  },
+  "pool": {
+    "eyebrow": "Live grid · 实时",
+    "heading": "模型池",
+    "sub": "你买 Token 套餐后，一个 API Key 能调用以下模型。底层基于 NewAPI 路由，自动选最便宜可用的渠道。延迟为最近 1 小时滑动平均。",
+    "loading": "加载中…",
+    "stats": {
+      "models": "模型在线",
+      "channels": "渠道在用",
+      "latency": "平均延迟"
+    },
+    "col": {
+      "model": "模型",
+      "provider": "供应商",
+      "tier": "档位",
+      "latency": "延迟"
+    },
+    "disclaimer": "Snapshot 取自 "
+  },
+  "token": {
+    "eyebrow": "Token 套餐 · 模型池接入",
+    "heading": {
+      "line1": "一个 Key,",
+      "line2": "一池模型。"
+    },
+    "sub": "OpenAI 兼容端点，Bearer 鉴权。GPT/Claude/DeepSeek/Qwen 之间切换只改 model 字段——不换账号、不换 Key。底层 NewAPI 路由，sub2API 桥接官方 API 进行中。",
+    "plan": {
+      "name": "标准版",
+      "badge": "唯一档位",
+      "month": "月",
+      "tagline": "5,000 credits · 约 5,000 次标准调用 · 池内全模型",
+      "feat": {
+        "1": "一个 sk-xxx API Key,OpenAI 兼容",
+        "2": "5,000 credits/月,标准调用 ¥0.02/次(≈1k+1k tokens)",
+        "3": "切模型只改 model 字段——路由 + 计费自动",
+        "4": "Light/Standard/Premium 分档:DeepSeek/Qwen 0.5×,Claude-haiku 1×,GPT-4o/Sonnet 3×",
+        "5": "Dashboard 实时余额 · 用量明细 · 模型分布"
+      },
+      "cta": "联系开通",
+      "disclaimer": "首批客户 1:1 陪跑 · 微信支付 / 支付宝 / 银行转账均可 · LemonSqueezy 信用卡支付即将上线"
+    },
+    "why": {
+      "one": {
+        "title": "一 Key 通模型",
+        "body": "不用每个供应商各开一个 Key、各开一份账单、各看一个 dashboard。一次集成,全部搞定。"
+      },
+      "two": {
+        "title": "Credit 抽象",
+        "body": "我们吸收官方 API 和 sub2API 之间 75× 成本差。Light/Standard/Premium 分档透明,差价不归你管。"
+      },
+      "three": {
+        "title": "Pool 自动调度",
+        "body": "底层 NewAPI 自动选每次最便宜可用渠道。某家供应商挂了,你看不见。"
+      }
+    },
+    "pool-link": "查看完整模型池"
+  },
+  "services": {
+    "eyebrow": "服务市场",
+    "heading": "AI 服务，按结果买。",
+    "sub": "服务 = 我们调好的 prompt + token 包。算力是底层,你看到的是定价的结果:'¥19 一篇小红书'、'¥299 月度 30 篇'、'¥1980/月 全托管'。",
+    "loading": "加载中…",
+    "empty": "敬请期待——首批服务即将上架",
+    "tile": {
+      "cta": "了解详情"
+    }
+  },
+  "lead": {
+    "title": "预约 demo",
+    "desc": "留下联系方式,我们 24 小时内通过微信或电话联系你,聊聊你的民宿现状和小红书账号情况。",
+    "eyebrow": "预约 demo",
+    "heading": {
+      "line1": "聊聊你的民宿，",
+      "line2": "我们看怎么帮上你。"
+    },
+    "lede": "留下联系方式 — founder 24 小时内通过微信或电话和你聊。我们会先问你民宿的现状、看你已有的小红书账号，再判断这套服务对你是否合适。不合适会直接说不合适。",
+    "fields": {
+      "wechat": "微信号",
+      "phone": "手机号",
+      "homestay": "民宿名",
+      "loc": "位置",
+      "notes": "想了解什么 / 现在最大的痛点",
+      "preferred": "推荐",
+      "alt": "微信不方便填这个",
+      "optional": "选填",
+      "wechat-ph": "your-wechat-id",
+      "homestay-ph": "比如「洱海花房」",
+      "loc-ph": "比如「大理双廊」",
+      "notes-ph": "比如：现在每周自己写 3 篇小红书太累，效果一般"
+    },
+    "errors": {
+      "no-channel": "请至少填写微信号或手机号 (我们用来联系你)",
+      "rate": "请稍后再试 (1 分钟内最多 5 次)",
+      "network": "网络异常，请检查连接后重试",
+      "server": "服务器忙，请稍后再试",
+      "invalid": "信息有误，请检查后重新提交"
+    },
+    "success": {
+      "title": "已收到！"
+    },
+    "thanks": {
+      "title": "提交成功",
+      "body": "我们会在 24 小时内通过你留的联系方式与你沟通。如果想直接联系：加 founder 微信即可（聊聊你的民宿现状）。",
+      "again": "再提交一个"
+    },
+    "hint": {
+      "channel": "至少填一个 — 微信优先（更快）"
+    },
+    "cancel": "取消",
+    "submit": "提交，等我联系你",
+    "disclaimer": "我们只用这些信息回复你这次咨询。不会群发短信，不会卖给第三方。"
   }
 }

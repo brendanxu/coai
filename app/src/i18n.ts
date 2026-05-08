@@ -45,16 +45,37 @@ i18n
 export default i18n;
 
 export function getLanguage(): string {
+  // 1. User's explicit choice (Header lang toggle) always wins.
   const storage = getMemory("language");
   if (storage && supportedLanguages.includes(storage)) {
     return storage;
   }
-  // get browser language
-  const lang = navigator.language.split("-")[0];
-  if (supportedLanguages.includes(lang)) {
-    return lang;
+
+  // 2. Wedge phase (2026-05-08 → ?): the current target market is mainland
+  //    China (大理 民宿主 SaaS, ¥1980/月). Default to Chinese regardless of
+  //    browser locale — most visitors arrive via WeChat link or founder
+  //    outreach and ARE Chinese, even if their phone OS happens to be
+  //    English. English-speaking visitors can toggle via the Header lang
+  //    switch (also visible in mobile drawer).
+  //
+  // 3. Chinese variants honored: zh-TW / zh-HK / zh-MO -> tw (Traditional).
+  //    All other zh-* -> cn (Simplified, the wedge default).
+  //
+  // 4. Future PKG-I18N-EXPAND (deferred to overseas launch) adds Cloudflare
+  //    cf-ipcountry GeoIP detection — IP in CN -> cn, else browser-language
+  //    based with new locales (de / ms / vi / etc.) shipped alongside real
+  //    translations. Don't add empty stub locales here; they'd promise
+  //    coverage we don't yet have.
+  const browser = (navigator.language || "").toLowerCase();
+  if (
+    browser.startsWith("zh-tw") ||
+    browser.startsWith("zh-hk") ||
+    browser.startsWith("zh-mo")
+  ) {
+    return "tw";
   }
-  return defaultLanguage;
+
+  return defaultLanguage; // "cn"
 }
 
 export function setLanguage(i18n: any, lang: string): void {
