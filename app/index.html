@@ -97,19 +97,20 @@
     </style>
     <script>
         // Sync inline theme bootstrap — runs before any paint, before React mounts.
-        // Strategy (per founder 2026-05-09):
-        //   - User explicit toggle (Header lang/theme picker) always wins.
-        //   - Marketing routes WITHOUT explicit pref → 'system' (auto-switch
-        //     by the device's prefers-color-scheme: light during day, dark
-        //     at night via iOS/Android Auto-Dark Mode). This is the
-        //     "随着时间自动切换" behavior founder asked for.
-        //   - App routes (chat/admin/etc.) WITHOUT explicit pref → CoAI's
-        //     original 'dark' default to preserve in-app aesthetic.
+        // Strategy (founder 2026-05-09 = "B 选项 2"):
+        //   - User explicit toggle always wins.
+        //   - Marketing routes WITHOUT explicit pref:
+        //       * 18:00-06:00 (local hour) → dark   (sunset rule)
+        //       * Daytime + system prefers-color-scheme: dark → dark (respect OS)
+        //       * Otherwise → light
+        //   - App routes WITHOUT explicit pref → 'dark' (CoAI default).
+        // Switching happens on page load / route change, not in real time
+        // (avoids a jarring auto-flip while the user is reading).
         // Visual contrast in dark mode is handled by --ink-foreground +
         // --ink-accent inversions in src/assets/globals.less .dark block.
         //
-        // KEEP THIS LIST IN SYNC with MARKETING_PATHS in
-        // src/routes/Index.tsx and ThemeProvider.tsx. Inline duplication is
+        // KEEP MARKETING list IN SYNC with src/routes/Index.tsx and
+        // src/components/ThemeProvider.tsx. Inline duplication is
         // intentional — runs before any module loads.
         (function () {
             const MARKETING = new Set([
@@ -120,22 +121,29 @@
             const isMarketing = MARKETING.has(path);
             const stored = localStorage.getItem('theme');
             const userExplicit = stored === 'light' || stored === 'dark' || stored === 'system';
-            // Effective theme:
-            //   - User explicit -> respect (any route)
-            //   - Marketing + no pref -> 'system' (auto-switch)
-            //   - App + no pref -> 'dark' (CoAI default)
-            let effective;
-            if (userExplicit) {
-                effective = stored;
-            } else if (isMarketing) {
-                effective = 'system';
-            } else {
-                effective = 'dark';
+
+            function resolveMarketingTheme() {
+                // 18:00-06:00 local → dark (sunset rule, primary signal).
+                const hour = new Date().getHours();
+                if (hour < 6 || hour >= 18) return 'dark';
+                // Daytime fallback: respect device's prefers-color-scheme.
+                if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+                return 'light';
             }
-            document.documentElement.setAttribute('data-theme', effective);
-            const klass = effective === 'system'
-                ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-                : effective;
+
+            let klass;
+            if (userExplicit) {
+                document.documentElement.setAttribute('data-theme', stored);
+                klass = stored === 'system'
+                    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                    : stored;
+            } else if (isMarketing) {
+                document.documentElement.setAttribute('data-theme', 'auto');
+                klass = resolveMarketingTheme();
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                klass = 'dark';
+            }
             document.documentElement.classList.add(klass);
         })();
     </script>

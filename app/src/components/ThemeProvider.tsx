@@ -86,16 +86,19 @@ export function ThemeProvider({
   // useLayoutEffect (synchronous before paint) so any theme flip happens
   // before the user sees a paint — batched with sibling layout effects.
   //
-  // Strategy (per founder 2026-05-09 — auto-switch by device dark mode):
+  // Strategy (per founder 2026-05-09 = "B 选项 2"):
   //   - User explicit toggle (theme state set via Header) always wins.
-  //   - Marketing routes WITHOUT explicit pref → 'system' (auto-switch
-  //     via prefers-color-scheme media query — iOS/Android Auto-Dark
-  //     mode flips at sunset, so the page does too).
+  //   - Marketing routes WITHOUT explicit pref:
+  //       * 18:00-06:00 (local hour) → dark (sunset rule, primary)
+  //       * Daytime + system prefers-color-scheme: dark → dark (respect OS)
+  //       * Otherwise → light
   //   - App routes WITHOUT explicit pref → fall through to theme state
   //     (defaultTheme="dark", CoAI's original).
   //
-  // Visual contrast in dark mode is handled by --ink-foreground +
-  // --ink-accent inversions in src/assets/globals.less .dark block.
+  // Switching evaluates on mount/route-change only; not real time, to
+  // avoid auto-flipping mid-read. Visual contrast in dark mode is
+  // handled by --ink-foreground + --ink-accent inversions in
+  // src/assets/globals.less .dark block.
   //
   // MARKETING_PATHS_FOR_THEME mirrors src/routes/Index.tsx MARKETING_PATHS
   // and index.html inline script — keep all three in sync.
@@ -116,13 +119,16 @@ export function ThemeProvider({
     const isMarketing = MARKETING_PATHS_FOR_THEME.has(window.location.pathname);
     const userExplicit = !!getMemory("theme"); // toggled at least once
 
+    function resolveMarketingTheme(): "light" | "dark" {
+      const hour = new Date().getHours();
+      if (hour < 6 || hour >= 18) return "dark"; // sunset rule
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches)
+        return "dark";
+      return "light";
+    }
+
     root.classList.remove("light", "dark");
 
-    // Resolve effective base theme:
-    //   - userExplicit && theme is concrete (light/dark) → use it
-    //   - userExplicit && theme is 'system' → resolve via media query
-    //   - !userExplicit && marketing → 'system' (auto-switch)
-    //   - !userExplicit && app → theme state ('dark' default)
     let resolved: "light" | "dark";
     if (userExplicit) {
       resolved =
@@ -132,9 +138,7 @@ export function ThemeProvider({
             : "light"
           : (theme as "light" | "dark");
     } else if (isMarketing) {
-      resolved = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
+      resolved = resolveMarketingTheme();
     } else {
       resolved =
         theme === "system"
