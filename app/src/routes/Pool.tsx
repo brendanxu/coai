@@ -125,7 +125,8 @@ export default function Pool() {
                   boxShadow: "var(--shadow-xs)",
                 }}
               >
-                <div className="grid grid-cols-[2fr_1.5fr_0.8fr_0.7fr] gap-4 px-6 py-4 text-xs font-medium uppercase tracking-wider text-muted-foreground border-b border-border-soft">
+                {/* Header row — desktop only. On mobile each row is a stacked card. */}
+                <div className="hidden md:grid grid-cols-[2fr_1.5fr_0.8fr_0.7fr] gap-4 px-6 py-4 text-xs font-medium uppercase tracking-wider text-muted-foreground border-b border-border-soft">
                   <span>{t("pool.col.model", "模型")}</span>
                   <span>{t("pool.col.provider", "供应商")}</span>
                   <span>{t("pool.col.tier", "档位")}</span>
@@ -136,31 +137,65 @@ export default function Pool() {
                 {snap.models.map((m) => (
                   <div
                     key={m.model}
-                    className="grid grid-cols-[2fr_1.5fr_0.8fr_0.7fr] gap-4 px-6 py-3.5 text-sm border-b border-border-soft last:border-0"
+                    className="border-b border-border-soft last:border-0"
                   >
-                    <span className="font-mono">{m.model}</span>
-                    <span className="text-secondary-foreground/85">
-                      {m.provider_label || m.provider}
-                      {m.is_sub2api && (
-                        <span
-                          className="ml-2 text-[10px] uppercase px-1.5 py-0.5 rounded font-medium"
-                          style={{
-                            background: "hsl(var(--accent-soft))",
-                            color: "hsl(var(--primary-deep))",
-                          }}
-                        >
-                          sub2API
+                    {/* Mobile (<md): stacked card — model name on top, meta row below. */}
+                    <div className="md:hidden px-5 py-3 flex flex-col gap-1.5">
+                      <div className="font-mono text-sm break-all">
+                        {m.model}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs flex-wrap">
+                        <span className="text-secondary-foreground/85">
+                          {m.provider_label || m.provider}
                         </span>
-                      )}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {m.credit_tier_label || m.credit_tier || "—"}
-                    </span>
-                    <span className="text-right font-mono text-xs text-muted-foreground">
-                      {m.average_latency_ms
-                        ? `${m.average_latency_ms}ms`
-                        : "—"}
-                    </span>
+                        {m.is_sub2api && (
+                          <span
+                            className="text-[10px] uppercase px-1.5 py-0.5 rounded font-medium"
+                            style={{
+                              background: "hsl(var(--accent-soft))",
+                              color: "hsl(var(--primary-deep))",
+                            }}
+                          >
+                            sub2API
+                          </span>
+                        )}
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground">
+                          {m.credit_tier_label || m.credit_tier || "—"}
+                        </span>
+                        <span className="ml-auto font-mono text-muted-foreground">
+                          {m.average_latency_ms
+                            ? `${m.average_latency_ms}ms`
+                            : "—"}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Desktop (≥md): grid row matching header columns. */}
+                    <div className="hidden md:grid grid-cols-[2fr_1.5fr_0.8fr_0.7fr] gap-4 px-6 py-3.5 text-sm">
+                      <span className="font-mono">{m.model}</span>
+                      <span className="text-secondary-foreground/85">
+                        {m.provider_label || m.provider}
+                        {m.is_sub2api && (
+                          <span
+                            className="ml-2 text-[10px] uppercase px-1.5 py-0.5 rounded font-medium"
+                            style={{
+                              background: "hsl(var(--accent-soft))",
+                              color: "hsl(var(--primary-deep))",
+                            }}
+                          >
+                            sub2API
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {m.credit_tier_label || m.credit_tier || "—"}
+                      </span>
+                      <span className="text-right font-mono text-xs text-muted-foreground">
+                        {m.average_latency_ms
+                          ? `${m.average_latency_ms}ms`
+                          : "—"}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
