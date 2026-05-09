@@ -96,7 +96,7 @@ export default function Header() {
             <button
               type="button"
               onClick={handleBack}
-              className="md:hidden inline-flex items-center gap-1 -ml-1.5 px-2 py-1.5 rounded-full text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="md:hidden inline-flex items-center gap-1.5 -ml-1.5 px-2.5 py-1.5 rounded-full text-sm font-medium text-foreground hover:bg-muted transition-colors"
               aria-label={t("nav.back", "返回")}
             >
               <ArrowLeft className="w-4 h-4" />
@@ -144,7 +144,11 @@ export default function Header() {
             className="md:hidden p-2 -mr-2 rounded-md hover:bg-muted"
             aria-label="菜单 / Menu"
           >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {mobileOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
           </button>
         </div>
       </div>
@@ -168,7 +172,11 @@ export default function Header() {
                 {item.label}
               </Link>
             ))}
-            <Link to="/contact" onClick={() => setMobileOpen(false)} className="mt-2">
+            <Link
+              to="/contact"
+              onClick={() => setMobileOpen(false)}
+              className="mt-2"
+            >
               <Button className="w-full rounded-full">
                 {t("nav.cta", "预约 demo")}
               </Button>
