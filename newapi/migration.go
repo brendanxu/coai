@@ -27,8 +27,29 @@ import (
 	"fmt"
 )
 
-// Migrate creates gtk_newapi_binding. Idempotent.
+// Migrate creates gtk_newapi_binding + gtk_newapi_pending_provisions. Idempotent.
+//
+// gtk_newapi_pending_provisions (PKG-1, v0.17, L23) is the durable retry
+// queue for NewAPI provisioning calls that fail transiently. The
+// LemonSqueezy webhook handler (and future hupijiao callback) enqueues
+// here when a NewAPI top-up / token-issue call fails or times out; a
+// background worker drains pending → retrying → succeeded|failed with
+// exponential backoff (worker added in PKG-3 PKG-TOKEN-PRODUCT-RENTAL).
+//
+// L23 §16 KEEP 1:1: gtk_newapi_binding PRIMARY KEY (coai_user_id) is
+// preserved as-is — no multi-token-per-user yet. Defer to PKG-TEAM-QUOTA
+// when explicit demand surfaces.
 func Migrate(db *sql.DB) error {
+	if err := migrateBinding(db); err != nil {
+		return err
+	}
+	if err := migratePendingProvisions(db); err != nil {
+		return err
+	}
+	return nil
+}
+
+func migrateBinding(db *sql.DB) error {
 	if globals.SqliteEngine {
 		if _, err := globals.ExecDb(db, `
 			CREATE TABLE IF NOT EXISTS gtk_newapi_binding (
@@ -64,6 +85,82 @@ func Migrate(db *sql.DB) error {
 		return fmt.Errorf("create gtk_newapi_binding: %w", err)
 	}
 	return nil
+}
+
+func migratePendingProvisions(db *sql.DB) error {
+	if globals.SqliteEngine {
+		// SQLite test schema. ENUMs become CHECK constraints; AUTO_INCREMENT
+		// → AUTOINCREMENT; ON UPDATE CURRENT_TIMESTAMP omitted (SQLite
+		// doesn't support it — tests don't depend on auto-update).
+		if _, err := globals.ExecDb(db, `
+			CREATE TABLE IF NOT EXISTS gtk_newapi_pending_provisions (
+			  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+			  user_id         INTEGER NOT NULL,
+			  plan_id         INTEGER NOT NULL,
+			  provision_type  TEXT    NOT NULL
+			                   CHECK (provision_type IN ('token_plan','service_workflow_rights')),
+			  status          TEXT    NOT NULL DEFAULT 'pending'
+			                   CHECK (status IN ('pending','retrying','succeeded','failed')),
+			  retry_count     INTEGER NOT NULL DEFAULT 0,
+			  last_attempt_at DATETIME,
+			  last_error      TEXT,
+			  succeeded_at    DATETIME,
+			  failed_at       DATETIME,
+			  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			  updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			  FOREIGN KEY (user_id) REFERENCES auth(id) ON DELETE CASCADE,
+			  FOREIGN KEY (plan_id) REFERENCES gtk_plan(id) ON DELETE RESTRICT
+			);
+		`); err != nil {
+			return fmt.Errorf("create gtk_newapi_pending_provisions (sqlite): %w", err)
+		}
+		if _, err := globals.ExecDb(db, `CREATE INDEX IF NOT EXISTS idx_gtk_pending_status ON gtk_newapi_pending_provisions(status, provision_type);`); err != nil {
+			return err
+		}
+		_, err := globals.ExecDb(db, `CREATE INDEX IF NOT EXISTS idx_gtk_pending_user ON gtk_newapi_pending_provisions(user_id, status);`)
+		return err
+	}
+	_, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS gtk_newapi_pending_provisions (
+		  id              BIGINT       AUTO_INCREMENT PRIMARY KEY,
+		  user_id         INT          NOT NULL,
+		  plan_id         INT          NOT NULL,
+		  provision_type  ENUM('token_plan','service_workflow_rights') NOT NULL,
+		  status          ENUM('pending','retrying','succeeded','failed') NOT NULL DEFAULT 'pending',
+		  retry_count     INT          NOT NULL DEFAULT 0,
+		  last_attempt_at DATETIME     NULL,
+		  last_error      TEXT         NULL,
+		  succeeded_at    DATETIME     NULL,
+		  failed_at       DATETIME     NULL,
+		  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		  updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+		  KEY idx_gtk_pending_status (status, provision_type),
+		  KEY idx_gtk_pending_user (user_id, status),
+		  FOREIGN KEY (user_id) REFERENCES auth(id) ON DELETE CASCADE,
+		  FOREIGN KEY (plan_id) REFERENCES gtk_plan(id) ON DELETE RESTRICT
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`)
+	if err != nil {
+		return fmt.Errorf("create gtk_newapi_pending_provisions: %w", err)
+	}
+	return nil
+}
+
+// PendingProvision mirrors a row in gtk_newapi_pending_provisions. Used by
+// the retry worker (PKG-3) to drain the queue. LastAttemptAt / LastError /
+// SucceededAt / FailedAt are nullable since they're populated only after
+// the first attempt / a final state transition.
+type PendingProvision struct {
+	ID            int64
+	UserID        int64
+	PlanID        int64
+	ProvisionType string // 'token_plan' | 'service_workflow_rights'
+	Status        string // 'pending' | 'retrying' | 'succeeded' | 'failed'
+	RetryCount    int
+	LastAttemptAt sql.NullTime
+	LastError     sql.NullString
+	SucceededAt   sql.NullTime
+	FailedAt      sql.NullTime
 }
 
 // Binding is the local in-Go view of a gtk_newapi_binding row.
