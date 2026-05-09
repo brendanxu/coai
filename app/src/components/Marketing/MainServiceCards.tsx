@@ -61,7 +61,7 @@ type CardProps = {
 function ServiceCard({ icon, title, body, ctaLabel, to, soon }: CardProps) {
   return (
     <article
-      className="relative rounded-3xl p-7 md:p-8 transition-shadow hover:shadow-md"
+      className="relative rounded-3xl p-7 md:p-8 transition-shadow hover:shadow-md active:shadow-md"
       style={{
         background: "hsl(var(--card))",
         boxShadow: "var(--shadow-xs)",
@@ -94,7 +94,7 @@ function ServiceCard({ icon, title, body, ctaLabel, to, soon }: CardProps) {
       </p>
       <Link
         to={to}
-        className="inline-flex items-center gap-1.5 text-sm font-medium hover:gap-2 transition-all"
+        className="inline-flex items-center gap-1.5 text-sm font-medium hover:gap-2 active:gap-2 active:opacity-70 transition-all"
         style={{ color: "hsl(var(--primary))" }}
       >
         {ctaLabel}

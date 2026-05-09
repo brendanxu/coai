@@ -168,7 +168,7 @@ function ServiceTile({ svc }: { svc: PublicService }) {
 
       <Link
         to={detailHref}
-        className="inline-flex items-center gap-1.5 text-sm font-medium hover:gap-2 transition-all"
+        className="inline-flex items-center gap-1.5 text-sm font-medium hover:gap-2 active:gap-2 active:opacity-70 transition-all"
         style={{ color: "hsl(var(--primary))" }}
       >
         {t("services.tile.cta", "了解详情")}

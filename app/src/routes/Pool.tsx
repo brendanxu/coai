@@ -99,7 +99,7 @@ export default function Pool() {
           {snap && (
             <>
               {/* Stats banner */}
-              <div className="grid grid-cols-3 gap-6 md:gap-8 mb-12 md:mb-16">
+              <div className="grid grid-cols-3 gap-3 md:gap-8 mb-12 md:mb-16">
                 <Stat
                   num={String(snap.total_models)}
                   label={t("pool.stats.models", "模型在线")}
@@ -109,9 +109,7 @@ export default function Pool() {
                   label={t("pool.stats.channels", "渠道在用")}
                 />
                 <Stat
-                  num={
-                    snap.avg_latency_ms ? `${snap.avg_latency_ms}ms` : "—"
-                  }
+                  num={snap.avg_latency_ms ? `${snap.avg_latency_ms}ms` : "—"}
                   label={t("pool.stats.latency", "平均延迟")}
                 />
               </div>
@@ -216,19 +214,19 @@ export default function Pool() {
 function Stat({ num, label }: { num: string; label: string }) {
   return (
     <div
-      className="rounded-2xl p-6 text-center"
+      className="rounded-2xl p-3 md:p-6 text-center"
       style={{
         background: "hsl(var(--card))",
         border: "1px solid hsl(var(--border-soft))",
       }}
     >
       <div
-        className="font-display text-3xl md:text-4xl font-medium mb-1.5"
+        className="font-display text-xl md:text-4xl font-medium mb-1 md:mb-1.5 leading-tight"
         style={{ color: "hsl(var(--primary))" }}
       >
         {num}
       </div>
-      <div className="text-xs uppercase tracking-wider text-muted-foreground">
+      <div className="text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground leading-tight">
         {label}
       </div>
     </div>

@@ -53,7 +53,7 @@ type ValueCardProps = {
 
 function ValueCard({ icon, title, body, linkLabel, onLink }: ValueCardProps) {
   return (
-    <div className="rounded-lg border border-border bg-card p-6 space-y-3 hover:bg-card-hover transition-colors">
+    <div className="rounded-lg border border-border bg-card p-6 space-y-3 hover:bg-card-hover active:bg-card-hover transition-colors">
       <div className="flex items-center gap-3">
         <div
           className="flex items-center justify-center w-9 h-9 rounded-md"
@@ -70,7 +70,7 @@ function ValueCard({ icon, title, body, linkLabel, onLink }: ValueCardProps) {
       {linkLabel && onLink && (
         <button
           onClick={onLink}
-          className="text-sm text-primary hover:underline underline-offset-4"
+          className="text-sm text-primary hover:underline active:underline underline-offset-4"
         >
           {linkLabel}
         </button>

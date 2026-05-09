@@ -45,22 +45,22 @@ export default function Footer() {
             </h4>
             <ul className="space-y-1.5">
               <li>
-                <Link to="/token-plans" className="hover:text-foreground text-muted-foreground">
+                <Link to="/token-plans" className="text-muted-foreground hover:text-foreground active:text-foreground transition-colors">
                   {t("nav.token", "Token 套餐")}
                 </Link>
               </li>
               <li>
-                <Link to="/services" className="hover:text-foreground text-muted-foreground">
+                <Link to="/services" className="text-muted-foreground hover:text-foreground active:text-foreground transition-colors">
                   {t("nav.services", "服务市场")}
                 </Link>
               </li>
               <li>
-                <Link to="/pool" className="hover:text-foreground text-muted-foreground">
+                <Link to="/pool" className="text-muted-foreground hover:text-foreground active:text-foreground transition-colors">
                   {t("nav.pool", "模型池")}
                 </Link>
               </li>
               <li>
-                <Link to="/docs" className="hover:text-foreground text-muted-foreground">
+                <Link to="/docs" className="text-muted-foreground hover:text-foreground active:text-foreground transition-colors">
                   {t("footer.docs", "API 文档")}
                 </Link>
               </li>
@@ -74,7 +74,7 @@ export default function Footer() {
             </h4>
             <ul className="space-y-1.5 text-muted-foreground">
               <li>
-                <Link to="/contact" className="hover:text-foreground">
+                <Link to="/contact" className="hover:text-foreground active:text-foreground transition-colors">
                   {t("footer.book-demo", "预约 demo")}
                 </Link>
               </li>
@@ -91,12 +91,12 @@ export default function Footer() {
             </h4>
             <ul className="space-y-1.5 text-muted-foreground">
               <li>
-                <Link to="/privacy" className="hover:text-foreground">
+                <Link to="/privacy" className="hover:text-foreground active:text-foreground transition-colors">
                   {t("footer.privacy", "隐私政策")}
                 </Link>
               </li>
               <li>
-                <Link to="/terms" className="hover:text-foreground">
+                <Link to="/terms" className="hover:text-foreground active:text-foreground transition-colors">
                   {t("footer.terms", "服务条款")}
                 </Link>
               </li>

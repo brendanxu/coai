@@ -278,7 +278,7 @@ function TokenPlans() {
             <div className="mt-7">
               <Link
                 to="/pool"
-                className="inline-flex items-center gap-1.5 text-sm font-medium hover:gap-2.5 transition-all opacity-90 hover:opacity-100"
+                className="inline-flex items-center gap-1.5 text-sm font-medium hover:gap-2.5 active:gap-2.5 transition-all opacity-90 hover:opacity-100 active:opacity-100"
                 style={{ color: "hsl(var(--ink-accent))" }}
               >
                 {t("token.pool.cta", "查看完整模型池 + 渠道状态")}

@@ -38,7 +38,8 @@ export default function ServiceCard({
       className={
         "service-card group relative flex flex-col h-full transition-all duration-200 ease-out " +
         "bg-card border border-border " +
-        "hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(43,33,24,0.12)]"
+        "hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(43,33,24,0.12)] " +
+        "active:-translate-y-0 active:shadow-[0_8px_24px_rgba(43,33,24,0.16)]"
       }
       style={{
         borderRadius: "var(--radius-card)",
