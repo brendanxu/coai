@@ -18,6 +18,7 @@ import (
 	"chat/payment"
 	"chat/plans"
 	"chat/service"
+	"chat/usage"
 	"chat/utils"
 	"chat/waitlist"
 	"fmt"
@@ -105,6 +106,8 @@ func registerApiRouter(engine *gin.Engine) {
 		lead.Register(app)
 		// v0.13 admin-side lead pipeline kanban (/admin/mansu)
 		lead.RegisterAdmin(app)
+		// v0.16 menu bar app: per-user usage feed (GET /api/v1/usage/me)
+		usage.Register(app)
 	}
 }
 
