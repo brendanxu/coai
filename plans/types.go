@@ -40,12 +40,54 @@ type UserPlan struct {
 // AppUsageLog mirrors a row in gtk_app_usage_log. PlanID is nullable for
 // usage-without-active-plan scenarios (trials, pay-as-you-go, anonymous
 // service-tier prototypes).
+//
+// V2 fields (2026-05-10) split tokens by class so billing never gets stuck
+// at the "tokens_used 50/50 fake split" failure mode that usage/aggregator
+// flagged. The legacy TokensUsed + CostCents fields are kept for
+// backward-compatibility with existing readers and are written alongside
+// the V2 fields by the billing calculator (TokensUsed = sum of all four
+// token classes; CostCents = ClientChargeMicro / 10000).
 type AppUsageLog struct {
 	ID         int64
 	UserID     int64
 	PlanID     sql.NullInt64
 	Service    string
-	TokensUsed int64
-	CostCents  int64
+	TokensUsed int64 // legacy: sum of input + output + cache_write + cache_read
+	CostCents  int64 // legacy: ClientChargeMicro / 10000 (whole cents only)
 	CreatedAt  time.Time
+
+	// V2 cache-aware fields. ModelID + Provider identify the upstream model
+	// (e.g. "claude-sonnet-4.5", "anthropic"). The four token counts come
+	// straight off the upstream usage payload; non-cache providers leave
+	// CacheWriteTokens + CacheReadTokens at 0.
+	ModelID           string
+	Provider          string
+	InputTokens       int64
+	OutputTokens      int64
+	CacheWriteTokens  int64
+	CacheReadTokens   int64
+	CacheTTL          string // '5m' | '1h' | '' when not cache-applicable
+	UpstreamCostMicro int64  // 1e-6 USD; what we paid the provider
+	ClientChargeMicro int64  // 1e-6 USD; what the customer was charged
+	MarkupMultiplier  float64
+}
+
+// ProviderPricing mirrors a row in gtk_provider_pricing. Owned by ops via
+// the V2 seed in migration.go and any subsequent INSERT (never UPDATE) when
+// upstream prices change.
+type ProviderPricing struct {
+	ID            int64
+	Provider      string
+	ModelID       string
+	TokenType     string // 'input'|'output'|'cache_write_5m'|'cache_write_1h'|'cache_read'
+	UpstreamPerM  float64
+	EffectiveFrom time.Time
+	Notes         sql.NullString
+}
+
+// BillingConfig mirrors a row in gtk_billing_config. Single-table key/value
+// store; today's only key is 'markup_multiplier'.
+type BillingConfig struct {
+	K string
+	V string
 }
