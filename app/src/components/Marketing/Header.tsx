@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Globe } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Menu, X, Globe } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/components/ui/lib/utils.ts";
@@ -51,7 +51,22 @@ function LangToggle() {
 export default function Header() {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Detail-page back affordance (founder bug 2026-05-09): on mobile, any
+  // route other than / shows a "← 返回" pill to the left of the logo.
+  // Using location.key === "default" to detect "this is the first SPA
+  // location" — true for deep-link entries from WeChat shares — in which
+  // case navigate(-1) would close the WeChat browser tab. Fall back to /.
+  const isHomePage = location.pathname === "/";
+  const handleBack = () => {
+    if (location.key !== "default") {
+      navigate(-1);
+    } else {
+      navigate("/");
+    }
+  };
 
   // Nav matches v0.7 Claude Design (redesign-v2.html line 864):
   // Token 套餐 / 服务市场 / 模型池 / 仪表盘 / 文档.
@@ -75,11 +90,27 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/85 backdrop-blur-md">
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 font-display font-medium">
-          <img src="/logo.svg" alt="greentokey" className="h-7 w-7" />
-          <span className="text-base">greentokey</span>
-        </Link>
+        {/* Back + Logo */}
+        <div className="flex items-center gap-1">
+          {!isHomePage && (
+            <button
+              type="button"
+              onClick={handleBack}
+              className="md:hidden inline-flex items-center gap-1 -ml-1.5 px-2 py-1.5 rounded-full text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label={t("nav.back", "返回")}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>{t("nav.back", "返回")}</span>
+            </button>
+          )}
+          <Link
+            to="/"
+            className="flex items-center gap-2 font-display font-medium"
+          >
+            <img src="/logo.svg" alt="greentokey" className="h-7 w-7" />
+            <span className="text-base">greentokey</span>
+          </Link>
+        </div>
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
