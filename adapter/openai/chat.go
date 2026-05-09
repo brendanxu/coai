@@ -124,6 +124,13 @@ func (c *ChatInstance) CreateStreamChatRequest(props *adaptercommon.ChatProps, c
 
 	isCompletionType := props.Model == globals.GPT3TurboInstruct
 
+	// finalUsage is captured by the closure so the last chunk that carries
+	// `usage` (only on streams with stream_options.include_usage=true) is
+	// emitted as a UpstreamUsage chunk after the loop completes. Lets the
+	// billing layer replace tiktoken estimates with provider truth on
+	// every model that opts in (gpt-4o, gpt-4.1, gpt-5.x).
+	var finalUsage *Usage
+
 	ticks := 0
 	err := utils.EventScanner(&utils.EventScannerProps{
 		Method:  "POST",
@@ -132,6 +139,12 @@ func (c *ChatInstance) CreateStreamChatRequest(props *adaptercommon.ChatProps, c
 		Body:    c.GetChatBody(props, true),
 		Callback: func(data string) error {
 			ticks += 1
+
+			if !isCompletionType {
+				if form := processChatResponse(data); form != nil && form.Usage != nil {
+					finalUsage = form.Usage
+				}
+			}
 
 			partial, err := c.ProcessLine(data, isCompletionType)
 			if err != nil {
@@ -155,6 +168,14 @@ func (c *ChatInstance) CreateStreamChatRequest(props *adaptercommon.ChatProps, c
 
 	if ticks == 0 {
 		return errors.New("no response")
+	}
+
+	// Emit terminal usage chunk (best-effort). NormaliseUsage handles nil
+	// gracefully — when stream_options.include_usage is off this is a
+	// no-op and the billing layer falls back to tiktoken in
+	// utils/buffer.go.
+	if usage := NormaliseUsage(finalUsage); usage != nil {
+		_ = callback(&globals.Chunk{UpstreamUsage: usage})
 	}
 
 	return nil

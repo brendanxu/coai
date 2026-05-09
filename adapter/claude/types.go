@@ -37,6 +37,35 @@ type ChatStreamResponse struct {
 		Type string `json:"type"`
 		Text string `json:"text"`
 	} `json:"delta"`
+	// Message is populated on message_start events. The ChatInstance reads
+	// Message.Usage to capture initial input + cache token counts so the
+	// billing layer can replace tiktoken estimates with provider truth.
+	Message *struct {
+		Usage Usage `json:"usage"`
+	} `json:"message,omitempty"`
+	// Usage is populated on message_delta events. Anthropic streams
+	// output_tokens here at the end of the response.
+	Usage *Usage `json:"usage,omitempty"`
+}
+
+// Usage mirrors the Anthropic Messages API usage block. CacheCreation /
+// CacheRead are only non-zero when the request carried cache_control
+// markers and the upstream actually wrote / hit the cache. Schema:
+// https://docs.claude.com/en/api/messages#response-usage
+type Usage struct {
+	InputTokens              int `json:"input_tokens"`
+	OutputTokens             int `json:"output_tokens"`
+	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+}
+
+// ChatNonStreamResponse is the body returned by /v1/messages when stream=false.
+// Today CoAI only ever calls Claude with stream=true (CreateStreamChatRequest),
+// but billing reconcile + future non-stream paths benefit from a typed shape.
+type ChatNonStreamResponse struct {
+	ID    string `json:"id"`
+	Model string `json:"model"`
+	Usage Usage  `json:"usage"`
 }
 
 type ChatErrorResponse struct {

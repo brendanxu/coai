@@ -148,11 +148,41 @@ func (c *ChatInstance) GetChatBody(props *adaptercommon.ChatProps, stream bool) 
 	}
 }
 
+// processStreamEvent normalises one Anthropic SSE event into a Chunk plus an
+// optional usage delta. Anthropic streams usage in two events:
+//
+//   - message_start: carries initial input_tokens + cache_creation/read
+//   - message_delta: carries output_tokens at the end
+//
+// Callers (CreateStreamChatRequest) accumulate the partials in a closure and
+// emit one final Chunk{UpstreamUsage:...} on message_stop so the billing
+// layer sees provider truth instead of tiktoken estimates.
+func processStreamEvent(data string) (*globals.Chunk, *Usage) {
+	form := processChatResponse(data)
+	if form == nil {
+		return nil, nil
+	}
+	var usage *Usage
+	switch form.Type {
+	case "message_start":
+		if form.Message != nil {
+			u := form.Message.Usage
+			usage = &u
+		}
+	case "message_delta":
+		if form.Usage != nil {
+			usage = form.Usage
+		}
+	}
+	return &globals.Chunk{Content: form.Delta.Text}, usage
+}
+
+// ProcessLine is retained for callers that don't need usage (e.g. simpler
+// tests). Production stream loop uses processStreamEvent directly.
 func (c *ChatInstance) ProcessLine(data string) (*globals.Chunk, error) {
-	if form := processChatResponse(data); form != nil {
-		return &globals.Chunk{
-			Content: form.Delta.Text,
-		}, nil
+	chunk, _ := processStreamEvent(data)
+	if chunk != nil {
+		return chunk, nil
 	}
 
 	if form := processChatErrorResponse(data); form != nil {
@@ -176,24 +206,74 @@ func processChatResponse(data string) *ChatStreamResponse {
 	return nil
 }
 
-// CreateStreamChatRequest is the stream request for anthropic claude
+// CreateStreamChatRequest is the stream request for anthropic claude.
+//
+// Stream lifecycle (Anthropic 2026-05-10):
+//
+//	message_start         → initial input_tokens + cache_creation/read
+//	content_block_start   → block opens
+//	content_block_delta×N → text deltas (forwarded to hook as Content)
+//	content_block_stop    → block closes
+//	message_delta         → final output_tokens
+//	message_stop          → terminator (we emit aggregated UpstreamUsage here)
+//
+// The closure-scoped `usage` accumulates the two partials so we can hand the
+// billing layer a single, complete UpstreamUsage at end-of-stream. Falling
+// back gracefully: if the upstream skips message_start/delta (older models
+// or proxies), the final emit is skipped and tiktoken estimates take over
+// in utils/buffer.go.
 func (c *ChatInstance) CreateStreamChatRequest(props *adaptercommon.ChatProps, hook globals.Hook) error {
+	var usage Usage
+	var sawUsage bool
+
 	err := utils.EventScanner(&utils.EventScannerProps{
 		Method:  "POST",
 		Uri:     c.GetChatEndpoint(),
 		Headers: c.GetChatHeaders(),
 		Body:    c.GetChatBody(props, true),
 		Callback: func(data string) error {
-			partial, err := c.ProcessLine(data)
-			if err != nil {
-				return err
+			chunk, partial := processStreamEvent(data)
+			if partial != nil {
+				sawUsage = true
+				if partial.InputTokens > 0 {
+					usage.InputTokens = partial.InputTokens
+				}
+				if partial.OutputTokens > 0 {
+					usage.OutputTokens = partial.OutputTokens
+				}
+				if partial.CacheCreationInputTokens > 0 {
+					usage.CacheCreationInputTokens = partial.CacheCreationInputTokens
+				}
+				if partial.CacheReadInputTokens > 0 {
+					usage.CacheReadInputTokens = partial.CacheReadInputTokens
+				}
 			}
-
-			return hook(partial)
+			if chunk == nil {
+				if errForm := processChatErrorResponse(data); errForm != nil {
+					return fmt.Errorf("anthropic error: %s (type: %s)",
+						errForm.Error.Message, errForm.Error.Type)
+				}
+				return nil
+			}
+			return hook(chunk)
 		},
 	},
 		props.Proxy,
 	)
+
+	// Emit usage once the stream finishes cleanly. CacheTTL is empty here
+	// because the request body owns the marker; W5 will plumb the
+	// "5m"/"1h" hint through props so we can record it on the usage row.
+	if err == nil && sawUsage {
+		_ = hook(&globals.Chunk{
+			UpstreamUsage: &globals.UpstreamUsage{
+				InputTokens:      usage.InputTokens,
+				OutputTokens:     usage.OutputTokens,
+				CacheWriteTokens: usage.CacheCreationInputTokens,
+				CacheReadTokens:  usage.CacheReadInputTokens,
+			},
+		})
+	}
 
 	if err != nil {
 		if form := processChatErrorResponse(err.Body); form != nil {

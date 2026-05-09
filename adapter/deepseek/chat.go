@@ -162,12 +162,22 @@ func (c *ChatInstance) CreateChatRequest(props *adaptercommon.ChatProps) (string
 func (c *ChatInstance) CreateStreamChatRequest(props *adaptercommon.ChatProps, callback globals.Hook) error {
 	c.isFirstReasoning = true
 	c.isReasonOver = false
+
+	// finalUsage captures DeepSeek's terminal usage block (always present
+	// on the last stream chunk). Emitted as an UpstreamUsage chunk after
+	// the loop so the billing layer sees provider-truth tokens including
+	// the prompt_cache_hit_tokens that powers DeepSeek's KV cache pricing.
+	var finalUsage *Usage
+
 	err := utils.EventScanner(&utils.EventScannerProps{
 		Method:  "POST",
 		Uri:     c.GetChatEndpoint(),
 		Headers: c.GetHeader(),
 		Body:    c.GetChatBody(props, true),
 		Callback: func(data string) error {
+			if form := processChatStreamResponse(data); form != nil && form.Usage != nil {
+				finalUsage = form.Usage
+			}
 			partial, err := c.ProcessLine(data)
 			if err != nil {
 				return err
@@ -184,6 +194,12 @@ func (c *ChatInstance) CreateStreamChatRequest(props *adaptercommon.ChatProps, c
 			return errors.New(fmt.Sprintf("deepseek error: %s (type: %s)", form.Error.Message, form.Error.Type))
 		}
 		return err.Error
+	}
+
+	// Best-effort emit. NormaliseUsage handles nil for resilience against
+	// proxies that strip the usage block.
+	if usage := NormaliseUsage(finalUsage); usage != nil {
+		_ = callback(&globals.Chunk{UpstreamUsage: usage})
 	}
 
 	return nil
