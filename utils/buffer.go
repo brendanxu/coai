@@ -12,6 +12,13 @@ type Charge interface {
 	GetModels() []string
 	GetInput() float32
 	GetOutput() float32
+	// GetCacheRead / GetCacheWrite5m / GetCacheWrite1h are per-1k-token
+	// rates the billing layer applies when the adapter delivers a real
+	// UpstreamUsage from the provider (W2). Unset implementations fall
+	// back to GetInput so legacy adapters keep working unchanged.
+	GetCacheRead() float32
+	GetCacheWrite5m() float32
+	GetCacheWrite1h() float32
 	SupportAnonymous() bool
 	IsBilling() bool
 	IsBillingType(t string) bool
@@ -35,6 +42,14 @@ type Buffer struct {
 	TokenName       string                `json:"-"`
 	Charge          Charge                `json:"-"`
 	VisionRecall    bool                  `json:"-"`
+
+	// Upstream is the provider-truth usage block emitted by the adapter
+	// at end-of-stream (W2). Nil while the stream is in flight or the
+	// upstream / proxy didn't supply usage — in that case GetQuota falls
+	// back to the legacy tiktoken-based estimate. When non-nil the
+	// billing layer prefers it because it accounts for cache_creation /
+	// cache_read tokens that tiktoken can't see.
+	Upstream *globals.UpstreamUsage `json:"upstream,omitempty"`
 }
 
 func initInputToken(model string, history []globals.Message) int {
@@ -85,13 +100,48 @@ func (b *Buffer) GetCursor() int {
 	return b.Cursor
 }
 
+// GetQuota returns the quota the customer is currently on the hook for.
+//
+// Upstream-first billing: when the adapter has handed us a real
+// UpstreamUsage block (W2), use the 4-class calculator
+// (CountUpstreamQuota) which prices input / output / cache_read /
+// cache_write independently per channel.Charge config. This is the
+// "we never lose money" path because the rates are pinned to actual
+// upstream multipliers.
+//
+// Legacy fallback: if Upstream is nil (older adapters, proxies that
+// strip usage, or providers we haven't wired yet), fall back to the
+// CoAI baseline that uses tiktoken estimates × Charge.Input/Output.
 func (b *Buffer) GetQuota() float32 {
+	if b.Upstream != nil {
+		return CountUpstreamQuota(b.Charge, b.Upstream)
+	}
 	return b.Quota + CountOutputToken(b.Charge, b.CountOutputToken(true))
 }
 
 func (b *Buffer) GetRecordQuota() float32 {
+	if b.Upstream != nil {
+		return CountUpstreamQuota(b.Charge, b.Upstream)
+	}
 	// end of the buffer, the output token is counted using the times
 	return b.Quota + CountOutputToken(b.Charge, b.CountOutputToken(false))
+}
+
+// RecordUpstreamUsage stores the provider-truth usage block coming off
+// the adapter (one terminal emit per stream). Subsequent GetQuota /
+// GetRecordQuota calls return cache-aware totals that override the
+// tiktoken estimate accumulated during streaming.
+//
+// Idempotent: calling twice with the same payload is a no-op (the second
+// call simply overwrites with identical data).
+func (b *Buffer) RecordUpstreamUsage(u *globals.UpstreamUsage) {
+	if u == nil {
+		return
+	}
+	b.Upstream = u
+	if u.InputTokens > 0 {
+		b.InputTokens = u.InputTokens
+	}
 }
 
 func (b *Buffer) Write(data string) string {
@@ -105,6 +155,22 @@ func (b *Buffer) Write(data string) string {
 func (b *Buffer) WriteChunk(data *globals.Chunk) string {
 	if data == nil {
 		return ""
+	}
+
+	// Adapter end-of-stream emits a content-empty Chunk with UpstreamUsage
+	// set. Capture it so the billing layer can switch from tiktoken
+	// estimate to provider truth. Done before Write so the Times counter
+	// only reflects content events for downstream stats.
+	if data.UpstreamUsage != nil {
+		b.RecordUpstreamUsage(data.UpstreamUsage)
+		// Empty-content terminal chunk: skip the Write to avoid
+		// inflating Times and to keep Latest reflecting the last visible
+		// text. AddToolCalls / SetFunctionCall are already nil-safe.
+		if data.Content == "" {
+			b.AddToolCalls(data.ToolCall)
+			b.SetFunctionCall(data.FunctionCall)
+			return ""
+		}
 	}
 
 	b.Write(data.Content)

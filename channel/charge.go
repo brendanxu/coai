@@ -258,6 +258,38 @@ func (c *Charge) GetOutput() float32 {
 	return c.Output
 }
 
+// GetCacheRead returns the per-1k-token rate for cache-read input tokens.
+// Unconfigured (≤0) falls back to the plain input rate so we never under-
+// charge — operators opt in to passing the cache discount on to the
+// customer by setting an explicit rate (typically input × 0.13 to mirror
+// Anthropic's 0.1× upstream × 1.3× greentokey markup).
+func (c *Charge) GetCacheRead() float32 {
+	if c.CacheRead <= 0 {
+		return c.GetInput()
+	}
+	return c.CacheRead
+}
+
+// GetCacheWrite5m returns the per-1k-token rate for 5m TTL cache writes.
+// Unset → falls back to GetInput * 1.25 (Anthropic upstream multiplier)
+// so we still recover the upstream surcharge even if the operator
+// forgets to configure the model.
+func (c *Charge) GetCacheWrite5m() float32 {
+	if c.CacheWrite5m <= 0 {
+		return c.GetInput() * 1.25
+	}
+	return c.CacheWrite5m
+}
+
+// GetCacheWrite1h returns the per-1k-token rate for 1h TTL cache writes.
+// Unset → falls back to GetInput * 2.0 (Anthropic upstream 1h multiplier).
+func (c *Charge) GetCacheWrite1h() float32 {
+	if c.CacheWrite1h <= 0 {
+		return c.GetInput() * 2.0
+	}
+	return c.CacheWrite1h
+}
+
 func (c *Charge) SupportAnonymous() bool {
 	return c.Anonymous
 }
@@ -290,10 +322,13 @@ func (c *Charge) Contains(model string) bool {
 
 func (c *Charge) New(model string) *Charge {
 	return &Charge{
-		Type:      c.Type,
-		Models:    []string{model},
-		Input:     c.Input,
-		Output:    c.Output,
-		Anonymous: c.Anonymous,
+		Type:         c.Type,
+		Models:       []string{model},
+		Input:        c.Input,
+		Output:       c.Output,
+		Anonymous:    c.Anonymous,
+		CacheRead:    c.CacheRead,
+		CacheWrite5m: c.CacheWrite5m,
+		CacheWrite1h: c.CacheWrite1h,
 	}
 }

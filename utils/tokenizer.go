@@ -108,3 +108,54 @@ func CountOutputToken(charge Charge, token int) float32 {
 		return 0
 	}
 }
+
+// CountUpstreamQuota prices a provider-truth UpstreamUsage block against
+// a Charge config. Each token class is billed independently:
+//
+//	un-cached input → charge.GetInput()
+//	output          → charge.GetOutput()  (or fixed times-billing fee)
+//	cache_read      → charge.GetCacheRead()
+//	cache_write     → charge.GetCacheWrite5m() / GetCacheWrite1h()
+//	                  by usage.CacheTTL ('1h' uses the 1h rate, anything
+//	                  else uses the 5m rate to be conservative)
+//
+// This implements the "we never lose money" rule
+// (docs/research/token-cache-AUDIT-and-billing-design.md §2.4): every
+// class's customer rate ≥ upstream rate × 1.0, so total profit is
+// always ≥ 0 regardless of how the customer splits cache vs un-cached.
+//
+// times-billing models bill a flat per-call fee; this helper returns
+// charge.GetOutput() for them and ignores the token counts (cache
+// breakdown is irrelevant to a flat-rate billing tier).
+//
+// Returns 0 when usage is nil so callers can defensively chain it.
+func CountUpstreamQuota(charge Charge, usage *globals.UpstreamUsage) float32 {
+	if usage == nil || charge == nil {
+		return 0
+	}
+	switch charge.GetType() {
+	case globals.NonBilling:
+		return 0
+	case globals.TimesBilling:
+		return charge.GetOutput()
+	case globals.TokenBilling:
+		// fall through
+	default:
+		return 0
+	}
+
+	cacheWriteRate := charge.GetCacheWrite5m()
+	if usage.CacheTTL == "1h" {
+		cacheWriteRate = charge.GetCacheWrite1h()
+	}
+
+	total := float32(usage.InputTokens)/1000*charge.GetInput() +
+		float32(usage.OutputTokens)/1000*charge.GetOutput() +
+		float32(usage.CacheReadTokens)/1000*charge.GetCacheRead() +
+		float32(usage.CacheWriteTokens)/1000*cacheWriteRate
+
+	if total < 0 {
+		return 0
+	}
+	return total
+}

@@ -44,7 +44,25 @@ type Charge struct {
 	Input     float32  `json:"input" mapstructure:"input"`
 	Output    float32  `json:"output" mapstructure:"output"`
 	Anonymous bool     `json:"anonymous" mapstructure:"anonymous"`
-	Unset     bool     `json:"-" mapstructure:"-"`
+
+	// CacheRead / CacheWrite5m / CacheWrite1h are the unit prices per 1k
+	// cache-read / 5m-cache-write / 1h-cache-write tokens. When the
+	// adapter (utils/buffer.go::Buffer.RecordUpstreamUsage) hands us
+	// provider-truth UpstreamUsage, the billing layer multiplies each
+	// class by its configured rate independently — that's the
+	// "we never lose money" rule (M ≥ 1.0 per token class) from
+	// docs/research/token-cache-AUDIT-and-billing-design.md §2.4.
+	//
+	// Unset (0) values fall back to Input in GetCacheRead/Write so an
+	// outdated config never under-charges the customer. To pass cache
+	// savings to the customer, operators set these explicitly to the
+	// upstream multiplier × markup (e.g. CacheRead = Input × 0.13 for
+	// Anthropic with markup=1.30: 0.1× upstream × 1.30 markup).
+	CacheRead    float32 `json:"cache_read,omitempty"     mapstructure:"cache_read,omitempty"`
+	CacheWrite5m float32 `json:"cache_write_5m,omitempty" mapstructure:"cache_write_5m,omitempty"`
+	CacheWrite1h float32 `json:"cache_write_1h,omitempty" mapstructure:"cache_write_1h,omitempty"`
+
+	Unset bool `json:"-" mapstructure:"-"`
 }
 
 type ChargeSequence []*Charge
