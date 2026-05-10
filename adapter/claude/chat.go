@@ -40,7 +40,7 @@ func (c *ChatInstance) ConvertCompletionMessage(message []globals.Message) strin
 			continue
 		}
 
-		result += fmt.Sprintf("\n\n%s: %s", mapper[item.Role], item.Content)
+		result += fmt.Sprintf("\n\n%s: %s", mapper[item.Role], item.Content.String())
 	}
 	return fmt.Sprintf("%s\n\nAssistant:", result)
 }
@@ -76,7 +76,7 @@ func (c *ChatInstance) ConvertMessages(props *adaptercommon.ChatProps) []globals
 
 		// anthropic api does not allow multi-same role messages
 		if len(result) > 0 && result[len(result)-1].Role == message.Role {
-			result[len(result)-1].Content += "\n" + message.Content
+			result[len(result)-1].Content = mergeMessageContent(result[len(result)-1].Content, message.Content)
 			continue
 		}
 
@@ -86,17 +86,80 @@ func (c *ChatInstance) ConvertMessages(props *adaptercommon.ChatProps) []globals
 	return result
 }
 
+func mergeMessageContent(left globals.MessageContent, right globals.MessageContent) globals.MessageContent {
+	if len(left.Blocks) > 0 || len(right.Blocks) > 0 {
+		blocks := make([]globals.ContentBlock, 0, len(left.Blocks)+len(right.Blocks)+2)
+		if len(left.Blocks) > 0 {
+			blocks = append(blocks, left.Blocks...)
+		} else if left.String() != "" {
+			blocks = append(blocks, globals.ContentBlock{Type: "text", Text: left.String()})
+		}
+		if right.String() != "" && len(blocks) > 0 {
+			blocks = append(blocks, globals.ContentBlock{Type: "text", Text: "\n"})
+		}
+		if len(right.Blocks) > 0 {
+			blocks = append(blocks, right.Blocks...)
+		} else if right.String() != "" {
+			blocks = append(blocks, globals.ContentBlock{Type: "text", Text: right.String()})
+		}
+		return globals.MessageContent{Blocks: blocks}
+	}
+	return globals.MessageContent{Plain: left.String() + "\n" + right.String()}
+}
+
+func (c *ChatInstance) convertContentBlocks(props *adaptercommon.ChatProps, blocks []globals.ContentBlock) []MessageContent {
+	return utils.EachNotNil(blocks, func(block globals.ContentBlock) *MessageContent {
+		if block.Type == "text" {
+			return &MessageContent{
+				Type:         "text",
+				Text:         utils.ToPtr(block.Text),
+				CacheControl: block.CacheControl,
+			}
+		}
+		if block.ImageURL == nil || block.ImageURL.URL == "" {
+			return nil
+		}
+
+		obj, err := utils.NewImage(block.ImageURL.URL)
+		if props.Buffer != nil {
+			props.Buffer.AddImage(obj)
+		}
+		if err != nil {
+			globals.Info(fmt.Sprintf("cannot process image: %s (source: %s)", err.Error(), utils.Extract(block.ImageURL.URL, 24, "...")))
+			return nil
+		}
+
+		i := utils.NewImageContent(block.ImageURL.URL)
+		return &MessageContent{
+			Type: "image",
+			Source: &MessageImage{
+				Type:      "base64",
+				MediaType: i.GetType(),
+				Data:      i.ToRawBase64(),
+			},
+			CacheControl: block.CacheControl,
+		}
+	})
+}
+
 func (c *ChatInstance) GetMessages(props *adaptercommon.ChatProps) []Message {
 	converted := c.ConvertMessages(props)
 	return utils.Each(converted, func(message globals.Message) Message {
-		if !globals.IsVisionModel(props.Model) || message.Role != globals.User {
+		if len(message.Content.Blocks) > 0 {
 			return Message{
 				Role:    message.Role,
-				Content: message.Content,
+				Content: c.convertContentBlocks(props, message.Content.Blocks),
 			}
 		}
 
-		content, urls := utils.ExtractImages(message.Content, true)
+		if !globals.IsVisionModel(props.Model) || message.Role != globals.User {
+			return Message{
+				Role:    message.Role,
+				Content: message.Content.String(),
+			}
+		}
+
+		content, urls := utils.ExtractImages(message.Content.String(), true)
 		images := utils.EachNotNil(urls, func(url string) *MessageContent {
 			obj, err := utils.NewImage(url)
 			props.Buffer.AddImage(obj)
@@ -125,13 +188,43 @@ func (c *ChatInstance) GetMessages(props *adaptercommon.ChatProps) []Message {
 	})
 }
 
-func (c *ChatInstance) GetSystemPrompt(props *adaptercommon.ChatProps) (prompt string) {
+func (c *ChatInstance) GetSystemPrompt(props *adaptercommon.ChatProps) interface{} {
+	hasCacheControl := false
+	blocks := make([]SystemBlock, 0)
+	var prompt string
+
 	for _, message := range props.Message {
 		if message.Role == globals.System {
-			prompt += message.Content
+			if len(message.Content.Blocks) == 0 {
+				text := message.Content.String()
+				prompt += text
+				if text != "" {
+					blocks = append(blocks, SystemBlock{Type: "text", Text: text})
+				}
+				continue
+			}
+
+			for _, block := range message.Content.Blocks {
+				if block.Type != "text" {
+					continue
+				}
+				if block.CacheControl != nil {
+					hasCacheControl = true
+				}
+				prompt += block.Text
+				blocks = append(blocks, SystemBlock{
+					Type:         "text",
+					Text:         block.Text,
+					CacheControl: block.CacheControl,
+				})
+			}
 		}
 	}
-	return
+
+	if hasCacheControl {
+		return blocks
+	}
+	return prompt
 }
 
 func (c *ChatInstance) GetChatBody(props *adaptercommon.ChatProps, stream bool) *ChatBody {

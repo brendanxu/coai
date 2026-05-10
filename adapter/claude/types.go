@@ -1,5 +1,7 @@
 package claude
 
+import "chat/globals"
+
 // ChatBody is the request body for anthropic claude
 
 type Message struct {
@@ -14,20 +16,27 @@ type MessageImage struct {
 }
 
 type MessageContent struct {
-	Type   string        `json:"type"`
-	Text   *string       `json:"text,omitempty"`
-	Source *MessageImage `json:"source,omitempty"`
+	Type         string                `json:"type"`
+	Text         *string               `json:"text,omitempty"`
+	Source       *MessageImage         `json:"source,omitempty"`
+	CacheControl *globals.CacheControl `json:"cache_control,omitempty"`
+}
+
+type SystemBlock struct {
+	Type         string                `json:"type"`
+	Text         string                `json:"text"`
+	CacheControl *globals.CacheControl `json:"cache_control,omitempty"`
 }
 
 type ChatBody struct {
-	Messages    []Message `json:"messages"`
-	MaxTokens   int       `json:"max_tokens"`
-	Model       string    `json:"model"`
-	System      string    `json:"system"`
-	Stream      bool      `json:"stream"`
-	Temperature *float32  `json:"temperature,omitempty"`
-	TopP        *float32  `json:"top_p,omitempty"`
-	TopK        *int      `json:"top_k,omitempty"`
+	Messages    []Message   `json:"messages"`
+	MaxTokens   int         `json:"max_tokens"`
+	Model       string      `json:"model"`
+	System      interface{} `json:"system,omitempty"`
+	Stream      bool        `json:"stream"`
+	Temperature *float32    `json:"temperature,omitempty"`
+	TopP        *float32    `json:"top_p,omitempty"`
+	TopK        *int        `json:"top_k,omitempty"`
 }
 
 type ChatStreamResponse struct {
