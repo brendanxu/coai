@@ -12,6 +12,8 @@ import {
   GitFork,
   History,
   Radio,
+  Route,
+  ServerCog,
   ServerCrash,
   Settings,
   Users,
@@ -84,6 +86,17 @@ function MenuBar() {
         title={t("admin.channel")}
         icon={<GitFork />}
         path={"/channel"}
+      />
+      {/* PKG-4 (architecture §19) — per-user channel routing admin. */}
+      <MenuItem
+        title={t("admin.user-routing.title")}
+        icon={<Route />}
+        path={"/user-routing"}
+      />
+      <MenuItem
+        title={t("admin.channels.title")}
+        icon={<ServerCog />}
+        path={"/channels-routing"}
       />
       <MenuItem title={t("admin.prize")} icon={<CloudCog />} path={"/charge"} />
       <MenuItem

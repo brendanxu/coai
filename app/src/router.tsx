@@ -46,6 +46,13 @@ const AdminSubscription = lazyFactor(
   () => import("@/routes/admin/Subscription.tsx"),
 );
 const AdminLogger = lazyFactor(() => import("@/routes/admin/Logger.tsx"));
+// PKG-4 (architecture §19) — per-user channel routing admin pages.
+const AdminUserRouting = lazyFactor(
+  () => import("@/routes/admin/UserRouting.tsx"),
+);
+const AdminChannelsRouting = lazyFactor(
+  () => import("@/routes/admin/AdminChannels.tsx"),
+);
 
 const router = createBrowserRouter([
   {
@@ -302,6 +309,28 @@ const router = createBrowserRouter([
             element: (
               <Suspense>
                 <AdminLogger />
+              </Suspense>
+            ),
+          },
+          // PKG-4 (architecture §19): per-user channel routing admin.
+          {
+            id: "admin-user-routing",
+            path: "user-routing",
+            element: (
+              <Suspense>
+                <AdminUserRouting />
+              </Suspense>
+            ),
+          },
+          // /admin/channels-routing (NOT /admin/channels — that path is
+          // unused but the singular /admin/channel is taken by the
+          // CoAI-upstream channel admin page).
+          {
+            id: "admin-channels-routing",
+            path: "channels-routing",
+            element: (
+              <Suspense>
+                <AdminChannelsRouting />
               </Suspense>
             ),
           },
