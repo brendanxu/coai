@@ -1,8 +1,11 @@
-// API client for the PKG-5 customer self-serve order endpoints.
+// API client for the PKG-5 customer self-serve order endpoints +
+// PKG-N2 customer-side write actions.
 //
 // Backend mounts:
-//   GET  /gtk/v1/orders                List my service orders.
-//   GET  /gtk/v1/orders/:order_no      One order's detail (mine only).
+//   GET  /gtk/v1/orders                              List my service orders.
+//   GET  /gtk/v1/orders/:order_no                    One order's detail (mine only).
+//   POST /gtk/v1/orders/:order_no/refund-request     PKG-N2: ask for refund.
+//   POST /gtk/v1/orders/:order_no/reorder            PKG-N2: reorder stub.
 //
 // Path convention follows the carbon API client (`/carbon/summary`,
 // `/carbon/factors` etc.) — axios.defaults.baseURL is the rest API
@@ -118,5 +121,98 @@ export async function loadMyOrder(
   } catch (e) {
     console.debug("[orders] detail failed", e);
     return null;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// PKG-N2 customer write actions.
+// ──────────────────────────────────────────────────────────────────────
+
+export type RefundRequestResult = {
+  ok: boolean;
+  /**
+   * Server-side reason if non-2xx, e.g. "order status \"refunded\" does
+   * not accept refund requests". Frontend surfaces this in the toast
+   * for actionable cases (state mismatch); for transport errors stays
+   * empty.
+   */
+  message?: string;
+};
+
+/**
+ * Submit a customer-side refund request. Backend appends the reason
+ * to gtk_service_order.refund_reason — does NOT flip status. Founder
+ * still confirms via admin/refund. Returns 202 Accepted on success.
+ *
+ * Does not throw. Caller switches on .ok to decide toast variant.
+ */
+export async function requestRefund(
+  orderNo: string,
+  reason: string,
+): Promise<RefundRequestResult> {
+  try {
+    const resp = await axios.post<Envelope<unknown>>(
+      `/gtk/v1/orders/${encodeURIComponent(orderNo)}/refund-request`,
+      { reason },
+      { validateStatus: () => true },
+    );
+    if (resp.status === 200 || resp.status === 202) {
+      return { ok: true };
+    }
+    return {
+      ok: false,
+      message: resp.data?.message ?? `HTTP ${resp.status}`,
+    };
+  } catch (e) {
+    console.debug("[orders] refund-request failed", e);
+    return { ok: false, message: "网络错误,请稍后重试" };
+  }
+}
+
+export type ReorderResult = {
+  ok: boolean;
+  /** "/pricing" today; future versions may return a checkout-ready order_no. */
+  redirect_url?: string;
+  /** The slug from the original order — frontend can highlight on /pricing. */
+  original_service_slug?: string;
+  is_stub?: boolean;
+  message?: string;
+};
+
+/**
+ * Trigger reorder. v0 stub: returns a redirect_url (currently /pricing)
+ * the frontend should navigate the customer to. Real one-click reorder
+ * is deferred — customer needs to re-pick payment provider anyway.
+ */
+export async function requestReorder(
+  orderNo: string,
+): Promise<ReorderResult> {
+  try {
+    const resp = await axios.post<
+      Envelope<{
+        redirect_url: string;
+        original_service_slug: string;
+        is_stub: boolean;
+      }>
+    >(
+      `/gtk/v1/orders/${encodeURIComponent(orderNo)}/reorder`,
+      undefined,
+      { validateStatus: () => true },
+    );
+    if (resp.status === 200 && resp.data?.success && resp.data.data) {
+      return {
+        ok: true,
+        redirect_url: resp.data.data.redirect_url,
+        original_service_slug: resp.data.data.original_service_slug,
+        is_stub: resp.data.data.is_stub,
+      };
+    }
+    return {
+      ok: false,
+      message: resp.data?.message ?? `HTTP ${resp.status}`,
+    };
+  } catch (e) {
+    console.debug("[orders] reorder failed", e);
+    return { ok: false, message: "网络错误,请稍后重试" };
   }
 }

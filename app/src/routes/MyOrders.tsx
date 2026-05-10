@@ -1,4 +1,4 @@
-// /orders — customer self-serve order list (PKG-5).
+// /orders — customer self-serve order list (PKG-5 + PKG-N2 cards-clickable).
 //
 // Behavior:
 //   - Auth-gated via <AuthRequired> in router.tsx.
@@ -7,19 +7,16 @@
 //     Refunded. Clicking refetches.
 //   - Each card surfaces order_no, service_name, status badge, paid
 //     price, granted credits, and timestamps.
+//   - PKG-N2: cards are clickable — wrapped in a react-router <Link>
+//     to /orders/:order_no for refund / reorder / status detail.
 //   - Empty state explains "no orders yet" + nudges to contact support
 //     for a concierge order (since there's no self-serve catalog UI in
 //     this branch yet).
-//
-// Why no router link to a detail page in this PKG:
-//   The detail-page UI doesn't exist yet. The detail endpoint (loadMyOrder)
-//   is exported from @/api/orders.ts so a future PKG can build the page
-//   without re-doing the API client. Keeping the route surface minimal
-//   here = no broken-link 404s.
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import {
   listMyOrders,
   type CustomerOrderSummary,
@@ -29,6 +26,7 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
   AlertTriangle,
+  ChevronRight,
   Loader2,
   MessageCircle,
   PackageOpen,
@@ -199,47 +197,61 @@ function OrderCard({ order }: { order: CustomerOrderSummary }) {
   const variant = statusBadgeVariant(order.status);
   const statusLabel = t(statusI18nKey(order.status));
 
+  // PKG-N2: whole card is a link to the detail page.
   return (
-    <li className="border border-border rounded-lg p-5 hover:border-foreground/20 transition-colors">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-base font-medium truncate">
-              {order.service_name}
-            </span>
-            <Badge variant={variant}>{statusLabel}</Badge>
+    <li>
+      <Link
+        to={`/orders/${encodeURIComponent(order.order_no)}`}
+        className="block border border-border rounded-lg p-5 hover:border-foreground/30 hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={`${order.service_name} ${order.order_no}`}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-base font-medium truncate">
+                {order.service_name}
+              </span>
+              <Badge variant={variant}>{statusLabel}</Badge>
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 font-mono">
+              {order.order_no}
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground mt-1 font-mono">
-            {order.order_no}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="text-right">
+              <div className="text-lg font-medium tabular-nums">
+                {order.price_display_cny}
+              </div>
+              {order.credits_granted > 0 && (
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {t("my_orders.credits", { count: order.credits_granted })}
+                </div>
+              )}
+            </div>
+            <ChevronRight
+              size={16}
+              className="text-muted-foreground/60 shrink-0"
+              aria-hidden="true"
+            />
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <div className="text-lg font-medium tabular-nums">
-            {order.price_display_cny}
-          </div>
-          {order.credits_granted > 0 && (
-            <div className="text-xs text-muted-foreground mt-0.5">
-              {t("my_orders.credits", { count: order.credits_granted })}
-            </div>
+
+        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+          <span>
+            {t("my_orders.created_at")}: {fmtDate(order.created_at)}
+          </span>
+          {order.paid_at && (
+            <span>
+              {t("my_orders.paid_at")}: {fmtDate(order.paid_at)}
+            </span>
+          )}
+          {order.completed_at && (
+            <span>
+              {t("my_orders.completed_at")}: {fmtDate(order.completed_at)}
+            </span>
           )}
         </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
-        <span>
-          {t("my_orders.created_at")}: {fmtDate(order.created_at)}
-        </span>
-        {order.paid_at && (
-          <span>
-            {t("my_orders.paid_at")}: {fmtDate(order.paid_at)}
-          </span>
-        )}
-        {order.completed_at && (
-          <span>
-            {t("my_orders.completed_at")}: {fmtDate(order.completed_at)}
-          </span>
-        )}
-      </div>
+      </Link>
     </li>
   );
 }

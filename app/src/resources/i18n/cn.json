@@ -1983,5 +1983,88 @@
     },
     "load_failed": "加载订单失败,请重试。",
     "retry": "重试"
+  },
+  "order_detail": {
+    "title": "订单详情",
+    "back": "返回订单列表",
+    "loading": "加载中",
+    "refresh": "刷新",
+    "polling": "正在更新...",
+    "not_found": {
+      "title": "未找到此订单",
+      "body": "订单可能已被删除,或者你没有访问权限。"
+    },
+    "metadata": {
+      "title": "订单信息",
+      "amount": "支付金额",
+      "credits": "已发放点数",
+      "payment_provider": "支付方式",
+      "created_at": "创建时间",
+      "paid_at": "支付时间",
+      "completed_at": "完成时间"
+    },
+    "payment_provider": {
+      "lemonsqueezy": "海外卡 (LemonSqueezy)",
+      "hupijiao": "支付宝",
+      "manual": "线下/管家结算"
+    },
+    "refund_log": {
+      "title": "退款记录"
+    },
+    "status": {
+      "pending_payment": {
+        "label": "待支付",
+        "message": "等待支付完成。如已通过其它方式付款,请刷新或联系客服核对。"
+      },
+      "paid": {
+        "label": "已支付",
+        "message": "支付已确认。等待开始执行。"
+      },
+      "running": {
+        "label": "执行中",
+        "message": "正在为你生成内容,这通常需要几分钟。页面会自动刷新。"
+      },
+      "completed": {
+        "label": "已完成",
+        "message": "服务已交付。如有问题,可申请退款或重新下单。"
+      },
+      "refunded": {
+        "label": "已退款",
+        "message": "此订单已退款。"
+      },
+      "refunded_post_delivery": {
+        "label": "交付后退款",
+        "message": "服务已交付,但订单已退款。"
+      },
+      "failed": {
+        "label": "失败",
+        "message": "订单处理失败。请联系客服核对。"
+      },
+      "canceled_mid_flight": {
+        "label": "中途取消",
+        "message": "执行过程中被取消。如需协助,请联系客服。"
+      },
+      "canceled": {
+        "message": "此订单已取消。"
+      }
+    },
+    "action": {
+      "reorder": "再来一单",
+      "refund": "申请退款"
+    },
+    "modal": {
+      "refund_title": "申请退款",
+      "refund_description": "请简要说明原因。我们会在 1 个工作日内处理。",
+      "refund_reason_label": "退款原因",
+      "refund_placeholder": "例如:内容不符合需求 / 未按时交付 / 重复下单",
+      "refund_submit": "提交申请",
+      "refund_too_short": "请至少写 4 个字说明原因",
+      "cancel": "取消"
+    },
+    "toast": {
+      "refund_submitted": "退款申请已提交,我们会尽快处理。",
+      "refund_failed": "提交失败",
+      "reorder_failed": "操作失败"
+    }
   }
 }

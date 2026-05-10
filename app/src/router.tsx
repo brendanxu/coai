@@ -36,6 +36,10 @@ const Chat = lazyFactor(() => import("@/routes/Chat.tsx"));
 // PKG-5 — customer self-serve service order list (/orders).
 const MyOrders = lazyFactor(() => import("@/routes/MyOrders.tsx"));
 
+// PKG-N2 — single order detail (/orders/:order_no). Lands the customer
+// self-serve loop: see what was delivered, request a refund, reorder.
+const OrderDetail = lazyFactor(() => import("@/routes/OrderDetail.tsx"));
+
 const AdminPage = lazyFactor(() => import("@/routes/Admin.tsx"));
 const AdminDashboard = lazyFactor(() => import("@/routes/admin/DashBoard.tsx"));
 const AdminMarket = lazyFactor(() => import("@/routes/admin/Market.tsx"));
@@ -171,6 +175,20 @@ const router = createBrowserRouter([
           <AuthRequired>
             <Suspense>
               <MyOrders />
+            </Suspense>
+          </AuthRequired>
+        ),
+      },
+      // PKG-N2 — /orders/:order_no. Single order detail page (customer
+      // self-serve refund/reorder, run progress polling).
+      // Backend: GET/POST /gtk/v1/orders/:order_no/...
+      {
+        id: "order-detail",
+        path: "orders/:order_no",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <OrderDetail />
             </Suspense>
           </AuthRequired>
         ),

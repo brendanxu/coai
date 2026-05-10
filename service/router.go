@@ -63,6 +63,11 @@ func Register(app *gin.RouterGroup) {
 	// customer_orders.go header for security rationale.
 	app.GET("/gtk/v1/orders", ListMyOrdersAPI)
 	app.GET("/gtk/v1/orders/:order_no", MyOrderDetailAPI)
+	// PKG-N2 — customer-side write actions on the order detail page.
+	// Both filter by coai_user_id at the SQL level (same security
+	// rationale as customer_orders.go).
+	app.POST("/gtk/v1/orders/:order_no/refund-request", CustomerRefundRequestAPI)
+	app.POST("/gtk/v1/orders/:order_no/reorder", CustomerReorderAPI)
 }
 
 // PendingProvisionsAPI returns the current state of the NewAPI
