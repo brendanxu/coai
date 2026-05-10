@@ -2,7 +2,6 @@ package payment
 
 import (
 	"chat/globals"
-	"chat/service"
 	"chat/utils"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -282,11 +281,10 @@ func isDupErr(err error) bool {
 }
 
 // dispatch routes an LS webhook payload to the right product-type handler.
-// Two-level router (PKG-2 Wave 3 C1):
+// Two-level router (PKG-2 Wave 3 C1 + C2):
 //
 //  1. greentokey_order_no in custom_data  → service-order path
-//     (dispatchServiceOrder until Wave 3 C2 splits it into
-//      dispatch_service.go::handleServiceEvent).
+//     (dispatch_service.go::handleServiceEvent).
 //  2. otherwise                            → token-plan path
 //     (dispatch_token.go::handleTokenPlanEvent).
 //
@@ -296,7 +294,7 @@ func isDupErr(err error) bool {
 // service code paths and vice-versa.
 func dispatch(db *sql.DB, p *webhookPayload) error {
 	if orderNo := serviceOrderNoFromCustomData(p.Meta.CustomData); orderNo != "" {
-		return dispatchServiceOrder(db, p, orderNo)
+		return handleServiceEvent(db, p, orderNo)
 	}
 	return handleTokenPlanEvent(db, p)
 }
@@ -316,47 +314,9 @@ func serviceOrderNoFromCustomData(custom map[string]interface{}) string {
 	}
 }
 
-// dispatchServiceOrder handles webhooks belonging to Layer 3 service
-// orders (custom_data has greentokey_order_no).
-//
-// v0.10 first-cut handling:
-//   - order_created           → MarkOrderPaid (one-shot or first-month)
-//   - subscription_created    → MarkOrderPaid (covers first-month);
-//                                NOTE: does NOT call upsertSubscription
-//                                because that path is for Layer 2 token
-//                                packs, not Layer 3 service orders.
-//   - subscription_cancelled  → log only; the order itself is already
-//                                paid, founder handles refund via
-//                                /api/gtk/v1/admin/refund if needed.
-//   - subscription_payment_success → DEFERRED. Each monthly renewal
-//                                should create a NEW gtk_service_order
-//                                row + flip it to paid. v0.11 cron job
-//                                or follow-up commit handles this. For
-//                                v0.10 first deploy: log + ack so LS
-//                                stops retrying.
-//   - other                   → log + ack.
-func dispatchServiceOrder(db *sql.DB, p *webhookPayload, orderNo string) error {
-	switch p.Meta.EventName {
-	case eventOrderCreated, eventCreated:
-		return service.MarkOrderPaid(db, orderNo, p.Data.ID, "lemonsqueezy")
-	case eventCancelled:
-		logf(globals.Info, "service_order_subscription_cancelled",
-			"order_no", orderNo, "ls_subscription_id", p.Data.ID,
-			"note", "order itself is already paid; refund via /admin/refund if needed")
-		return nil
-	case eventSubPayment:
-		// TODO v0.11: create new gtk_service_order row for this month
-		// of the existing subscription, flip to paid.
-		logf(globals.Info, "service_order_monthly_renewal_deferred",
-			"order_no", orderNo, "ls_subscription_id", p.Data.ID,
-			"todo", "v0.11 cron creates new monthly order row")
-		return nil
-	default:
-		logf(globals.Info, "service_order_event_acked",
-			"order_no", orderNo, "event", p.Meta.EventName)
-		return nil
-	}
-}
+// (dispatchServiceOrder moved to dispatch_service.go::handleServiceEvent
+//  in PKG-2 Wave 3 C2. See that file for the unified MarkOrderPaid +
+//  GrantEntitlement + ClosePaymentSession chain.)
 
 // userIDFromCustomData extracts the greentokey user_id we embedded in the
 // LS Checkout URL via `checkout[custom][user_id]`. LS preserves it in
