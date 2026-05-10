@@ -1793,5 +1793,38 @@
     "close": "关闭聊天",
     "panel-title": "聊天",
     "panel-label": "悬浮聊天面板"
+  },
+  "my_orders": {
+    "title": "我的订单",
+    "subtitle": "查看你购买的服务套餐及交付状态。",
+    "refresh": "刷新",
+    "credits": "{{count}} 点数",
+    "created_at": "创建",
+    "paid_at": "支付",
+    "completed_at": "完成",
+    "filter": {
+      "all": "全部",
+      "pending_payment": "待支付",
+      "paid": "已支付",
+      "running": "执行中",
+      "completed": "已完成",
+      "refunded": "已退款"
+    },
+    "status": {
+      "pending_payment": "待支付",
+      "paid": "已支付",
+      "running": "执行中",
+      "completed": "已完成",
+      "refunded": "已退款",
+      "refunded_post_delivery": "交付后退款",
+      "failed": "失败",
+      "canceled_mid_flight": "中途取消"
+    },
+    "empty": {
+      "title": "还没有订单",
+      "body": "你还没有购买任何服务套餐。如需协助开通,请联系我们。",
+      "filtered_title": "该状态下没有订单",
+      "filtered_body": "试试切换其它筛选条件。"
+    }
   }
 }

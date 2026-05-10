@@ -1800,5 +1800,38 @@
     "close": "Close chat",
     "panel-title": "Chat",
     "panel-label": "Floating chat panel"
+  },
+  "my_orders": {
+    "title": "My orders",
+    "subtitle": "Service packages you've purchased and their delivery status.",
+    "refresh": "Refresh",
+    "credits": "{{count}} credits",
+    "created_at": "Created",
+    "paid_at": "Paid",
+    "completed_at": "Completed",
+    "filter": {
+      "all": "All",
+      "pending_payment": "Pending",
+      "paid": "Paid",
+      "running": "Running",
+      "completed": "Completed",
+      "refunded": "Refunded"
+    },
+    "status": {
+      "pending_payment": "Pending payment",
+      "paid": "Paid",
+      "running": "Running",
+      "completed": "Completed",
+      "refunded": "Refunded",
+      "refunded_post_delivery": "Refunded after delivery",
+      "failed": "Failed",
+      "canceled_mid_flight": "Canceled mid-flight"
+    },
+    "empty": {
+      "title": "No orders yet",
+      "body": "You haven't purchased any service packages. Reach out if you'd like help getting started.",
+      "filtered_title": "Nothing in this status",
+      "filtered_body": "Try a different filter."
+    }
   }
 }
