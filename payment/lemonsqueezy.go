@@ -2,10 +2,8 @@ package payment
 
 import (
 	"chat/globals"
-	"chat/newapi"
 	"chat/service"
 	"chat/utils"
-	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -283,29 +281,24 @@ func isDupErr(err error) bool {
 		strings.Contains(msg, "PRIMARY KEY")
 }
 
+// dispatch routes an LS webhook payload to the right product-type handler.
+// Two-level router (PKG-2 Wave 3 C1):
+//
+//  1. greentokey_order_no in custom_data  → service-order path
+//     (dispatchServiceOrder until Wave 3 C2 splits it into
+//      dispatch_service.go::handleServiceEvent).
+//  2. otherwise                            → token-plan path
+//     (dispatch_token.go::handleTokenPlanEvent).
+//
+// Both paths are idempotent at their state-flip layers. The split into
+// dispatch_token.go / dispatch_service.go is the "blast-radius reduction"
+// from autoplan H2: a token-plan change can no longer accidentally touch
+// service code paths and vice-versa.
 func dispatch(db *sql.DB, p *webhookPayload) error {
-	// v0.10 ③ — branch on greentokey_order_no presence in custom_data.
-	// Service orders carry it (set by service/checkout.go); Layer 2
-	// 套餐 subscriptions don't. Either path is idempotent.
 	if orderNo := serviceOrderNoFromCustomData(p.Meta.CustomData); orderNo != "" {
 		return dispatchServiceOrder(db, p, orderNo)
 	}
-
-	// Layer 2 套餐 path — original behavior unchanged.
-	switch p.Meta.EventName {
-	case eventCreated, eventUpdated, eventResumed:
-		return upsertSubscription(db, p)
-	case eventCancelled:
-		return markCancelled(db, p)
-	case eventPaymentFailed:
-		// Log only; LS handles dunning. User keeps access until subscription_cancelled fires.
-		logf(globals.Warn, "payment_failed", "ls_subscription_id", p.Data.ID)
-		return nil
-	default:
-		// Unknown event_name. Ack with 200 (don't 4xx — LS would mark endpoint broken).
-		logf(globals.Info, "unknown_event", "event_type", p.Meta.EventName)
-		return nil
-	}
+	return handleTokenPlanEvent(db, p)
 }
 
 // serviceOrderNoFromCustomData extracts greentokey_order_no if present.
@@ -392,53 +385,11 @@ func userIDFromCustomData(custom map[string]interface{}) (int64, error) {
 	}
 }
 
-// upsertSubscription handles created/updated/resumed events. The semantics:
-//   * created: first time this user subscribes — INSERT subscription row + INSERT mapping
-//   * updated: renewal or plan change — UPDATE subscription.expired_at to new renews_at
-//   * resumed: user un-cancelled before period ended — clear cancelled_at, refresh status
-//
-// All three converge on "ensure subscription.expired_at == LS renews_at" and
-// "upsert mapping row with current LS state". The DB primitives are the same.
-func upsertSubscription(db *sql.DB, p *webhookPayload) error {
-	userID, err := userIDFromCustomData(p.Meta.CustomData)
-	if err != nil {
-		return err
-	}
-	renewsAt, err := time.Parse(time.RFC3339, p.Data.Attributes.RenewsAt)
-	if err != nil {
-		return fmt.Errorf("parse renews_at %q: %w", p.Data.Attributes.RenewsAt, err)
-	}
-
-	if err := activateExternalSubscription(db, userID, levelStarter, renewsAt); err != nil {
-		return fmt.Errorf("activate: %w", err)
-	}
-
-	// v0.9: also provision (or top-up) NewAPI user + token so the user gets
-	// an api-key (sk-xxx) the moment payment succeeds. Failure here is
-	// LOGGED-NOT-FATAL: the user has already paid + CoAI subscription is
-	// active; a follow-up retry queue (TODO gtk_newapi_pending_provisions)
-	// re-tries provisioning. Returning an error here would 500 the webhook
-	// → LemonSqueezy retries → potential double-activate. Better to ack +
-	// retry async.
-	if newapi.IsConfigured() {
-		spec := newapi.PlanSpec{
-			Code:       "starter",
-			QuotaUnits: quotaUnitsForLevel(levelStarter),
-			// 1-day grace past LS renews_at — protects users from instant
-			// access loss if the next-month webhook is briefly delayed.
-			ExpiresAt: renewsAt.Add(24 * time.Hour),
-		}
-		if _, err := newapi.ProvisionForPlan(context.Background(), db, userID, spec); err != nil {
-			logf(globals.Warn, "newapi_provision_failed",
-				"user_id", userID, "ls_subscription_id", p.Data.ID, "err", err)
-		}
-	}
-
-	// Upsert the audit/mapping row. Existing cancelled_at gets cleared on resumed
-	// (resumed = un-cancellation), preserved on update (re-billing of an active sub).
-	clearCancelled := p.Meta.EventName == eventResumed
-	return upsertLsMapping(db, userID, p, renewsAt, clearCancelled)
-}
+// upsertSubscription, upsertLsMapping, markCancelled, activateExternalSubscription
+// all moved to dispatch_token.go (PKG-2 Wave 3 C1). They preserve invariants
+// I3 (monotonic renews_at guard) and I4 (monotonic expired_at guard) — both
+// hard-won Codex P1 fixes from 2026-04-27. See dispatch_token.go for the
+// authoritative implementations and the inline I3/I4 reminders.
 
 // creditsForLevel + quotaUnitsForLevel translate a subscription level
 // into the user-facing credit allowance and the corresponding NewAPI
@@ -486,95 +437,5 @@ func quotaUnitsForLevel(level int) int64 {
 	return creditsForLevel(level) * quotaPerCredit
 }
 
-func upsertLsMapping(db *sql.DB, userID int64, p *webhookPayload, renewsAt time.Time, clearCancelled bool) error {
-	// Engine-agnostic upsert: try INSERT, swallow duplicate-key, then UPDATE
-	// fields that can change. CoAI's globals.PreflightSql only translates
-	// MySQL-specific ON DUPLICATE KEY UPDATE for the `quota` table, so we
-	// can't rely on that syntax for new tables.
-	variantID := fmt.Sprintf("%d", p.Data.Attributes.VariantID)
-	renewsAtStr := utils.ConvertSqlTime(renewsAt)
-
-	_, err := globals.ExecDb(db, `
-		INSERT INTO gtk_ls_subscription
-			(user_id, ls_subscription_id, variant_id, status, renews_at, test_mode)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`,
-		userID, p.Data.ID, variantID,
-		p.Data.Attributes.Status, renewsAtStr, p.Data.Attributes.TestMode)
-	if err != nil && !isDupErr(err) {
-		return err
-	}
-
-	// Monotonic guard (Codex P1 fix, 2026-04-27): two concurrent webhooks for
-	// the same subscription can land out-of-order at the DB. Only overwrite
-	// when the incoming renews_at is at-or-after the stored one — older events
-	// arriving last become no-ops instead of stale-state regressions.
-	_, err = globals.ExecDb(db, `
-		UPDATE gtk_ls_subscription
-		SET variant_id = ?, status = ?, renews_at = ?, test_mode = ?
-		WHERE ls_subscription_id = ?
-		  AND (renews_at IS NULL OR renews_at <= ?)
-	`,
-		variantID, p.Data.Attributes.Status, renewsAtStr,
-		p.Data.Attributes.TestMode, p.Data.ID, renewsAtStr)
-	if err != nil {
-		return err
-	}
-
-	if clearCancelled {
-		_, err = globals.ExecDb(db,
-			`UPDATE gtk_ls_subscription SET cancelled_at = NULL WHERE ls_subscription_id = ?`,
-			p.Data.ID)
-	}
-	return err
-}
-
-// markCancelled handles subscription_cancelled. Per LS docs, the user
-// retains access until period end — so we DO NOT touch CoAI's subscription
-// table. We only set cancelled_at + status on the mapping row. CoAI's
-// existing IsSubscribe() returns false naturally once expired_at passes.
-func markCancelled(db *sql.DB, p *webhookPayload) error {
-	_, err := globals.ExecDb(db, `
-		UPDATE gtk_ls_subscription
-		SET cancelled_at = ?, status = ?
-		WHERE ls_subscription_id = ?
-	`, utils.ConvertSqlTime(time.Now()), p.Data.Attributes.Status, p.Data.ID)
-	return err
-}
-
-// activateExternalSubscription is the bridge between LS payment events and
-// CoAI's authoritative `subscription` table. It mirrors auth.User.AddSubscription
-// but takes an explicit expiredAt (from LS renews_at) and bypasses user.Pay()
-// — money flowed through LS, not CoAI's wallet.
-//
-// total_month=1 because LS bills monthly; we record one increment per webhook.
-// On renewal (subscription_updated), the same DB row is UPDATEd with a new
-// expired_at; total_month is NOT incremented here (LS payload doesn't tell us
-// "this is renewal #N"; treating each event as +1 month would double-count).
-func activateExternalSubscription(db *sql.DB, userID int64, level int, expiredAt time.Time) error {
-	if level < 1 {
-		return fmt.Errorf("invalid plan level: %d", level)
-	}
-	date := utils.ConvertSqlTime(expiredAt)
-
-	// Engine-agnostic upsert: INSERT (ignore dup-key) then UPDATE. We can't
-	// use MySQL-specific ON DUPLICATE KEY UPDATE because CoAI's PreflightSql
-	// doesn't translate it for non-quota tables.
-	_, err := globals.ExecDb(db,
-		`INSERT INTO subscription (user_id, expired_at, total_month, level) VALUES (?, ?, 1, ?)`,
-		userID, date, level)
-	if err != nil && !isDupErr(err) {
-		return err
-	}
-
-	// Monotonic guard (Codex P1 fix, 2026-04-27): only advance expired_at,
-	// never roll it back. If two webhooks for the same user race and the
-	// older one arrives last, this clause prevents it from clobbering the
-	// already-stored newer expiry. total_month is NOT touched here; LS
-	// payload has no signal of "this is renewal #N".
-	_, err = globals.ExecDb(db,
-		`UPDATE subscription SET expired_at = ?, level = ?
-		 WHERE user_id = ? AND (expired_at IS NULL OR expired_at <= ?)`,
-		date, level, userID, date)
-	return err
-}
+// (upsertLsMapping / markCancelled / activateExternalSubscription moved to
+//  dispatch_token.go in PKG-2 Wave 3 C1.)
