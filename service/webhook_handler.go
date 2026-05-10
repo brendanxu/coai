@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -36,9 +37,10 @@ import (
 // the same args is a no-op.
 //
 // Status transitions allowed:
-//   pending_payment → paid     (happy path)
-//   paid            → paid     (idempotent — no-op)
-//   anything else   → error    (won't reopen completed/refunded orders)
+//
+//	pending_payment → paid     (happy path)
+//	paid            → paid     (idempotent — no-op)
+//	anything else   → error    (won't reopen completed/refunded orders)
 //
 // The UPDATE includes a `WHERE status = 'pending_payment'` guard so
 // concurrent webhook retries can't double-flip. Affected-rows = 0
@@ -58,8 +60,8 @@ func MarkOrderPaid(db *sql.DB, orderNo, externalOrderID, provider string) error 
 	//   running/completed → already past payment, log info
 	//   refunded/failed → terminal, refuse (don't quietly reopen)
 	var (
-		currentStatus  string
-		currentExtID   sql.NullString
+		currentStatus   string
+		currentExtID    sql.NullString
 		hupijiaoTradeNo sql.NullString
 	)
 	row := globals.QueryRowDb(db, `
@@ -177,7 +179,7 @@ func HupijiaoCallbackAPI(c *gin.Context) {
 	// Collect all form fields except `hash`, sort alphabetically,
 	// concatenate k=v&k=v, append secret, MD5 — same scheme as
 	// outbound signing in checkout.go.
-	got := c.Request.PostForm
+	got := c.Request.Form
 	params := make(map[string]string, len(got))
 	var incomingHash string
 	for k, vs := range got {
@@ -207,6 +209,30 @@ func HupijiaoCallbackAPI(c *gin.Context) {
 			status, params["trade_order_id"]))
 		c.String(http.StatusOK, "success")
 		return
+	}
+
+	if attach := params["attach"]; strings.HasPrefix(attach, "plan:") {
+		parts := strings.Split(attach, ":")
+		if len(parts) == 4 && parts[2] == "user" {
+			planCode := parts[1]
+			userID, parseErr := strconv.ParseInt(parts[3], 10, 64)
+			hupijiaoTxID := params["transaction_id"]
+			if hupijiaoTxID == "" {
+				hupijiaoTxID = params["trade_order_id"]
+			}
+			if parseErr == nil && userID > 0 && planCode != "" && hupijiaoTxID != "" {
+				if err := auth.RedeemPlanForOrder(connection.DB, userID, planCode, hupijiaoTxID); err != nil {
+					globals.Warn(fmt.Sprintf("service: hupijiao redeem failed: %v", err))
+					c.String(http.StatusInternalServerError, "fail")
+					return
+				}
+				c.String(http.StatusOK, "success")
+				return
+			}
+			globals.Warn(fmt.Sprintf("service: malformed hupijiao plan attach %q", attach))
+			c.String(http.StatusBadRequest, "bad attach")
+			return
+		}
 	}
 
 	orderNo := params["trade_order_id"]
@@ -256,12 +282,3 @@ func hupijiaoVerifyHash(params map[string]string, secret string) string {
 	sum := md5.Sum([]byte(b.String()))
 	return hex.EncodeToString(sum[:])
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// Auth-required helper for callers that need the current user's id
-// outside of the routes (e.g. internal batch jobs may want to look up
-// the auth.User struct from a session). Currently unused; placeholder
-// to keep webhook_handler.go's import surface honest.
-// ─────────────────────────────────────────────────────────────────────
-
-var _ = auth.RequireAuth // referenced only to keep import; HupijiaoCallbackAPI is auth-free by design (HMAC signed)
