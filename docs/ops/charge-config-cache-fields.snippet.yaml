@@ -1,0 +1,63 @@
+# Drop-in snippet for /opt/greentokey/data/coai/config/config.yaml on VPS.
+# Merge into the existing `charge:` block (replace existing claude / deepseek /
+# gpt-4o entries so they pick up cache_read / cache_write_5m / cache_write_1h).
+#
+# Math: each rate = (upstream USD/M × 7.2 ÷ 1000) × 1.30 markup. Full
+# derivation in docs/ops/charge-config-cache-fields.md §1. To rebalance
+# margin, multiply every "input/output/cache_*" value by (new_markup / 1.30).
+#
+# Pre-condition: prod must be running W5 image (commits 0e72388, 59c5b26,
+# bb9655b, 6cf8281, 4102cf4). The current v0.9 image lacks cache_*
+# struct fields and silently drops them on viper unmarshal.
+#
+# IDs use the 100-block to avoid colliding with existing operator-set
+# entries. Bump to 200 / 300 if 100-103 are taken.
+
+charge:
+  - id: 100
+    type: token
+    models:
+      - claude-sonnet-4-5
+      - claude-sonnet-4-5-20250929
+      - claude-3-5-sonnet
+      - claude-3-7-sonnet-latest
+    input: 0.0281
+    output: 0.1404
+    cache_read: 0.0028
+    cache_write_5m: 0.0351
+    cache_write_1h: 0.0562
+    anonymous: false
+
+  - id: 101
+    type: token
+    models:
+      - claude-haiku-3-5
+      - claude-3-5-haiku-latest
+    input: 0.0075
+    output: 0.0374
+    cache_read: 0.0007
+    cache_write_5m: 0.0094
+    cache_write_1h: 0.0150
+    anonymous: false
+
+  - id: 102
+    type: token
+    models:
+      - deepseek-chat
+      - deepseek-v3
+      - deepseek-reasoner
+    input: 0.0026
+    output: 0.0103
+    cache_read: 0.00026
+    anonymous: false
+
+  - id: 103
+    type: token
+    models:
+      - gpt-4o
+      - gpt-4o-2024-11-20
+      - gpt-4o-mini
+    input: 0.0234
+    output: 0.0936
+    cache_read: 0.0117
+    anonymous: false
