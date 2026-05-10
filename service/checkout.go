@@ -62,12 +62,16 @@ var ErrCheckoutNotConfigured = errors.New("service: payment provider not configu
 // service_slug as custom_data so the webhook handler can match the
 // inbound order_created event to the gtk_service_order row.
 //
+// PKG-2 Wave 4 D3: also embeds greentokey_session_id when non-empty so
+// the inbound webhook (Wave 3 C2 / dispatch_service.go) can call
+// commerce.ClosePaymentSession by session_id (CR7 contract).
+//
 // Validation: per-service ls_variant_id (svc.LSVariantID) must be
 // non-empty and pass the integer regex. svc.Status MUST be 'active'
 // (caller's job to enforce — we just compose). Empty store_slug
 // surfaces as ErrCheckoutNotConfigured because that's an operator
 // misconfig, not a per-service issue.
-func BuildLSServiceCheckoutURL(coaiUserID int64, orderNo string, svc *Service) (string, error) {
+func BuildLSServiceCheckoutURL(coaiUserID int64, orderNo string, svc *Service, sessionID string) (string, error) {
 	if svc == nil {
 		return "", errors.New("service: BuildLSServiceCheckoutURL requires non-nil service")
 	}
@@ -91,11 +95,14 @@ func BuildLSServiceCheckoutURL(coaiUserID int64, orderNo string, svc *Service) (
 
 	params := url.Values{}
 	// Embed greentokey_* keys in custom_data. Webhook handler dispatches
-	// on greentokey_order_no presence (see payment/lemonsqueezy.go future
-	// patch in Subsystem B).
+	// on greentokey_order_no presence (payment/lemonsqueezy.go).
 	params.Set("checkout[custom][greentokey_order_no]", orderNo)
 	params.Set("checkout[custom][greentokey_user_id]", fmt.Sprintf("%d", coaiUserID))
 	params.Set("checkout[custom][greentokey_service_slug]", svc.Slug)
+	if sessionID != "" {
+		// Wave 4 D3 wiring → Wave 3 C2 ClosePaymentSession.
+		params.Set("checkout[custom][greentokey_session_id]", sessionID)
+	}
 
 	return fmt.Sprintf("https://%s.lemonsqueezy.com/buy/%s?%s",
 		slug, svc.LSVariantID, params.Encode()), nil
@@ -130,9 +137,15 @@ const defaultHupijiaoEndpoint = "https://api.xunhupay.com/payment/do.html"
 //   - svc.Status='active' (caller's responsibility)
 //   - svc.PriceCNYCents > 0 (hupijiao rejects zero-amount payments)
 //
+// PKG-2 Wave 4 D3: when sessionID is non-empty, it's appended to the
+// `plugins` field (hupijiao's free-form custom-data carrier) so the
+// inbound callback can match by session_id. hupijiao docs only document
+// `plugins` as a string passed back via webhook attribute — multiple
+// key:value pairs separated by commas is the established convention.
+//
 // Returns HupijiaoQR with TradeNo so the caller can persist it onto
 // gtk_service_order.hupijiao_trade_no for webhook reconciliation.
-func BuildHupijiaoQR(coaiUserID int64, orderNo string, svc *Service) (*HupijiaoQR, error) {
+func BuildHupijiaoQR(coaiUserID int64, orderNo string, svc *Service, sessionID string) (*HupijiaoQR, error) {
 	if svc == nil {
 		return nil, errors.New("service: BuildHupijiaoQR requires non-nil service")
 	}
@@ -166,20 +179,25 @@ func BuildHupijiaoQR(coaiUserID int64, orderNo string, svc *Service) (*HupijiaoQ
 		notifyURL = "https://api.greentokey.com/api/gtk/v1/service/hupijiao-callback"
 	}
 
+	// `plugins` carries our custom data through hupijiao's webhook envelope.
+	// Append greentokey_session_id when supplied (Wave 4 D3 wiring).
+	plugins := fmt.Sprintf("greentokey_user_id:%d", coaiUserID)
+	if sessionID != "" {
+		plugins += fmt.Sprintf(",greentokey_session_id:%s", sessionID)
+	}
+
 	params := map[string]string{
-		"version":         "1.1",
-		"appid":           merchantID,
-		"trade_order_id":  tradeNo,
-		"total_fee":       yuan,
-		"title":           svc.Name,
-		"time":            fmt.Sprintf("%d", time.Now().Unix()),
-		"notify_url":      notifyURL,
-		"return_url":      "https://api.greentokey.com/order/" + orderNo,
-		"nonce_str":       randomNonce(),
-		"type":            "WAP", // alipay native — works for QR + deep-link
-		// custom_field is hupijiao's analog of LS custom_data — survives
-		// to webhook so we can match on greentokey_user_id.
-		"plugins": fmt.Sprintf("greentokey_user_id:%d", coaiUserID),
+		"version":        "1.1",
+		"appid":          merchantID,
+		"trade_order_id": tradeNo,
+		"total_fee":      yuan,
+		"title":          svc.Name,
+		"time":           fmt.Sprintf("%d", time.Now().Unix()),
+		"notify_url":     notifyURL,
+		"return_url":     "https://api.greentokey.com/order/" + orderNo,
+		"nonce_str":      randomNonce(),
+		"type":           "WAP", // alipay native — works for QR + deep-link
+		"plugins":        plugins,
 	}
 	params["hash"] = hupijiaoSign(params, merchantSecret)
 

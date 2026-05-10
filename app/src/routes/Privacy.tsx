@@ -35,8 +35,8 @@ function PrivacyCN() {
       </p>
       <p>
         本政策适用于 <strong>greentokey.com</strong>、
-        <strong>www.greentokey.com</strong>、<strong>api.greentokey.com</strong>，
-        及其上承载的 Token 套餐 API 服务、AI 服务市场、demo 预约表单。
+        <strong>www.greentokey.com</strong>、<strong>api.greentokey.com</strong>
+        ， 及其上承载的 Token 套餐 API 服务、AI 服务市场、demo 预约表单。
       </p>
 
       <h2>1. 我们收集什么</h2>
@@ -48,8 +48,8 @@ function PrivacyCN() {
           备注（你只填你愿意填的）
         </li>
         <li>
-          <strong>购买服务时</strong>：支付平台（支付宝 / 微信支付 / LemonSqueezy）
-          回传的订单号 + 金额 + 渠道。
+          <strong>购买服务时</strong>：支付平台（支付宝 / 微信支付 /
+          LemonSqueezy） 回传的订单号 + 金额 + 渠道。
           <strong>我们不接触你的银行卡或支付宝密码。</strong>
         </li>
         <li>
@@ -58,8 +58,7 @@ function PrivacyCN() {
         </li>
         <li>
           <strong>使用服务时</strong>：你上传的图片 / 文字 / 主题词
-          （仅用于生成你购买的内容；
-          不外传，不用于训练模型）
+          （仅用于生成你购买的内容； 不外传，不用于训练模型）
         </li>
       </ul>
 
@@ -70,14 +69,18 @@ function PrivacyCN() {
           用于计费 + 限流 + 故障排查。不记录 prompt / response 文本。
         </li>
         <li>
-          <strong>访问日志</strong>：IP + UA + 访问 URL + 时间戳。
-          Cloudflare CDN + Caddy 边缘各保留 7-30 天。
+          <strong>访问日志</strong>：IP + UA + 访问 URL + 时间戳。 Cloudflare
+          CDN + Caddy 边缘各保留 7-30 天。
         </li>
       </ul>
 
-      <h3>1.3 我们<strong>不</strong>收集</h3>
+      <h3>
+        1.3 我们<strong>不</strong>收集
+      </h3>
       <ul>
-        <li>你的小红书账号密码（民宿代运营服务从不要求密码，内容生成后推到你手机草稿箱）</li>
+        <li>
+          你的小红书账号密码（民宿代运营服务从不要求密码，内容生成后推到你手机草稿箱）
+        </li>
         <li>你的支付凭证（卡号 / 密码 / CVV）</li>
         <li>位置 GPS（你填的"位置"是文本字段，非定位数据）</li>
         <li>第三方 cookie 跟踪（仅 Cloudflare 必需的反 DDoS cookie）</li>
@@ -86,7 +89,8 @@ function PrivacyCN() {
       <h2>2. 我们怎么用</h2>
       <ol>
         <li>
-          <strong>履行服务</strong>：响应你的 API 调用、生成你购买的内容、Founder 联系你跟进 demo。
+          <strong>履行服务</strong>：响应你的 API
+          调用、生成你购买的内容、Founder 联系你跟进 demo。
         </li>
         <li>
           <strong>计费</strong>：API token 数 → credits → 月度结算。
@@ -96,28 +100,33 @@ function PrivacyCN() {
           <strong>故障排查 + 安全</strong>：异常调用拦截、IP 限流、滥用调查。
         </li>
         <li>
-          <strong>产品改进</strong>：聚合统计（"DeepSeek 占 60% 调用量"），不识别个人。
+          <strong>产品改进</strong>：聚合统计（"DeepSeek 占 60%
+          调用量"），不识别个人。
         </li>
       </ol>
 
       <h2>3. 我们和谁共享</h2>
 
-      <p><strong>必要的第三方</strong>（你的数据通过它们流转的环节）：</p>
+      <p>
+        <strong>必要的第三方</strong>（你的数据通过它们流转的环节）：
+      </p>
       <ul>
         <li>
-          <strong>支付宝</strong> / <strong>LemonSqueezy</strong> / <strong>虎皮椒</strong>{" "}
-          — 收单 + 退款。共享：订单号、金额。
+          <strong>支付宝</strong> / <strong>LemonSqueezy</strong> /{" "}
+          <strong>虎皮椒</strong> — 收单 + 退款。共享：订单号、金额。
         </li>
         <li>
-          <strong>NewAPI 上游模型供应商</strong>（OpenAI / Anthropic / DeepSeek /
-          阿里云 / 智谱 / 月之暗面 等）— 你的 prompt 内容会发送给上游模型 API
-          以生成 response。<strong>当前技术配置下</strong>,我们不在应用层
-          存储 prompt 文本(NewAPI prompt log 设置见仓库 <code>infra/coai-config.yaml.example</code>)。
+          <strong>NewAPI 上游模型供应商</strong>（OpenAI / Anthropic / DeepSeek
+          / 阿里云 / 智谱 / 月之暗面 等）— 你的 prompt 内容会发送给上游模型 API
+          以生成 response。<strong>当前技术配置下</strong>,我们不在应用层 存储
+          prompt 文本(NewAPI prompt log 设置见仓库{" "}
+          <code>infra/coai-config.yaml.example</code>)。
           这是当前实现状态而非永久性合同承诺 — 任何配置变更会同步更新本页。
           上游各家 API 的隐私政策由它们自行公布。
         </li>
         <li>
-          <strong>Cloudflare</strong> — CDN + DDoS 防护。共享：访问日志（IP / UA / URL）。
+          <strong>Cloudflare</strong> — CDN + DDoS 防护。共享：访问日志（IP / UA
+          / URL）。
         </li>
       </ul>
 
@@ -129,14 +138,16 @@ function PrivacyCN() {
       <h2>4. 数据保留期</h2>
       <ul>
         <li>
-          <strong>预约 demo 留资</strong>：90 天内 founder 跟进 → 转客户/拒绝/无回应。
-          90 天后未转化的留资行清理。
+          <strong>预约 demo 留资</strong>：90 天内 founder 跟进 →
+          转客户/拒绝/无回应。 90 天后未转化的留资行清理。
         </li>
         <li>
-          <strong>付费客户</strong>：账号信息保留至账号注销 + 法务要求的最少留存期（中国《电商法》要求订单数据 3 年）。
+          <strong>付费客户</strong>：账号信息保留至账号注销 +
+          法务要求的最少留存期（中国《电商法》要求订单数据 3 年）。
         </li>
         <li>
-          <strong>API 调用日志</strong>：90 天滚动留存（用于计费对账 + 安全审计）。
+          <strong>API 调用日志</strong>：90 天滚动留存（用于计费对账 +
+          安全审计）。
         </li>
         <li>
           <strong>访问日志</strong>：Cloudflare 7 天 / 我们边缘 30 天。
@@ -163,8 +174,10 @@ function PrivacyCN() {
         </li>
       </ul>
 
-      <p>行使任何上述权利，发邮件 / 微信联系我们（见 <strong>第 8 节</strong>）。
-      24 小时内首次响应，30 天内完成。</p>
+      <p>
+        行使任何上述权利，发邮件 / 微信联系我们（见 <strong>第 8 节</strong>）。
+        24 小时内首次响应，30 天内完成。
+      </p>
 
       <h2>6. 数据安全</h2>
       <ul>
@@ -176,9 +189,7 @@ function PrivacyCN() {
       </ul>
 
       <h2>7. 政策变更</h2>
-      <p>
-        重大变更（涉及数据收集范围 / 共享对象 / 保留期）我们会：
-      </p>
+      <p>重大变更（涉及数据收集范围 / 共享对象 / 保留期）我们会：</p>
       <ul>
         <li>提前 30 天在本页公告</li>
         <li>邮件 / 微信通知所有付费客户</li>
@@ -187,13 +198,10 @@ function PrivacyCN() {
 
       <h2>8. 联系我们</h2>
       <p>
-        隐私问题、数据请求、投诉：通过{" "}
-        <a href="/contact">/contact</a> 留下你的联系方式，
-        founder 24 小时内回复。
+        隐私问题、数据请求、投诉：通过 <a href="/contact">/contact</a>{" "}
+        留下你的联系方式， founder 24 小时内回复。
       </p>
-      <p>
-        境内运营主体 + ICP 备案信息将在备案完成后于 footer 公示。
-      </p>
+      <p>境内运营主体 + ICP 备案信息将在备案完成后于 footer 公示。</p>
     </LegalLayout>
   );
 }
@@ -213,8 +221,8 @@ function PrivacyEN() {
       <p>
         This applies to <strong>greentokey.com</strong>,
         <strong>www.greentokey.com</strong>, <strong>api.greentokey.com</strong>{" "}
-        and the Token plan API service, AI service marketplace, and demo
-        booking form hosted on them.
+        and the Token plan API service, AI service marketplace, and demo booking
+        form hosted on them.
       </p>
 
       <h2>1. What we collect</h2>
@@ -249,17 +257,24 @@ function PrivacyEN() {
           response text are NOT logged.
         </li>
         <li>
-          <strong>Access logs</strong>: IP + UA + URL + timestamp. Retained
-          7-30 days at Cloudflare CDN + Caddy edge.
+          <strong>Access logs</strong>: IP + UA + URL + timestamp. Retained 7-30
+          days at Cloudflare CDN + Caddy edge.
         </li>
       </ul>
 
-      <h3>1.3 What we do <strong>not</strong> collect</h3>
+      <h3>
+        1.3 What we do <strong>not</strong> collect
+      </h3>
       <ul>
-        <li>Your Xiaohongshu password (managed-ops never asks for it; content goes to your phone draft box)</li>
+        <li>
+          Your Xiaohongshu password (managed-ops never asks for it; content goes
+          to your phone draft box)
+        </li>
         <li>Your payment credentials (card number / password / CVV)</li>
         <li>GPS location (the "location" field is text, not coordinates)</li>
-        <li>Third-party tracking cookies (only Cloudflare's anti-DDoS cookies)</li>
+        <li>
+          Third-party tracking cookies (only Cloudflare's anti-DDoS cookies)
+        </li>
       </ul>
 
       <h2>2. How we use it</h2>
@@ -284,7 +299,9 @@ function PrivacyEN() {
 
       <h2>3. Who we share with</h2>
 
-      <p><strong>Necessary third parties</strong> (your data flows through):</p>
+      <p>
+        <strong>Necessary third parties</strong> (your data flows through):
+      </p>
       <ul>
         <li>
           <strong>Alipay</strong> / <strong>LemonSqueezy</strong> /{" "}
@@ -294,13 +311,13 @@ function PrivacyEN() {
         <li>
           <strong>NewAPI upstream model providers</strong> (OpenAI / Anthropic /
           DeepSeek / Aliyun / Zhipu / Moonshot, etc.) — your prompt is sent to
-          the upstream model API to generate a response. <strong>Under the
-          current technical configuration</strong>, we do not store prompt
-          text at the application layer (NewAPI prompt-log settings: see
-          repository <code>infra/coai-config.yaml.example</code>). This
-          describes current implementation, not a binding perpetual commitment
-          — any configuration change will be reflected on this page. Upstream
-          privacy policies are published by each provider.
+          the upstream model API to generate a response.{" "}
+          <strong>Under the current technical configuration</strong>, we do not
+          store prompt text at the application layer (NewAPI prompt-log
+          settings: see repository <code>infra/coai-config.yaml.example</code>).
+          This describes current implementation, not a binding perpetual
+          commitment — any configuration change will be reflected on this page.
+          Upstream privacy policies are published by each provider.
         </li>
         <li>
           <strong>Cloudflare</strong> — CDN + DDoS protection. Shared: access
@@ -317,8 +334,8 @@ function PrivacyEN() {
       <ul>
         <li>
           <strong>Demo leads</strong>: founder follows up within 90 days →
-          converted / declined / no-response. Unconverted lead rows purged
-          after 90 days.
+          converted / declined / no-response. Unconverted lead rows purged after
+          90 days.
         </li>
         <li>
           <strong>Paying customers</strong>: account info kept until
@@ -336,14 +353,19 @@ function PrivacyEN() {
 
       <h2>5. Your rights</h2>
       <ul>
-        <li><strong>Access</strong>: see all data we hold about you</li>
-        <li><strong>Correction</strong>: fix incorrect info</li>
         <li>
-          <strong>Deletion</strong>: erase your account + leads. Existing
-          orders preserved per legal retention (3 years per China E-commerce
-          Law).
+          <strong>Access</strong>: see all data we hold about you
         </li>
-        <li><strong>Export</strong>: structured export (JSON)</li>
+        <li>
+          <strong>Correction</strong>: fix incorrect info
+        </li>
+        <li>
+          <strong>Deletion</strong>: erase your account + leads. Existing orders
+          preserved per legal retention (3 years per China E-commerce Law).
+        </li>
+        <li>
+          <strong>Export</strong>: structured export (JSON)
+        </li>
         <li>
           <strong>Withdraw consent</strong>: stop using the service anytime
         </li>
@@ -363,8 +385,8 @@ function PrivacyEN() {
         </li>
         <li>Alipay integration uses RSA-2048 public/private key signing</li>
         <li>
-          VPS exposes only 80/443; NewAPI core is network-isolated, not reachable
-          externally
+          VPS exposes only 80/443; NewAPI core is network-isolated, not
+          reachable externally
         </li>
         <li>
           Daily DB backups + offsite replication to Cloudflare R2 (different
@@ -373,7 +395,9 @@ function PrivacyEN() {
       </ul>
 
       <h2>7. Changes</h2>
-      <p>For material changes (collection scope / sharing partners / retention):</p>
+      <p>
+        For material changes (collection scope / sharing partners / retention):
+      </p>
       <ul>
         <li>30-day advance notice on this page</li>
         <li>Email / WeChat notification to all paying customers</li>

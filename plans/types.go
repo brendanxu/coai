@@ -12,13 +12,24 @@ import (
 // Plan mirrors a row in gtk_plan. quota_config / Type / IsActive are kept as
 // raw scan types (sql.NullString, string, bool) so callers decide how to
 // validate ENUM values and parse JSON. Keeps this file zero-dependency.
+//
+// PKG-1 (v0.17, L23): ProductType/BillingMode/QuotaGrant/ServiceID added.
+// ProductType is the discriminator the shared commerce backbone (PKG-2)
+// dispatches on. BillingMode is the finer-grained successor to the legacy
+// Type field. QuotaGrant is a typed shortcut for the common "credits per
+// period" case (parallel to QuotaConfig JSON). ServiceID nullable-FK
+// links service-product plans to gtk_service rows.
 type Plan struct {
 	ID           int64
 	Code         string
 	Name         string
-	Type         string         // 'subscription' | 'pack' (validated at write site, not here)
+	Type         string         // legacy: 'subscription' | 'pack' (kept for back-compat)
+	ProductType  string         // 'token' | 'service' — L23 discriminator
+	BillingMode  string         // 'subscription' | 'one_time' | 'top_up' | 'manual'
 	PriceCents   int64
 	DurationDays int64
+	QuotaGrant   sql.NullInt64  // typed credits-per-period shortcut
+	ServiceID    sql.NullInt64  // FK to gtk_service for product_type='service'
 	QuotaConfig  sql.NullString // raw JSON; parsed by callers
 	IsActive     bool
 	CreatedAt    time.Time
@@ -26,15 +37,22 @@ type Plan struct {
 
 // UserPlan mirrors a row in gtk_user_plan. ExpireAt + Remaining are nullable;
 // scan into the sql.Null* zero-values when absent.
+//
+// PKG-1: ProductType + CancellationReason added. ProductType inherited from
+// Plan at write time so per-user filters don't need a join. CancellationReason
+// captures audit-friendly free-text on status flip ('refund_full',
+// 'cancel_at_period_end', 'admin_revoke', etc.).
 type UserPlan struct {
-	ID          int64
-	UserID      int64
-	PlanID      int64
-	Status      string         // 'active' | 'expired' | 'canceled'
-	ExpireAt    sql.NullTime
-	Remaining   sql.NullString // raw JSON; parsed by callers
-	PurchasedAt time.Time
-	OrderID     string         // 'ls_<...>' or 'xhp_<...>' per PROJECT_BRIEF §"💳 支付"
+	ID                 int64
+	UserID             int64
+	PlanID             int64
+	ProductType        string         // 'token' | 'service' — inherited from Plan
+	Status             string         // 'active' | 'expired' | 'canceled'
+	CancellationReason sql.NullString // free-text reason when status != 'active'
+	ExpireAt           sql.NullTime
+	Remaining          sql.NullString // raw JSON; parsed by callers
+	PurchasedAt        time.Time
+	OrderID            string         // 'ls_<...>' or 'xhp_<...>' per PROJECT_BRIEF §"💳 支付"
 }
 
 // AppUsageLog mirrors a row in gtk_app_usage_log. PlanID is nullable for
@@ -47,19 +65,32 @@ type UserPlan struct {
 // backward-compatibility with existing readers and are written alongside
 // the V2 fields by the billing calculator (TokensUsed = sum of all four
 // token classes; CostCents = ClientChargeMicro / 10000).
+//
+// PKG-1: Source / OrderID added. Source classifies the call origin so revenue
+// attribution can split chat-driven vs service-order usage. OrderID links to
+// gtk_service_order.order_no when source='service_order'. (Provider was also
+// added by PKG-1, but it duplicates the V2 Provider field below — merged into
+// the V2 field as a single non-nullable string. Adapter path always sets a
+// concrete provider value after parsing upstream usage; service_order path
+// can fall back to '' which is fine for the per-provider GROUP BY.)
 type AppUsageLog struct {
 	ID         int64
 	UserID     int64
 	PlanID     sql.NullInt64
 	Service    string
-	TokensUsed int64 // legacy: sum of input + output + cache_write + cache_read
-	CostCents  int64 // legacy: ClientChargeMicro / 10000 (whole cents only)
+	Source     string         // 'chat' | 'api' | 'service_order' | 'admin_test' (PKG-1)
+	OrderID    sql.NullString // gtk_service_order.order_no when applicable (PKG-1)
+	TokensUsed int64          // legacy: sum of input + output + cache_write + cache_read
+	CostCents  int64          // legacy: ClientChargeMicro / 10000 (whole cents only)
 	CreatedAt  time.Time
 
 	// V2 cache-aware fields. ModelID + Provider identify the upstream model
 	// (e.g. "claude-sonnet-4.5", "anthropic"). The four token counts come
 	// straight off the upstream usage payload; non-cache providers leave
 	// CacheWriteTokens + CacheReadTokens at 0.
+	//
+	// Note: Provider here merges PKG-1's Provider sql.NullString — adapter
+	// always sets a concrete value, so non-nullable string is sufficient.
 	ModelID           string
 	Provider          string
 	InputTokens       int64

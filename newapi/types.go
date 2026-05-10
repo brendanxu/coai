@@ -67,10 +67,17 @@ type Token struct {
 
 // CreateUserRequest mirrors POST /api/user (admin scope).
 // Required: Username (unique). Password is auto-generated if empty.
+//
+// PKG-2 Wave 1 (Q2 / CR8 / architecture §16 §19): Group selects the
+// NewAPI pricing/routing group. Empty → NewAPI defaults to "default".
+// Token-plan users typically stay on "default"; service-runtime users
+// are placed in a dedicated group (e.g. "service-runtime") so the
+// admin can swap channels per group without touching token plans.
 type CreateUserRequest struct {
 	Username    string `json:"username"`
 	Password    string `json:"password,omitempty"`
 	DisplayName string `json:"display_name,omitempty"`
+	Group       string `json:"group,omitempty"`
 }
 
 // CreateTokenRequest mirrors POST /api/token. The acting user is set
@@ -85,9 +92,16 @@ type CreateTokenRequest struct {
 // UpdateUserQuotaRequest mirrors PUT /api/user/admin/{id}.
 // We send only the field we want changed; NewAPI honors partial updates
 // for these fields specifically.
+//
+// PKG-2 Wave 1 (Q2 / CR8): Group is optional — only sent when callers
+// want to move a user between routing groups (e.g. SyncBindingGroup
+// flipping a user from "default" to "service-runtime"). Empty Group is
+// emitted as NO field via omitempty so existing quota-only update
+// semantics are preserved.
 type UpdateUserQuotaRequest struct {
-	ID    int64 `json:"id"`
-	Quota int64 `json:"quota"`
+	ID    int64  `json:"id"`
+	Quota int64  `json:"quota,omitempty"`
+	Group string `json:"group,omitempty"`
 }
 
 // envelope is NewAPI's standard response wrapper.

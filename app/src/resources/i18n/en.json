@@ -505,82 +505,19 @@
     "generate-result": "Generate Result",
     "error": "Request Failed",
     "channels": {
-      "id": "Channel ID",
-      "name": "Name",
-      "name-tip": "Channel name, used to identify the channel",
-      "name-placeholder": "Please enter the channel name",
-      "type": "Type",
-      "priority": "Priority",
-      "priority-tip": "When there are multiple channels, requests are made according to priority order. Higher priority takes precedence.",
-      "weight": "Weight",
-      "weight-tip": "When the priority is the same, load balancing calls are performed according to the weight ratio",
-      "retry": "Max Retry",
-      "retry-tip": "Maximum number of retries when the channel request fails",
-      "model": "Model",
-      "secret": "Secret",
-      "secret-placeholder": "Please enter the secret, format: {{format}} (<> not filled)\nWhen there are multiple secrets, one is randomly selected when requesting the load",
-      "endpoint": "Endpoint",
-      "endpoint-placeholder": "Please enter the endpoint (i.e. proxy)",
-      "mapper": "Model Mapper",
-      "mapper-tip": "Model name conversion to achieve asymmetric model requests",
-      "mapper-placeholder": "Please enter the model mapper, one per line, format: model>model\nThe former is the requested model, and the latter is the mapped model (which needs to exist in the model), separated by > in the middle\nPreceding with ! indicates that the original model is not included in the available range of this channel, e.g.: !gpt-4-slow>gpt-4, then gpt-4 will not be covered in the available models that can be requested in this channel",
-      "group": "User Group",
-      "group-tip": "User group. Groups that are not included will not be included in the available range of this channel (when the group is empty, all users can use this channel)",
-      "state": "State",
-      "action": "Action",
-      "edit": "Edit Channel",
-      "enable": "Enable Channel",
-      "disable": "Disable Channel",
-      "delete": "Delete Channel",
-      "create": "Create Channel",
-      "search-model": "Search Model",
-      "fill-template-models": "Fill Template Models ({{number}})",
-      "add-custom-model": "Add Custom Model (Multiple models are separated by spaces)",
-      "add-model": "Add Model",
-      "clear-models": "Clear All Models",
-      "advanced": "Advanced settings",
-      "group-placeholder": "{{length}} groups selected",
-      "group-desc": "User type grouping. Groups not included will not be included in the available scope of this channel (when the grouping is empty, all users can use this channel). No need to set grouping for non-special cases.",
-      "groups": {
-        "anonymous": "Anonymous user",
-        "normal": "Normal",
-        "basic": "Basic Subscribers",
-        "standard": "Standard Subscribers",
-        "pro": "Pro Subscribers",
-        "admin": "Admin user",
-        "custom": "пользовательская подгруппа"
-      },
-      "joint": "Connect upstream",
-      "joint-endpoint": "Upstream address",
-      "joint-endpoint-placeholder": "Please enter the API address of the upstream CoAI, for example: https://api.chatnio.net",
-      "joint-secret": "API keys",
-      "joint-secret-placeholder": "Please enter the API key for upstream CoAI",
-      "sync-failed": "Sync Failed",
-      "sync-failed-prompt": "Address could not be requested or model market model is empty\n(Endpoint: {{endpoint}})",
-      "sync-success": "Sync successful.",
-      "sync-success-prompt": "{{length}} models were added from upstream synchronization.",
-      "upstream-endpoint-placeholder": "Please enter the upstream OpenAI address, e.g. https://api.openai.com",
-      "sync-secret-placeholder": "Please enter API key for upstream channel",
-      "proxy-type": "Proxy Type",
-      "proxy-endpoint": "Proxy address",
-      "proxy-endpoint-placeholder": "Please enter forward proxy address, e.g.: socks5://example.com:1080",
-      "proxy-desc": "Forward proxy, supports HTTP/HTTPS/SOCKS5 proxy (for reverse proxy, please fill in the access point; no need to set forward proxy in non-special cases)",
-      "proxy-username": "Proxy Username",
-      "proxy-username-placeholder": "Please enter the proxy's authentication username (optional)",
-      "proxy-password": "Proxy Password",
-      "proxy-password-placeholder": "Please enter the proxy's authentication password (optional)",
-      "search-channel": "Search channel name, model, key...",
-      "retry-name": "Try again",
-      "secret-number": "Number of keys",
-      "loading": "Loading...",
-      "new": "Add new channel",
-      "import": "Import existing channels",
-      "first-message-as-user": "Convert first message to user message by default",
-      "first-message-as-user-tip": "If on, will be converted to user role when first message is assistant role",
-      "first-message-as-user-desc": "Some models (such as DeepSeek) do not support the first message as an assistant role. Turn this option on to convert the first message of the assistant role into a user role.",
-      "merge-consecutive-user-messages": "Merge continuous user messages",
-      "merge-consecutive-user-messages-tip": "If on, will be merged into one message when both consecutive messages are user messages",
-      "merge-consecutive-user-messages-desc": "Some models, such as DeepSeek, do not support two consecutive user messages, enabling this option can combine two consecutive user messages into one message."
+      "title": "Channel Inventory",
+      "refresh": "Refresh",
+      "read-only-note": "Read-only view of NewAPI channels. To edit a channel's group whitelist in v0.19, use the NewAPI admin dashboard.",
+      "load-error": "Failed to load: {{error}}",
+      "empty": "No channels configured yet.",
+      "col-id": "ID",
+      "col-name": "Name",
+      "col-provider": "Provider",
+      "col-models": "Models",
+      "col-group": "Groups",
+      "col-status": "Status",
+      "status-enabled": "Enabled",
+      "status-disabled": "Disabled"
     },
     "charge": {
       "id": "ID",
@@ -1082,6 +1019,90 @@
       "warm-tip": "> If you are using a CDN service, you can warm up resources with this feature.\n* * After each update, you can perform a resource refresh to ensure the stability of the resource and increase the loading speed. * *\nCDN (Content Delivery Network) resources are preheated, and after preheating, the resources will be cached to the CDN node to speed up access.\nWith the warm-up function, you can cache popular resources to the CDN node before the peak of business, reducing the pressure on the source station and improving the user experience.\nTip: * * Warm-up execution will pull a lot of data from the CDN to the source station, please pay attention to the source station's broadband load. * *",
       "copy-data": "Copy Preheated URL Resource List"
     },
+    "orders": {
+      "title": "Order Management",
+      "refresh": "Refresh",
+      "filter-status": "Status:",
+      "all-statuses": "All statuses",
+      "search": "Search",
+      "search-placeholder": "Order # or username (prefix)",
+      "clear-filters": "Clear filters",
+      "total": "{{total}} orders",
+      "load-error": "Failed to load: {{error}}",
+      "retry": "Retry",
+      "empty": "No orders yet.",
+      "empty-filtered": "No orders match the current filters.",
+      "col-order-no": "Order #",
+      "col-username": "User",
+      "col-service": "Service",
+      "col-status": "Status",
+      "col-amount": "Amount",
+      "col-provider": "Provider",
+      "col-created": "Created",
+      "col-actions": "Actions",
+      "actions": {
+        "mark-paid": "Mark Paid",
+        "refund": "Refund"
+      },
+      "cancel": "Cancel",
+      "confirm-mark-paid": "Confirm — Mark Paid",
+      "confirm-refund": "Confirm — Refund",
+      "mark-paid-title": "Mark order {{order_no}} as paid",
+      "mark-paid-desc": "For orders settled offline (wechat / bank transfer / cash). The system will grant the corresponding entitlement (credits / service quota) and log the action.",
+      "mark-paid-success": "Order {{order_no}} marked as paid.",
+      "refund-title": "Refund order {{order_no}}",
+      "refund-desc": "Note: this only updates OUR record. It does NOT trigger a real refund in LemonSqueezy / hupijiao — go to that dashboard separately to actually move the money.",
+      "refund-reason-label": "Refund reason (required)",
+      "refund-reason-placeholder": "e.g. customer changed mind, service did not meet expectations, pricing adjustment…",
+      "refund-reason-required": "Refund reason is required.",
+      "refund-amount-label": "Refund amount (optional, ¥)",
+      "refund-amount-placeholder": "Leave blank for full refund",
+      "refund-amount-hint": "Recorded for audit only; the API does not split the amount.",
+      "refund-amount-invalid": "Refund amount must be a positive number.",
+      "refund-success": "Order {{order_no}} refunded.",
+      "refund-already-refunded": "Order {{order_no}} was already refunded; only the note was updated.",
+      "page-of": "Page {{page}} / {{total}}",
+      "prev": "Prev",
+      "next": "Next",
+      "status": {
+        "pending_payment": "Pending payment",
+        "paid": "Paid",
+        "running": "Running",
+        "completed": "Completed",
+        "refunded": "Refunded",
+        "refunded_post_delivery": "Refunded post-delivery",
+        "failed": "Failed",
+        "canceled_mid_flight": "Canceled mid-flight"
+      }
+    },
+    "user-routing": {
+      "title": "User Channel Routing",
+      "refresh": "Refresh",
+      "filter-group": "Filter by group:",
+      "all-groups": "All groups",
+      "total": "Total: {{total}}",
+      "load-error": "Failed to load: {{error}}",
+      "empty": "No users with NewAPI bindings yet.",
+      "col-coai-id": "CoAI ID",
+      "col-username": "Username",
+      "col-newapi-id": "NewAPI ID",
+      "col-group": "Current Group",
+      "col-quota": "Last Known Quota",
+      "col-actions": "Actions",
+      "edit": "Edit",
+      "edit-title": "Change routing for {{username}}",
+      "edit-desc": "The new group is applied to NewAPI immediately. Pick from the suggested groups, or type a custom group name your channels recognize.",
+      "current-group": "Current group",
+      "pick-group": "Pick a suggested group",
+      "custom-group-placeholder": "Or type a custom group name…",
+      "cancel": "Cancel",
+      "save": "Save",
+      "empty-group-error": "Group cannot be empty (use 'default' explicitly).",
+      "update-success": "Routing for {{username}} updated to {{group}}.",
+      "page-of": "Page {{page}} / {{total}}",
+      "prev": "Prev",
+      "next": "Next"
+    },
     "license": {
       "title": "License",
       "domain": "Authorized domains",
@@ -1360,7 +1381,9 @@
     "admin-full": "Dashboard",
     "key": "key",
     "key-full": "API",
-    "pricing-full": "Pricing"
+    "pricing-full": "Pricing",
+    "orders": "Orders",
+    "orders-full": "My orders"
   },
   "notify": "Notice",
   "new-notify": "New notification",
@@ -1954,5 +1977,177 @@
     "cancel": "Cancel",
     "submit": "Submit, we'll contact you",
     "disclaimer": "We only use your info to respond to this inquiry. No bulk SMS, never sold to third parties."
+  },
+  "home_dashboard": {
+    "welcome": {
+      "eyebrow": "Your Xiaohongshu operations sidekick",
+      "greeting": "Hi {{name}}",
+      "subtitle": "Vertical playbook for B&B hosts, with founder-led delivery.",
+      "fallback_name": "host"
+    },
+    "orders": {
+      "heading": "My orders",
+      "view_all": "View all orders",
+      "empty_title": "No orders yet",
+      "empty_body": "Want to start? Ping the founder on WeChat — onboarding takes 5 minutes.",
+      "empty_cta": "Contact founder on WeChat",
+      "error_title": "Couldn't load your orders",
+      "error_body": "Network blip or the server is restarting. Try again in a moment.",
+      "retry": "Retry"
+    },
+    "roadmap": {
+      "heading": "Service roadmap"
+    },
+    "phase": {
+      "content": {
+        "title": "Phase 1.A · Xiaohongshu content generation",
+        "desc": "Photos + post titles + tags generated from your B&B's profile and target guest. Founder reviews every batch one-on-one before it ships."
+      },
+      "publish": {
+        "title": "Phase 1.B · Auto-publish",
+        "desc": "Scheduled posts, auto-pinned first comments, calendar view to own the whole month's cadence."
+      },
+      "engage": {
+        "title": "Phase 1.C · Engagement inbox",
+        "desc": "Unified comment inbox + DM intent triage (inquiry / haggle / compare) so no lead falls through the cracks."
+      },
+      "attribution": {
+        "title": "Phase 1.D · ROI attribution",
+        "desc": "Post → DM → booking, end-to-end. Know exactly which post drove which reservation, every month."
+      }
+    },
+    "status": {
+      "live": "Live",
+      "soon": "Coming soon",
+      "planned": "Planned"
+    },
+    "support": {
+      "title": "Need help? Reach the founder",
+      "body": "B&B hosts talk to the founder directly — no support tier, no ticket queue, no runaround.",
+      "wechat_label": "WeChat",
+      "wechat_handle": "tanaxu626",
+      "email": "tanaxu626@gmail.com",
+      "email_cta": "Email us"
+    }
+  },
+  "my_orders": {
+    "title": "My orders",
+    "subtitle": "Service packages you've purchased and their delivery status.",
+    "refresh": "Refresh",
+    "credits": "{{count}} credits",
+    "created_at": "Created",
+    "paid_at": "Paid",
+    "completed_at": "Completed",
+    "filter": {
+      "all": "All",
+      "pending_payment": "Pending",
+      "paid": "Paid",
+      "running": "Running",
+      "completed": "Completed",
+      "refunded": "Refunded"
+    },
+    "status": {
+      "pending_payment": "Pending payment",
+      "paid": "Paid",
+      "running": "Running",
+      "completed": "Completed",
+      "refunded": "Refunded",
+      "refunded_post_delivery": "Refunded after delivery",
+      "failed": "Failed",
+      "canceled_mid_flight": "Canceled mid-flight"
+    },
+    "empty": {
+      "title": "No orders yet",
+      "body": "You haven't purchased any service packages. Reach out if you'd like help getting started.",
+      "filtered_title": "Nothing in this status",
+      "filtered_body": "Try a different filter.",
+      "contact_cta": "Talk to us",
+      "contact_dialog_title": "Book a demo"
+    },
+    "load_failed": "Couldn't load your orders. Please retry.",
+    "retry": "Retry"
+  },
+  "order_detail": {
+    "title": "Order detail",
+    "back": "Back to orders",
+    "loading": "Loading",
+    "refresh": "Refresh",
+    "polling": "Updating...",
+    "not_found": {
+      "title": "Order not found",
+      "body": "This order may have been deleted, or you don't have access."
+    },
+    "metadata": {
+      "title": "Order info",
+      "amount": "Amount paid",
+      "credits": "Credits granted",
+      "payment_provider": "Payment method",
+      "created_at": "Created",
+      "paid_at": "Paid",
+      "completed_at": "Completed"
+    },
+    "payment_provider": {
+      "lemonsqueezy": "Card (LemonSqueezy)",
+      "hupijiao": "Alipay",
+      "manual": "Offline / concierge"
+    },
+    "refund_log": {
+      "title": "Refund log"
+    },
+    "status": {
+      "pending_payment": {
+        "label": "Pending payment",
+        "message": "Waiting for payment. If you've paid via another channel, refresh or contact support to reconcile."
+      },
+      "paid": {
+        "label": "Paid",
+        "message": "Payment confirmed. Waiting to start."
+      },
+      "running": {
+        "label": "Running",
+        "message": "Generating your content — usually takes a few minutes. This page auto-refreshes."
+      },
+      "completed": {
+        "label": "Completed",
+        "message": "Service delivered. Request a refund or reorder if anything's off."
+      },
+      "refunded": {
+        "label": "Refunded",
+        "message": "This order has been refunded."
+      },
+      "refunded_post_delivery": {
+        "label": "Refunded post-delivery",
+        "message": "Service delivered, but the order was refunded."
+      },
+      "failed": {
+        "label": "Failed",
+        "message": "This order failed. Please contact support to reconcile."
+      },
+      "canceled_mid_flight": {
+        "label": "Canceled mid-flight",
+        "message": "Canceled during execution. Contact support if you need help."
+      },
+      "canceled": {
+        "message": "This order was canceled."
+      }
+    },
+    "action": {
+      "reorder": "Reorder",
+      "refund": "Request refund"
+    },
+    "modal": {
+      "refund_title": "Request a refund",
+      "refund_description": "Tell us briefly why. We'll get back within 1 business day.",
+      "refund_reason_label": "Refund reason",
+      "refund_placeholder": "e.g. Content didn't match brief / late delivery / duplicate order",
+      "refund_submit": "Submit request",
+      "refund_too_short": "Please give us at least 4 characters of context",
+      "cancel": "Cancel"
+    },
+    "toast": {
+      "refund_submitted": "Refund request submitted — we'll process it shortly.",
+      "refund_failed": "Submission failed",
+      "reorder_failed": "Operation failed"
+    }
   }
 }

@@ -1,6 +1,6 @@
-import { Message, UserRole } from '@/api/types.tsx';
-import { MessageMetadata } from './token-display/MessageMetadata';
-import './token-display/styles.css';
+import { Message, UserRole } from "@/api/types.tsx";
+import { MessageMetadata } from "./token-display/MessageMetadata";
+import "./token-display/styles.css";
 
 /**
  * Bridge between CoAI's Message shape and the sandbox MessageMetadata.
@@ -34,9 +34,9 @@ import './token-display/styles.css';
  */
 
 const PREVIEW_ENABLED =
-  (import.meta.env.VITE_TOKEN_METER_PREVIEW ?? 'true') !== 'false';
+  (import.meta.env.VITE_TOKEN_METER_PREVIEW ?? "true") !== "false";
 
-const FALLBACK_MODEL = 'claude-3-5-sonnet-20241022';
+const FALLBACK_MODEL = "claude-3-5-sonnet-20241022";
 
 interface MessageTokenMeterProps {
   message: Message;

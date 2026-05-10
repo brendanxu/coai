@@ -17,37 +17,37 @@ export interface ModelDefaults {
 const FAST_INPUT_RATE = 600;
 
 export const MODEL_DEFAULTS: Readonly<Record<string, ModelDefaults>> = {
-  'claude-3-5-sonnet-20241022': {
+  "claude-3-5-sonnet-20241022": {
     outputStreamRatePerSec: 35,
     inputStreamRatePerSec: FAST_INPUT_RATE,
     pricePerInputToken: 0.022 / 1000,
     pricePerOutputToken: 0.108 / 1000,
   },
-  'claude-3-5-haiku-20241022': {
+  "claude-3-5-haiku-20241022": {
     outputStreamRatePerSec: 95,
     inputStreamRatePerSec: FAST_INPUT_RATE,
     pricePerInputToken: 0.005 / 1000,
     pricePerOutputToken: 0.025 / 1000,
   },
-  'claude-3-opus-20240229': {
+  "claude-3-opus-20240229": {
     outputStreamRatePerSec: 22,
     inputStreamRatePerSec: FAST_INPUT_RATE,
     pricePerInputToken: 0.108 / 1000,
     pricePerOutputToken: 0.54 / 1000,
   },
-  'gpt-4o': {
+  "gpt-4o": {
     outputStreamRatePerSec: 65,
     inputStreamRatePerSec: FAST_INPUT_RATE,
     pricePerInputToken: 0.018 / 1000,
     pricePerOutputToken: 0.072 / 1000,
   },
-  'gpt-4o-mini': {
+  "gpt-4o-mini": {
     outputStreamRatePerSec: 105,
     inputStreamRatePerSec: FAST_INPUT_RATE,
     pricePerInputToken: 0.001 / 1000,
     pricePerOutputToken: 0.004 / 1000,
   },
-  'deepseek-chat': {
+  "deepseek-chat": {
     outputStreamRatePerSec: 45,
     inputStreamRatePerSec: FAST_INPUT_RATE,
     pricePerInputToken: 0.001 / 1000,

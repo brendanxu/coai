@@ -32,3 +32,4 @@ key/*
 
 # for https://github.com/di-sukharev/opencommit
 .env
+.gstack/

@@ -270,7 +270,7 @@ func RunOrderFormAPI(c *gin.Context) {
 		return
 	}
 
-	output, creditsUsed, err := executeAgentWithImages(c.Request.Context(), agent, userInput, imageURLs)
+	run, err := executeAgentWithImages(c.Request.Context(), agent, userInput, imageURLs)
 	if err != nil {
 		releaseRunLock(connection.DB, orderNo, runID)
 		globals.Warn(fmt.Sprintf("service: form-run failed for %s: %v", orderNo, err))
@@ -282,8 +282,9 @@ func RunOrderFormAPI(c *gin.Context) {
 		})
 		return
 	}
+	output := run.Output
 
-	if _, err := finalizeRun(connection.DB, order, runID, creditsUsed); err != nil {
+	if _, err := finalizeRun(connection.DB, order, runID, run); err != nil {
 		globals.Warn(fmt.Sprintf("service: finalize failed for %s (output delivered): %v", orderNo, err))
 	}
 	persistRunOutput(connection.DB, orderNo, output, string(inputsJSON))

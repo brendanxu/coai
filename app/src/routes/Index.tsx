@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button.tsx";
 import {
   ChevronDown,
   MessageCircle,
+  PackageCheck,
   Shield,
   Wallet,
   LibraryBig,
@@ -16,7 +17,11 @@ import router from "@/router.tsx";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/components/ui/lib/utils.ts";
 import { useDispatch, useSelector } from "react-redux";
-import { selectAdmin, validateToken } from "@/store/auth.ts";
+import {
+  selectAdmin,
+  selectAuthenticated,
+  validateToken,
+} from "@/store/auth.ts";
 import { tokenField } from "@/conf/bootstrap.ts";
 import { getMemory } from "@/utils/memory.ts";
 import type { AppDispatch } from "@/store/index.ts";
@@ -34,10 +39,10 @@ import {
 import NavBar from "@/components/app/NavBar.tsx";
 import { HIDE_CREDIT_UI } from "@/conf/env.ts";
 import { activeTheme } from "@/components/ThemeProvider.tsx";
-// v0.6.1 — global floating chat must mount inside RouterProvider so it can
-// call useLocation. Index.tsx is the layout that wraps every child route,
-// making it the natural mount point.
-import { ChatFloating } from "@/components/ChatFloating/index.tsx";
+// ChatFloating component removed in v0.21 (commit 582dea6 "delete dead route
+// files (Chat/Generation/Model/Article/Methodology + ChatFloating)"). The
+// PKG-N3 home dashboard reorient for 民宿 made the always-on floating chat
+// surface obsolete.
 
 type BarItemProps = {
   icon: React.ReactElement;
@@ -104,6 +109,7 @@ function BarItem({ icon, path, name }: BarItemProps) {
 
 function ToolBar() {
   const admin = useSelector(selectAdmin);
+  const auth = useSelector(selectAuthenticated);
   const hideToolbar = useSelector(hideToolbarSelector);
   const [stacked, setStacked] = React.useState(hideToolbar || isMobile());
 
@@ -130,6 +136,12 @@ function ToolBar() {
       )}
       {/* <BarItem icon={<DraftingCompass />} path={`/key`} name={"key"} /> */}
       {/* <BarItem icon={<PieChart />} path={`/log`} name={"log"} /> */}
+      {/* PKG-N4 — /orders is auth-gated by <AuthRequired> in router.tsx, so
+          mirror that here: only show the toolbar entry when the caller is
+          actually logged in (same pattern as /admin below). */}
+      {auth && (
+        <BarItem icon={<PackageCheck />} path={`/orders`} name={"orders"} />
+      )}
       <BarItem icon={<User />} path={`/account`} name={"account"} />
       {admin && <BarItem icon={<Shield />} path={`/admin`} name={"admin"} />}
     </div>
@@ -230,9 +242,6 @@ function Home() {
         <ToolBar />
         <Outlet />
       </div>
-      {/* v0.6.1 — global floating chat. Renders on every app route.
-          Auto-hides on /chat where the full chat UI is already on screen. */}
-      <ChatFloating />
     </ErrorBoundary>
   );
 }

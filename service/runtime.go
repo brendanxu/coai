@@ -44,6 +44,7 @@ package service
 import (
 	"bytes"
 	"chat/auth"
+	"chat/commerce"
 	"chat/connection"
 	"chat/globals"
 	"context"
@@ -61,6 +62,21 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
+
+// agentRunResult bundles everything finalizeRun needs from one upstream
+// call. Pre-PKG-2-Wave-4 executeAgent returned only (output, credits) —
+// tokens were squashed into credits via computeRunCredits. Wave 4 D1 needs
+// the raw token counts + model for commerce.ComputeAndWriteUsageCost so
+// gtk_app_usage_log gets per-call cost rows for service orders. Adding a
+// struct keeps the executeAgent signature ergonomic while avoiding the
+// 5-positional-return code smell.
+type agentRunResult struct {
+	Output    string // assistant content
+	Credits   int    // computed via computeRunCredits (existing contract)
+	Model     string // upstream-reported model slug; pricing lookup key
+	TokensIn  int64  // parsed.Usage.PromptTokens
+	TokensOut int64  // parsed.Usage.CompletionTokens
+}
 
 // RunOrderRequest is the body of POST /api/gtk/v1/service/run/:order_no.
 //
@@ -130,7 +146,7 @@ func RunOrderAPI(c *gin.Context) {
 
 	// 3. Call the agent. If anything fails, release the lock so the
 	// customer can retry.
-	output, creditsUsed, err := executeAgent(c.Request.Context(), agent, req.UserInput)
+	run, err := executeAgent(c.Request.Context(), agent, req.UserInput)
 	if err != nil {
 		releaseRunLock(connection.DB, orderNo, runID)
 		globals.Warn(fmt.Sprintf("service: agent run failed for %s: %v", orderNo, err))
@@ -143,8 +159,9 @@ func RunOrderAPI(c *gin.Context) {
 		return
 	}
 
-	// 4. Finalize: debit credits, flip status to completed, log usage.
-	remaining, err := finalizeRun(connection.DB, order, runID, creditsUsed)
+	// 4. Finalize: CAS running → completed (CR4-safe vs concurrent
+	//    refund), debit credits, write per-call usage cost row.
+	remaining, err := finalizeRun(connection.DB, order, runID, run)
 	if err != nil {
 		// We have output but couldn't persist accounting. Log loud
 		// but still return output so customer gets value — the
@@ -158,8 +175,8 @@ func RunOrderAPI(c *gin.Context) {
 		"data": gin.H{
 			"order_no":          orderNo,
 			"agent_run_id":      runID,
-			"output":            output,
-			"credits_used":      creditsUsed,
+			"output":            run.Output,
+			"credits_used":      run.Credits,
 			"credits_remaining": remaining,
 		},
 	})
@@ -278,25 +295,110 @@ func releaseRunLock(db *sql.DB, orderNo, runID string) {
 
 // finalizeRun debits credits + marks completed. Returns remaining
 // credits in the order's pool.
-func finalizeRun(db *sql.DB, order *ServiceOrder, runID string, creditsUsed int) (int, error) {
-	remaining := order.CreditsGranted - creditsUsed
+//
+// PKG-2 Wave 4 D1 changes (CR4 + GREENFIELD usage write):
+//
+//  1. Status flip is now a CAS via commerce.CompareAndSwapServiceOrderStatus
+//     (running → completed). A concurrent refund webhook may flip
+//     running → canceled_mid_flight via commerce.RevokeEntitlement. Both
+//     callers using the shared CAS helper means the loser observes
+//     changed=false and gives up rather than overwriting the winner's
+//     terminal state.
+//
+//  2. On CAS true: writes a per-call cost row to gtk_app_usage_log via
+//     commerce.ComputeAndWriteUsageCost. This is the FIRST place service
+//     orders contribute to the unified cost ledger; pre-Wave-4 the
+//     gateway only logged token-plan calls. The row uses
+//     source='service_order' + order_id=order.OrderNo so margin_view +
+//     monitoring scripts can roll up cost-per-order.
+//
+//  3. On CAS false: log a warning ("status changed during run; refund
+//     landed first?") and skip the usage write. The customer's run already
+//     completed (we hold the output) so the output still ships, but
+//     accounting reflects the refund-driven terminal state, not a
+//     completed-and-billed flow.
+func finalizeRun(db *sql.DB, order *ServiceOrder, runID string, run agentRunResult) (int, error) {
+	remaining := order.CreditsGranted - run.Credits
 	if remaining < 0 {
 		// Overrun — log loud, don't refund automatically. Founder
 		// reviews via the order audit trail.
 		globals.Warn(fmt.Sprintf("service: order %s overran credits (granted=%d used=%d)",
-			order.OrderNo, order.CreditsGranted, creditsUsed))
+			order.OrderNo, order.CreditsGranted, run.Credits))
 		// Still flip status — the work is done, the credit math is a
 		// secondary concern.
 		remaining = 0
 	}
-	_, err := globals.ExecDb(db, `
-		UPDATE gtk_service_order
-		SET status = 'completed', completed_at = CURRENT_TIMESTAMP
-		WHERE order_no = ? AND agent_run_id = ?
-	`, order.OrderNo, runID)
+
+	// CR4: CAS running → completed. The CAS helper also bumps updated_at.
+	// We DON'T set completed_at via the CAS because the helper is a shared
+	// primitive — instead, after a successful CAS, we issue a tiny follow-up
+	// UPDATE to stamp completed_at. (Keeps the CAS helper general-purpose
+	// for future callers that don't have a "completed_at"-style column.)
+	changed, err := commerce.CompareAndSwapServiceOrderStatus(
+		db, order.OrderNo, "running", "completed")
 	if err != nil {
-		return remaining, fmt.Errorf("finalize: %w", err)
+		return remaining, fmt.Errorf("finalize CAS: %w", err)
 	}
+	if !changed {
+		// Status drift: a concurrent refund (RevokeEntitlement) flipped
+		// us to canceled_mid_flight (or another terminal state) before we
+		// reached this line. Skip the usage write so we don't bill a run
+		// that was just refunded; the output still ships back to the
+		// customer (they got value in the wall-clock window before the
+		// refund landed).
+		globals.Warn(fmt.Sprintf(
+			"service: finalizeRun for %s observed status change during run "+
+				"(CAS running→completed returned changed=false; refund landed first?) — "+
+				"skipping usage write to avoid charging a refunded run",
+			order.OrderNo))
+		return remaining, nil
+	}
+
+	// Stamp completed_at + ensure agent_run_id matches (defensive).
+	if _, err := globals.ExecDb(db, `
+		UPDATE gtk_service_order
+		SET completed_at = CURRENT_TIMESTAMP
+		WHERE order_no = ? AND agent_run_id = ?
+	`, order.OrderNo, runID); err != nil {
+		// Audit field write failure is non-fatal: status is already
+		// 'completed' authoritative-state-wise. Log + continue so we
+		// still write the cost ledger row.
+		globals.Warn(fmt.Sprintf(
+			"service: stamp completed_at for %s/%s failed (status already 'completed'): %v",
+			order.OrderNo, runID, err))
+	}
+
+	// GREENFIELD usage write (Wave 4 D1 + CR2). Funnel through the unified
+	// commerce.ComputeAndWriteUsageCost so service-order calls land in
+	// gtk_app_usage_log with the same shape as chat / api calls.
+	//   source = 'service_order' (per CHECK constraint)
+	//   order_id = order.OrderNo (links the row back for margin view rollup)
+	//   plan_id = NULL (service orders bill via gtk_service_order, not plan quota)
+	//   service = run.Model (used as pricing.go lookup key by ComputeAndWriteUsageCost)
+	//   provider = NULL (auto-stamped from pricing.LookupProvider on known model)
+	//
+	// Unknown-model callers degrade gracefully: ComputeAndWriteUsageCost
+	// logs a warning and writes a 0-cost row preserving the audit trail
+	// (per Q6 Option A documented behavior).
+	entry := commerce.UsageCostEntry{
+		UserID:     order.CoaiUserID,
+		PlanID:     sql.NullInt64{}, // NULL — service orders don't bill via plans
+		Service:    run.Model,
+		Source:     "service_order",
+		OrderID:    sql.NullString{String: order.OrderNo, Valid: true},
+		Provider:   sql.NullString{}, // ComputeAndWriteUsageCost stamps from pricing
+		TokensUsed: run.TokensIn + run.TokensOut,
+		CostCents:  0, // ComputeAndWriteUsageCost overwrites with the looked-up cost
+	}
+	if err := commerce.ComputeAndWriteUsageCost(db, entry, run.TokensIn, run.TokensOut); err != nil {
+		// Cost-ledger write failure is non-fatal at the user-facing layer
+		// (the run completed, the customer has output). Log loud so ops
+		// can investigate the data integrity gap.
+		globals.Warn(fmt.Sprintf(
+			"service: cost-ledger write failed for %s (status='completed' already; ledger row missing): %v",
+			order.OrderNo, err))
+	}
+
 	return remaining, nil
 }
 
@@ -344,12 +446,23 @@ func statusCodeForRunErr(c *gin.Context, err error) {
 var agentRunHTTPClient = &http.Client{Timeout: 60 * time.Second}
 
 // executeAgent calls NewAPI's /v1/chat/completions with the agent's
-// system_prompt + the user's input. Returns the assistant's content
-// string + the credit cost based on usage tokens + agent tier.
-func executeAgent(ctx context.Context, agent *Agent, userInput string) (string, int, error) {
+// system_prompt + the user's input. Returns an agentRunResult bundling
+// the assistant content, the computed credit cost, and the raw token
+// counts + model so the Wave 4 D1 finalizeRun path can write a usage
+// cost row to gtk_app_usage_log via commerce.ComputeAndWriteUsageCost.
+//
+// PKG-2 Wave 4 D1 signature change:
+//
+//	pre:  func(ctx, *Agent, userInput) (output string, credits int, err error)
+//	post: func(ctx, *Agent, userInput) (agentRunResult, err)
+//
+// All callers in this package were the test file + the single RunOrderAPI
+// handler. No external Go pkg references this private symbol; safe to
+// reshape.
+func executeAgent(ctx context.Context, agent *Agent, userInput string) (agentRunResult, error) {
 	runnerKey := viper.GetString("service.runner_api_key")
 	if runnerKey == "" {
-		return "", 0, errAgentNotConfigured
+		return agentRunResult{}, errAgentNotConfigured
 	}
 	endpoint := viper.GetString("service.runner_endpoint")
 	if endpoint == "" {
@@ -372,31 +485,32 @@ func executeAgent(ctx context.Context, agent *Agent, userInput string) (string, 
 	}
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
-		return "", 0, fmt.Errorf("marshal request: %w", err)
+		return agentRunResult{}, fmt.Errorf("marshal request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
 	if err != nil {
-		return "", 0, fmt.Errorf("build request: %w", err)
+		return agentRunResult{}, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+runnerKey)
 
 	resp, err := agentRunHTTPClient.Do(req)
 	if err != nil {
-		return "", 0, fmt.Errorf("upstream: %w", err)
+		return agentRunResult{}, fmt.Errorf("upstream: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", 0, fmt.Errorf("read upstream body: %w", err)
+		return agentRunResult{}, fmt.Errorf("read upstream body: %w", err)
 	}
 	if resp.StatusCode/100 != 2 {
-		return "", 0, fmt.Errorf("upstream HTTP %d: %s", resp.StatusCode, truncateRuntime(respBytes, 200))
+		return agentRunResult{}, fmt.Errorf("upstream HTTP %d: %s", resp.StatusCode, truncateRuntime(respBytes, 200))
 	}
 
 	var parsed struct {
+		Model   string `json:"model"`
 		Choices []struct {
 			Message struct {
 				Content string `json:"content"`
@@ -408,15 +522,31 @@ func executeAgent(ctx context.Context, agent *Agent, userInput string) (string, 
 		} `json:"usage"`
 	}
 	if err := json.Unmarshal(respBytes, &parsed); err != nil {
-		return "", 0, fmt.Errorf("parse upstream: %w (raw: %s)", err, truncateRuntime(respBytes, 200))
+		return agentRunResult{}, fmt.Errorf("parse upstream: %w (raw: %s)", err, truncateRuntime(respBytes, 200))
 	}
 	if len(parsed.Choices) == 0 {
-		return "", 0, errors.New("upstream returned no choices")
+		return agentRunResult{}, errors.New("upstream returned no choices")
 	}
 
 	credits := computeRunCredits(agent.MinTier,
 		parsed.Usage.PromptTokens+parsed.Usage.CompletionTokens)
-	return parsed.Choices[0].Message.Content, credits, nil
+
+	// Model resolution: prefer upstream-reported model (which may differ
+	// from agent.PreferredModel if the gateway routed to a fallback).
+	// Falling back to agent.PreferredModel keeps pricing.go lookup keys
+	// consistent if upstream omits the field.
+	model := parsed.Model
+	if model == "" {
+		model = agent.PreferredModel
+	}
+
+	return agentRunResult{
+		Output:    parsed.Choices[0].Message.Content,
+		Credits:   credits,
+		Model:     model,
+		TokensIn:  int64(parsed.Usage.PromptTokens),
+		TokensOut: int64(parsed.Usage.CompletionTokens),
+	}, nil
 }
 
 // executeAgentWithImages is the multimodal variant of executeAgent.
@@ -434,14 +564,18 @@ func executeAgent(ctx context.Context, agent *Agent, userInput string) (string, 
 // non-vision agents still work. The agent's PreferredModel must be
 // vision-capable (gpt-4o, claude-3-5-sonnet, gemini-1.5-pro, etc.) for
 // the upstream call to succeed when images are present.
-func executeAgentWithImages(ctx context.Context, agent *Agent, userInput string, imageURLs []string) (string, int, error) {
+// executeAgentWithImages returns an agentRunResult so finalizeRun (PKG-2
+// Wave 4 D1) can write per-call cost rows to gtk_app_usage_log. Pre-Wave-4
+// this returned (string, int, error); the v0.21 merge unified it with
+// executeAgent's signature.
+func executeAgentWithImages(ctx context.Context, agent *Agent, userInput string, imageURLs []string) (agentRunResult, error) {
 	if len(imageURLs) == 0 {
 		return executeAgent(ctx, agent, userInput)
 	}
 
 	runnerKey := viper.GetString("service.runner_api_key")
 	if runnerKey == "" {
-		return "", 0, errAgentNotConfigured
+		return agentRunResult{}, errAgentNotConfigured
 	}
 	endpoint := viper.GetString("service.runner_endpoint")
 	if endpoint == "" {
@@ -474,28 +608,28 @@ func executeAgentWithImages(ctx context.Context, agent *Agent, userInput string,
 	}
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
-		return "", 0, fmt.Errorf("marshal multimodal request: %w", err)
+		return agentRunResult{}, fmt.Errorf("marshal multimodal request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
 	if err != nil {
-		return "", 0, fmt.Errorf("build request: %w", err)
+		return agentRunResult{}, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+runnerKey)
 
 	resp, err := agentRunHTTPClient.Do(req)
 	if err != nil {
-		return "", 0, fmt.Errorf("upstream: %w", err)
+		return agentRunResult{}, fmt.Errorf("upstream: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", 0, fmt.Errorf("read upstream body: %w", err)
+		return agentRunResult{}, fmt.Errorf("read upstream body: %w", err)
 	}
 	if resp.StatusCode/100 != 2 {
-		return "", 0, fmt.Errorf("upstream HTTP %d: %s", resp.StatusCode, truncateRuntime(respBytes, 200))
+		return agentRunResult{}, fmt.Errorf("upstream HTTP %d: %s", resp.StatusCode, truncateRuntime(respBytes, 200))
 	}
 
 	var parsed struct {
@@ -510,15 +644,21 @@ func executeAgentWithImages(ctx context.Context, agent *Agent, userInput string,
 		} `json:"usage"`
 	}
 	if err := json.Unmarshal(respBytes, &parsed); err != nil {
-		return "", 0, fmt.Errorf("parse upstream: %w (raw: %s)", err, truncateRuntime(respBytes, 200))
+		return agentRunResult{}, fmt.Errorf("parse upstream: %w (raw: %s)", err, truncateRuntime(respBytes, 200))
 	}
 	if len(parsed.Choices) == 0 {
-		return "", 0, errors.New("upstream returned no choices")
+		return agentRunResult{}, errors.New("upstream returned no choices")
 	}
 
 	credits := computeRunCredits(agent.MinTier,
 		parsed.Usage.PromptTokens+parsed.Usage.CompletionTokens)
-	return parsed.Choices[0].Message.Content, credits, nil
+	return agentRunResult{
+		Output:    parsed.Choices[0].Message.Content,
+		Credits:   credits,
+		Model:     agent.PreferredModel,
+		TokensIn:  int64(parsed.Usage.PromptTokens),
+		TokensOut: int64(parsed.Usage.CompletionTokens),
+	}, nil
 }
 
 // computeRunCredits maps total_tokens × tier_multiplier into the

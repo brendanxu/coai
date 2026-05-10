@@ -18,7 +18,10 @@ package service
 
 import (
 	"chat/auth"
+	"chat/commerce"
 	"chat/connection"
+	"chat/globals"
+	"chat/newapi"
 	"errors"
 	"fmt"
 	"net/http"
@@ -38,6 +41,20 @@ func Register(app *gin.RouterGroup) {
 	// moved; founder handles the LS / hupijiao dashboard refund
 	// separately). v0.10 ② per recommendation 11.Q5.
 	app.POST("/gtk/v1/admin/refund", RefundAPI)
+	// Admin-only — mark a manual / concierge order as paid (PKG-2 Wave 4
+	// D7, Q5 GO). Wraps commerce.MarkPaid which calls GrantEntitlement.
+	app.POST("/gtk/v1/admin/mark-paid", MarkPaidAPI)
+	// Admin-only — read-only list of all service orders, with username
+	// joined in. Powers the PKG-N1 /admin/orders UI: founder finds the
+	// order, then fires mark-paid / refund against it. Closes the
+	// "manual curl per 民宿 customer" gap surfaced in the audit.
+	app.GET("/gtk/v1/admin/orders", ListAdminOrdersAPI)
+	// Admin-only — read-only ops visibility into the
+	// gtk_newapi_pending_provisions retry queue (PKG-3). Counts by
+	// status; lets dashboards / Grafana panel surface drain health
+	// without granting raw DB access. Pairs with the
+	// bin/check-pending-provisioning.sh cron alert.
+	app.GET("/gtk/v1/admin/pending-provisions", PendingProvisionsAPI)
 	// Public — hupijiao webhook target. Auth is HMAC-MD5 against
 	// hupijiao.merchant_secret (verified inside the handler).
 	app.POST("/gtk/v1/service/hupijiao-callback", HupijiaoCallbackAPI)
@@ -51,6 +68,132 @@ func Register(app *gin.RouterGroup) {
 	// v0.16 — admin concierge order creation (founder workflow on
 	// /admin/mansu kanban). AUTH: admin only inside the handler.
 	app.POST("/gtk/v1/admin/leads/:id/create-order", AdminCreateConciergeOrderAPI)
+
+	// Authenticated, customer-scoped. PKG-5 self-serve order tracking.
+	// Both endpoints filter by coai_user_id at the SQL level — see
+	// customer_orders.go header for security rationale.
+	app.GET("/gtk/v1/orders", ListMyOrdersAPI)
+	app.GET("/gtk/v1/orders/:order_no", MyOrderDetailAPI)
+	// PKG-N2 — customer-side write actions on the order detail page.
+	// Both filter by coai_user_id at the SQL level (same security
+	// rationale as customer_orders.go).
+	app.POST("/gtk/v1/orders/:order_no/refund-request", CustomerRefundRequestAPI)
+	app.POST("/gtk/v1/orders/:order_no/reorder", CustomerReorderAPI)
+}
+
+// PendingProvisionsAPI returns the current state of the NewAPI
+// provisioning retry queue (PKG-3). Admin-only; mirrors the auth +
+// envelope pattern of MarkPaidAPI / RefundAPI.
+//
+// Response shape:
+//
+//	{
+//	  "success": true,
+//	  "data": {
+//	    "pending":   <int64>,  // never-tried rows from this boot
+//	    "retrying":  <int64>,  // attempted at least once, still in retry window
+//	    "succeeded": <int64>,  // historical successes (cumulative)
+//	    "failed":    <int64>,  // gave up after maxRetries — needs human review
+//	    "total":     <int64>   // sum of the four buckets
+//	  }
+//	}
+//
+// 'failed' > 0 is the row-count to alert on; 'pending' / 'retrying'
+// fluctuate normally during transient NewAPI outages.
+func PendingProvisionsAPI(c *gin.Context) {
+	admin := auth.RequireAdmin(c)
+	if admin == nil {
+		return // RequireAdmin already wrote the 401/403 envelope.
+	}
+
+	pending, retrying, succeeded, failed, err := newapi.PendingProvisionStats(connection.DB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "pending-provisions stats failed: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"pending":   pending,
+			"retrying":  retrying,
+			"succeeded": succeeded,
+			"failed":    failed,
+			"total":     pending + retrying + succeeded + failed,
+		},
+	})
+}
+
+// MarkPaidRequest is the JSON body for POST /admin/mark-paid.
+//
+// product_type is required and (v0) must be "service". Token plans go
+// through the LS dashboard, not this endpoint.
+type MarkPaidRequest struct {
+	OrderNo     string `json:"order_no" binding:"required"`
+	ProductType string `json:"product_type" binding:"required,oneof=service"`
+}
+
+// MarkPaidAPI is the admin-only HTTP handler for marking a manual order
+// as paid. Mirrors RefundAPI's auth + envelope pattern.
+//
+// Use cases (per Q5 GO):
+//   - Concierge order paid via offline channel (wechat / bank transfer).
+//   - LS / hupijiao webhook lost; admin re-fires the entitlement grant.
+//
+// Status semantics: idempotent. If the order is already past
+// 'pending_payment', commerce.GrantEntitlement's CAS no-ops without
+// erroring.
+func MarkPaidAPI(c *gin.Context) {
+	admin := auth.RequireAdmin(c)
+	if admin == nil {
+		return // RequireAdmin already wrote the 401/403 envelope.
+	}
+
+	var req MarkPaidRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	adminID := admin.GetID(connection.DB)
+	err := commerce.MarkPaid(
+		c.Request.Context(),
+		connection.DB,
+		req.OrderNo,
+		commerce.ProductType(req.ProductType),
+		adminID,
+	)
+	if err != nil {
+		// commerce.MarkPaid wraps GrantEntitlement errors; surface as 500.
+		// The "unsupported product_type" branch shouldn't trigger because
+		// of the binding validator, but if a future caller bypasses
+		// validation we still want a clear error.
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success":  false,
+			"message":  "mark-paid failed: " + err.Error(),
+			"order_no": req.OrderNo,
+		})
+		return
+	}
+
+	globals.Info(fmt.Sprintf(
+		"service: order %s marked paid by admin %d (product_type=%s)",
+		req.OrderNo, adminID, req.ProductType))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"order_no":     req.OrderNo,
+			"product_type": req.ProductType,
+			"status":       "paid",
+		},
+	})
 }
 
 // CatalogAPI returns the public service catalog. Public — no auth gate.
@@ -132,6 +275,34 @@ func CreateOrderAPI(c *gin.Context) {
 		return
 	}
 
+	// PKG-2 Wave 4 D3: open a payment session for the order. Session is
+	// the bridge between checkout-time and webhook-time
+	// (commerce.ClosePaymentSession matches by session_id, CR7). All three
+	// providers benefit:
+	//   - lemonsqueezy → embed session_id in custom_data
+	//   - hupijiao     → embed in prepay metadata (best-effort; hupijiao's
+	//                    `plugins` field already carries greentokey_user_id
+	//                    so we tack on greentokey_session_id alongside)
+	//   - manual       → no provider payload to embed in; admin reconciles
+	//                    via the gtk_payment_session row (visibility win)
+	//
+	// Failure to open the session is logged + non-fatal: the order row is
+	// already authoritative, and webhook-side ClosePaymentSession tolerates
+	// missing session_id (Wave 3 C2: pre-Wave-4 fallback path).
+	session, sessErr := commerce.OpenPaymentSession(
+		connection.DB, orderNo, commerce.ProductService,
+		req.PaymentProvider, svc.PriceCNYCents, coaiUserID,
+	)
+	if sessErr != nil {
+		globals.Warn(fmt.Sprintf(
+			"service: OpenPaymentSession failed for order %s (provider=%s, user=%d): %v — proceeding without session_id",
+			orderNo, req.PaymentProvider, coaiUserID, sessErr))
+	}
+	var sessionID string
+	if session != nil {
+		sessionID = session.SessionID
+	}
+
 	// Fill checkout payload by provider. The order row is already
 	// inserted at this point — if checkout building fails, the order
 	// stays in pending_payment for manual cleanup. Better than
@@ -152,7 +323,7 @@ func CreateOrderAPI(c *gin.Context) {
 
 	switch req.PaymentProvider {
 	case "lemonsqueezy":
-		checkoutURL, err := BuildLSServiceCheckoutURL(coaiUserID, orderNo, svc)
+		checkoutURL, err := BuildLSServiceCheckoutURL(coaiUserID, orderNo, svc, sessionID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success":  false,
@@ -164,7 +335,7 @@ func CreateOrderAPI(c *gin.Context) {
 		resp["checkout_url"] = checkoutURL
 
 	case "hupijiao":
-		qr, err := BuildHupijiaoQR(coaiUserID, orderNo, svc)
+		qr, err := BuildHupijiaoQR(coaiUserID, orderNo, svc, sessionID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success":  false,
@@ -183,7 +354,10 @@ func CreateOrderAPI(c *gin.Context) {
 		// Concierge / offline settlement. tana or founder calls the
 		// customer, takes payment via wechat / bank transfer / cash,
 		// then PATCHes the order to status='paid' via the admin
-		// endpoint (not yet built — Subsystem B work).
+		// endpoint (D7 admin/mark-paid).
+		// session_id is captured in the gtk_payment_session row so admin
+		// UI / D7 reconcile workflow has visibility — no provider-side
+		// payload to embed.
 		resp["concierge"] = true
 		resp["concierge_message"] = "我们将与您联系完成付款"
 	}

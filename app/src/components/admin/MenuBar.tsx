@@ -11,7 +11,10 @@ import {
   Gauge,
   GitFork,
   History,
+  PackageCheck,
   Radio,
+  Route,
+  ServerCog,
   ServerCrash,
   Settings,
   Users,
@@ -75,6 +78,12 @@ function MenuBar() {
         icon={<BookCopy />}
         path={"/market"}
       />
+      {/* PKG-N1 — service order management (mark-paid / refund). */}
+      <MenuItem
+        title={t("admin.orders.title")}
+        icon={<PackageCheck />}
+        path={"/orders"}
+      />
       <MenuItem
         title={t("admin.broadcast")}
         icon={<Radio />}
@@ -84,6 +93,17 @@ function MenuBar() {
         title={t("admin.channel")}
         icon={<GitFork />}
         path={"/channel"}
+      />
+      {/* PKG-4 (architecture §19) — per-user channel routing admin. */}
+      <MenuItem
+        title={t("admin.user-routing.title")}
+        icon={<Route />}
+        path={"/user-routing"}
+      />
+      <MenuItem
+        title={t("admin.channels.title")}
+        icon={<ServerCog />}
+        path={"/channels-routing"}
       />
       <MenuItem title={t("admin.prize")} icon={<CloudCog />} path={"/charge"} />
       <MenuItem

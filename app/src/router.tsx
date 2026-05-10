@@ -17,7 +17,6 @@ import { selectAdmin, selectAuthenticated, selectInit } from "@/store/auth.ts";
 import Index from "@/routes/Index.tsx";
 import License from "@/routes/admin/License.tsx";
 
-const Model = lazyFactor(() => import("@/routes/Model.tsx"));
 const Wallet = lazyFactor(() => import("@/routes/Wallet.tsx"));
 const Account = lazyFactor(() => import("@/routes/Account.tsx"));
 const Pricing = lazyFactor(() => import("@/routes/Pricing.tsx"));
@@ -34,16 +33,24 @@ const Docs = lazyFactor(() => import("@/routes/Docs.tsx"));
 // v0.12 Tier 1 block 4 — DIY agent runner (post-purchase)
 const ServiceRun = lazyFactor(() => import("@/routes/ServiceRun.tsx"));
 
-const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
-const Article = lazyFactor(() => import("@/routes/Article.tsx"));
 
-// v0.6 carbon
+// v0.6 carbon — /dashboard kept (founder may use ESG narrative later);
+// /methodology removed (long-form essay had no traffic and the Carbon
+// surfaces that linked to it have been rewritten to drop the link).
 const Dashboard = lazyFactor(() => import("@/routes/Dashboard.tsx"));
-const Methodology = lazyFactor(() => import("@/routes/Methodology.tsx"));
 
-// v0.6.1 — dedicated /chat route (chat moved off /)
-const Chat = lazyFactor(() => import("@/routes/Chat.tsx"));
+// v0.21 cleanup — /chat, /generate, /model, /article, /methodology all
+// deleted. Two business lines (Token wholesale + Service market 民宿 SaaS)
+// don't need a generic chat / image-gen / model-marketplace / writer /
+// long-form methodology surface. See PKG-CLEANUP.
+
+// PKG-5 — customer self-serve service order list (/orders).
+const MyOrders = lazyFactor(() => import("@/routes/MyOrders.tsx"));
+
+// PKG-N2 — single order detail (/orders/:order_no). Lands the customer
+// self-serve loop: see what was delivered, request a refund, reorder.
+const OrderDetail = lazyFactor(() => import("@/routes/OrderDetail.tsx"));
 
 const AdminPage = lazyFactor(() => import("@/routes/Admin.tsx"));
 const AdminDashboard = lazyFactor(() => import("@/routes/admin/DashBoard.tsx"));
@@ -60,6 +67,16 @@ const AdminSubscription = lazyFactor(
 const AdminLogger = lazyFactor(() => import("@/routes/admin/Logger.tsx"));
 // v0.12 Tier 1 block 5 — founder concierge workspace for 民宿 wedge
 const AdminMansu = lazyFactor(() => import("@/routes/admin/Mansu.tsx"));
+// PKG-4 (architecture §19) — per-user channel routing admin pages.
+const AdminUserRouting = lazyFactor(
+  () => import("@/routes/admin/UserRouting.tsx"),
+);
+const AdminChannelsRouting = lazyFactor(
+  () => import("@/routes/admin/AdminChannels.tsx"),
+);
+// PKG-N1 — admin order management (/admin/orders). Closes the
+// "founder uses curl to mark concierge orders paid" gap from the audit.
+const AdminOrders = lazyFactor(() => import("@/routes/admin/AdminOrders.tsx"));
 
 const router = createBrowserRouter([
   {
@@ -77,27 +94,6 @@ const router = createBrowserRouter([
         id: "home",
         path: "",
         element: <Home />,
-      },
-      // v0.6.1 — dedicated chat route. Anonymous users with skip_welcome=1
-      // are redirected here from Home. Logged-in users land on the dashboard
-      // and reach chat via the ToolBar icon, dashboard CTA, or floating button.
-      {
-        id: "chat",
-        path: "chat",
-        element: (
-          <Suspense>
-            <Chat />
-          </Suspense>
-        ),
-      },
-      {
-        id: "model",
-        path: "model",
-        element: (
-          <Suspense>
-            <Model />
-          </Suspense>
-        ),
       },
       // /wallet route — hidden when HIDE_CREDIT_UI=true (greentokey BYOK has
       // no internal credit/quota model). Direct access to /wallet falls through
@@ -163,13 +159,31 @@ const router = createBrowserRouter([
           </AuthRequired>
         ),
       },
+      // PKG-5 — /orders. Customer-scoped service order list.
+      // Backend: GET /gtk/v1/orders + GET /gtk/v1/orders/:order_no.
       {
-        id: "methodology",
-        path: "methodology",
+        id: "my-orders",
+        path: "orders",
         element: (
-          <Suspense>
-            <Methodology />
-          </Suspense>
+          <AuthRequired>
+            <Suspense>
+              <MyOrders />
+            </Suspense>
+          </AuthRequired>
+        ),
+      },
+      // PKG-N2 — /orders/:order_no. Single order detail page (customer
+      // self-serve refund/reorder, run progress polling).
+      // Backend: GET/POST /gtk/v1/orders/:order_no/...
+      {
+        id: "order-detail",
+        path: "orders/:order_no",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <OrderDetail />
+            </Suspense>
+          </AuthRequired>
         ),
       },
       {
@@ -420,34 +434,41 @@ const router = createBrowserRouter([
               </Suspense>
             ),
           },
+          // PKG-4 (architecture §19): per-user channel routing admin.
+          {
+            id: "admin-user-routing",
+            path: "user-routing",
+            element: (
+              <Suspense>
+                <AdminUserRouting />
+              </Suspense>
+            ),
+          },
+          // /admin/channels-routing (NOT /admin/channels — that path is
+          // unused but the singular /admin/channel is taken by the
+          // CoAI-upstream channel admin page).
+          {
+            id: "admin-channels-routing",
+            path: "channels-routing",
+            element: (
+              <Suspense>
+                <AdminChannelsRouting />
+              </Suspense>
+            ),
+          },
+          // PKG-N1 — service order management (mark-paid / refund) UI.
+          {
+            id: "admin-orders",
+            path: "orders",
+            element: (
+              <Suspense>
+                <AdminOrders />
+              </Suspense>
+            ),
+          },
         ],
         ErrorBoundary: NotFound,
       },
-      {
-        id: "generation",
-        path: "/generate",
-        element: (
-          <AuthRequired>
-            <Suspense>
-              <Generation />
-            </Suspense>
-          </AuthRequired>
-        ),
-        ErrorBoundary: NotFound,
-      },
-      {
-        id: "article",
-        path: "/article",
-        element: (
-          <AuthRequired>
-            <Suspense>
-              <Article />
-            </Suspense>
-          </AuthRequired>
-        ),
-        ErrorBoundary: NotFound,
-      },
-
       ...(useDeeptrain
         ? []
         : [

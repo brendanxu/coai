@@ -32,6 +32,9 @@ func newTestDB(t *testing.T) *sql.DB {
 // TestMigrate_Idempotent runs Migrate twice and confirms no error + every
 // expected table is present. The double-run is the contract: every helper
 // in migration.go must be safe on a re-boot of an already-migrated db.
+//
+// Union of v0.16 V2 tables (gtk_provider_pricing, gtk_billing_config) +
+// PKG-1 (v0.21) baseline tables (gtk_plan, gtk_user_plan, gtk_app_usage_log).
 func TestMigrate_Idempotent(t *testing.T) {
 	db := newTestDB(t)
 
@@ -325,4 +328,65 @@ func TestColumnExists_BothEnginesAgreeOnSqlite(t *testing.T) {
 			t.Errorf("columnExists(%q): got %v, want %v", c.name, got, c.want)
 		}
 	}
+}
+
+// TestMigrate_ProductTypeColumnsPresent (PKG-1, v0.21) verifies the L23
+// discriminator + attribution columns exist on each table after Migrate.
+// Runs PRAGMA table_info per table and checks the new columns are wired
+// correctly. Uses sqliteColumns helper for a map-based "have" set.
+func TestMigrate_ProductTypeColumnsPresent(t *testing.T) {
+	db := newTestDB(t)
+	if err := Migrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	tests := []struct {
+		table    string
+		expected []string
+	}{
+		{"gtk_plan", []string{"product_type", "billing_mode", "quota_grant", "service_id"}},
+		{"gtk_user_plan", []string{"product_type", "cancellation_reason"}},
+		{"gtk_app_usage_log", []string{"source", "order_id", "provider"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.table, func(t *testing.T) {
+			cols, err := sqliteColumns(db, tc.table)
+			if err != nil {
+				t.Fatalf("read columns for %s: %v", tc.table, err)
+			}
+			for _, want := range tc.expected {
+				if _, ok := cols[want]; !ok {
+					t.Errorf("table %s missing column %q (have: %v)", tc.table, want, keysOf(cols))
+				}
+			}
+		})
+	}
+}
+
+func sqliteColumns(db *sql.DB, table string) (map[string]struct{}, error) {
+	rows, err := db.Query("PRAGMA table_info(" + table + ")")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]struct{}{}
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return nil, err
+		}
+		out[name] = struct{}{}
+	}
+	return out, rows.Err()
+}
+
+func keysOf(m map[string]struct{}) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }

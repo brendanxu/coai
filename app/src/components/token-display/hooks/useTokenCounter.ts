@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { tokens } from '../design-tokens';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { tokens } from "../design-tokens";
 
 /**
  * Drives one numeric counter through a 4-state machine
@@ -9,7 +9,7 @@ import { tokens } from '../design-tokens';
  * See sandbox README for full behaviour spec.
  */
 
-type Phase = 'idle' | 'streaming' | 'settling' | 'done';
+type Phase = "idle" | "streaming" | "settling" | "done";
 
 export interface UseTokenCounterArgs {
   realValue: number | null;
@@ -30,32 +30,49 @@ export function useTokenCounter({
   isStreaming,
   streamRatePerSec,
   isAborted = false,
-}: UseTokenCounterArgs): { displayValue: number } {
+}: UseTokenCounterArgs): { displayValue: number; reset: () => void } {
   const [displayValue, setDisplayValue] = useState(0);
 
+  // P2-4: defensively round any incoming `realValue`. Mirrors sandbox.
+  const roundedReal = realValue != null ? Math.round(realValue) : null;
+
   const valueRef = useRef(0);
-  const phaseRef = useRef<Phase>('idle');
+  const phaseRef = useRef<Phase>("idle");
   const streamStartTsRef = useRef<number | null>(null);
   const lastTickTsRef = useRef<number>(0);
   const settleRef = useRef<SettleAnchor | null>(null);
   const rafRef = useRef<number | null>(null);
 
+  // P1-2: explicit reset for callers reusing this hook instance across streams.
+  const reset = useCallback(() => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    valueRef.current = 0;
+    phaseRef.current = "idle";
+    streamStartTsRef.current = null;
+    lastTickTsRef.current = 0;
+    settleRef.current = null;
+    setDisplayValue(0);
+  }, []);
+
   useEffect(() => {
     if (
       !isStreaming &&
-      realValue != null &&
-      (phaseRef.current === 'idle' || phaseRef.current === 'done') &&
-      valueRef.current !== realValue
+      roundedReal != null &&
+      (phaseRef.current === "idle" || phaseRef.current === "done") &&
+      valueRef.current !== roundedReal
     ) {
-      valueRef.current = realValue;
-      phaseRef.current = 'done';
-      setDisplayValue(realValue);
+      valueRef.current = roundedReal;
+      phaseRef.current = "done";
+      setDisplayValue(roundedReal);
     }
-  }, [isStreaming, realValue]);
+  }, [isStreaming, roundedReal]);
 
   useEffect(() => {
     if (isAborted) {
-      phaseRef.current = 'done';
+      phaseRef.current = "done";
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
@@ -63,38 +80,38 @@ export function useTokenCounter({
       return;
     }
 
-    if (isStreaming && phaseRef.current === 'idle') {
-      phaseRef.current = 'streaming';
+    if (isStreaming && phaseRef.current === "idle") {
+      phaseRef.current = "streaming";
       streamStartTsRef.current = performance.now();
       lastTickTsRef.current = streamStartTsRef.current;
     }
 
     if (
-      realValue != null &&
-      phaseRef.current === 'streaming' &&
+      roundedReal != null &&
+      phaseRef.current === "streaming" &&
       streamStartTsRef.current != null
     ) {
       const now = performance.now();
       const current = valueRef.current;
-      if (Math.round(current) === realValue) {
-        valueRef.current = realValue;
-        phaseRef.current = 'done';
-        setDisplayValue(realValue);
+      if (Math.round(current) === roundedReal) {
+        valueRef.current = roundedReal;
+        phaseRef.current = "done";
+        setDisplayValue(roundedReal);
       } else {
-        phaseRef.current = 'settling';
+        phaseRef.current = "settling";
         settleRef.current = {
           startTs: now,
           fromValue: current,
-          toValue: realValue,
+          toValue: roundedReal,
           durationMs:
-            current < realValue
+            current < roundedReal
               ? tokens.animation.catchupMs
               : tokens.animation.walkbackMs,
         };
       }
     }
 
-    if (phaseRef.current === 'idle' || phaseRef.current === 'done') {
+    if (phaseRef.current === "idle" || phaseRef.current === "done") {
       return;
     }
 
@@ -103,20 +120,19 @@ export function useTokenCounter({
     const loop = (now: number) => {
       const phase = phaseRef.current;
 
-      if (phase === 'streaming') {
+      if (phase === "streaming") {
         if (now - lastTickTsRef.current >= tickMs) {
-          const elapsedSec =
-            (now - (streamStartTsRef.current ?? now)) / 1000;
+          const elapsedSec = (now - (streamStartTsRef.current ?? now)) / 1000;
           const projected = elapsedSec * streamRatePerSec;
           valueRef.current = projected;
           lastTickTsRef.current = now;
           const rounded = Math.round(projected);
           setDisplayValue((prev) => (prev === rounded ? prev : rounded));
         }
-      } else if (phase === 'settling') {
+      } else if (phase === "settling") {
         const s = settleRef.current;
         if (s == null) {
-          phaseRef.current = 'done';
+          phaseRef.current = "done";
           rafRef.current = null;
           return;
         }
@@ -128,7 +144,7 @@ export function useTokenCounter({
         setDisplayValue((prev) => (prev === rounded ? prev : rounded));
         if (t >= 1) {
           valueRef.current = s.toValue;
-          phaseRef.current = 'done';
+          phaseRef.current = "done";
           setDisplayValue(s.toValue);
           rafRef.current = null;
           return;
@@ -149,7 +165,7 @@ export function useTokenCounter({
         rafRef.current = null;
       }
     };
-  }, [isStreaming, realValue, streamRatePerSec, isAborted]);
+  }, [isStreaming, roundedReal, streamRatePerSec, isAborted]);
 
-  return { displayValue };
+  return { displayValue, reset };
 }

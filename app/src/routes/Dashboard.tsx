@@ -4,6 +4,8 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   selectCarbonSummary,
   selectCarbonSummaryLoading,
@@ -86,6 +88,7 @@ function EmptyState() {
 
 export default function Dashboard() {
   const dispatch = useDispatch<AppDispatch>();
+  const { t } = useTranslation();
   const summary = useSelector(selectCarbonSummary);
   const loading = useSelector(selectCarbonSummaryLoading);
 
@@ -96,13 +99,25 @@ export default function Dashboard() {
       .then((s) => {
         if (!cancelled) dispatch(setSummary(s));
       })
-      .catch(() => {
-        if (!cancelled) dispatch(setSummaryLoading(false));
+      .catch((e) => {
+        // PKG-N5 — used to silently render the empty "no carbon yet" state
+        // on any failure; that made a 500 / network blip indistinguishable
+        // from a brand-new account. Surface a toast and log the cause.
+        console.error("[carbon] summary fetch failed", e);
+        if (!cancelled) {
+          dispatch(setSummaryLoading(false));
+          toast.error(
+            t(
+              "carbon.summary_load_failed",
+              "Couldn't load your carbon report. Please retry.",
+            ),
+          );
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [dispatch]);
+  }, [dispatch, t]);
 
   if (loading && !summary) {
     return (

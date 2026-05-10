@@ -59,10 +59,7 @@ export default function Hero() {
       <div className="space-y-7 self-center">
         <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
           <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--primary))]" />
-          {t(
-            "hero.eyebrow",
-            "一个 Key 调一池模型 · 一个市场买一组服务",
-          )}
+          {t("hero.eyebrow", "一个 Key 调一池模型 · 一个市场买一组服务")}
         </div>
 
         <h1 className="font-display text-4xl md:text-5xl lg:text-6xl leading-[1.05] tracking-tight">
@@ -150,7 +147,9 @@ export default function Hero() {
               key={m.model}
               className="flex justify-between items-center gap-2"
             >
-              <span style={{ color: "hsl(var(--ink-accent))" }}>● {m.model}</span>
+              <span style={{ color: "hsl(var(--ink-accent))" }}>
+                ● {m.model}
+              </span>
               <span className="opacity-60">
                 {m.average_latency_ms ? `${m.average_latency_ms}ms` : "—"}
               </span>

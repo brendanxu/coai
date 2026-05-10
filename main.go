@@ -9,6 +9,7 @@ import (
 	"chat/carbon"
 	"chat/channel"
 	"chat/cli"
+	"chat/commerce"
 	"chat/connection"
 	"chat/globals"
 	"chat/lead"
@@ -27,6 +28,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"net/url"
+	"time"
 )
 
 // registerStorageRoute serves /storage/orders/<order_no>/<file> from
@@ -128,24 +130,42 @@ func main() {
 
 	// greentokey: bridge tables for LemonSqueezy subscription billing (v0.6+).
 	// Runs after middleware.RegisterMiddleware connects DB; idempotent on reboot.
-	// Order: alphabetical by package name (carbon → lead → newapi → payment → plans → service → waitlist).
+	//
+	// Order is FK-dependency driven, NOT alphabetical (PKG-1 broke the
+	// alphabetical assumption by introducing cross-package FKs; PKG-2 added
+	// commerce + a margin VIEW that JOINs gtk_app_usage_log):
+	//   payment   creates gtk_ls_subscription      ← gtk_service_order's FK target
+	//   service   creates gtk_service              ← gtk_plan's PKG-1 FK target
+	//   plans     creates gtk_plan + ALTERs gtk_app_usage_log adding source/order_id/provider
+	//                                              ← commerce VIEW depends on order_id
+	//   newapi    creates gtk_newapi_pending_provisions ← FK to gtk_plan
+	//   commerce  creates gtk_payment_session + gtk_service_margin_v VIEW
+	//                                              ← VIEW JOINs gtk_app_usage_log.order_id (plans)
+	//                                                AND gtk_service_order (service)
+	//   lead / waitlist: independent tables, no cross-package FKs — appended last.
+	// Fix history:
+	//   2026-05-10 deploy v0.20 panic 1: ENUM helper in service/migration.go
+	//     spliced into VARCHAR — fixed by early-return when COLUMN_TYPE != enum(
+	//   2026-05-10 deploy v0.20 panic 2: commerce ran BEFORE plans, so VIEW
+	//     JOIN on gtk_app_usage_log.order_id failed (column not yet added) —
+	//     fixed by moving commerce.Migrate to AFTER plans + newapi
 	if err := carbon.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey carbon migration failed: %s", err))
-	}
-	if err := lead.Migrate(connection.DB); err != nil {
-		panic(fmt.Sprintf("greentokey lead migration failed: %s", err))
-	}
-	if err := newapi.Migrate(connection.DB); err != nil {
-		panic(fmt.Sprintf("greentokey newapi migration failed: %s", err))
 	}
 	if err := payment.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey payment migration failed: %s", err))
 	}
+	if err := service.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey service migration failed: %s", err))
+	}
 	if err := plans.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey plans migration failed: %s", err))
 	}
-	if err := service.Migrate(connection.DB); err != nil {
-		panic(fmt.Sprintf("greentokey service migration failed: %s", err))
+	if err := newapi.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey newapi migration failed: %s", err))
+	}
+	if err := commerce.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey commerce migration failed: %s", err))
 	}
 	// Idempotent catalog seed runs after service.Migrate. Existing
 	// rows are never overwritten — operators can edit via SQL or admin
@@ -157,6 +177,9 @@ func main() {
 	}
 	if err := waitlist.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey waitlist migration failed: %s", err))
+	}
+	if err := lead.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey lead migration failed: %s", err))
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -175,6 +198,23 @@ func main() {
 	// Registered BEFORE RegisterStaticRoute so the catch-all SPA
 	// fallback doesn't swallow /storage/* requests.
 	registerStorageRoute(app)
+
+	// PKG-3 PKG-TOKEN-PRODUCT-RENTAL: drain pending NewAPI provisions in
+	// background. PKG-2's commerce.GrantEntitlement enqueues a row into
+	// gtk_newapi_pending_provisions when ProvisionForPlan fails
+	// transiently (network blip, NewAPI 5xx, etc.). This goroutine
+	// retries with exponential backoff so the user gets their sk-xxx
+	// token shortly after the outage clears, without manual ops
+	// intervention.
+	//
+	// Interval matches the bin/check-pending-provisioning.sh cron's
+	// 5-minute alerting window — worker pulses every 60s so transient
+	// failures usually resolve well before the cron fires the
+	// stuck-row alert. Reuses the package-level ctx from billing.StartCron
+	// above so a future graceful-shutdown path can cancel both workers
+	// together.
+	go newapi.DrainPendingProvisionsForever(ctx, connection.DB, 60*time.Second)
+
 	utils.RegisterStaticRoute(app)
 	registerApiRouter(app)
 	readCorsOrigins()

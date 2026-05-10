@@ -71,10 +71,10 @@ export default function Contact() {
         result.kind === "rate-limited"
           ? t("lead.errors.rate", "请稍后再试 (1 分钟内最多 5 次)")
           : result.kind === "network"
-            ? t("lead.errors.network", "网络异常，请检查连接后重试")
-            : result.kind === "server"
-              ? t("lead.errors.server", "服务器忙，请稍后再试")
-              : t("lead.errors.invalid", "信息有误，请检查后重新提交");
+          ? t("lead.errors.network", "网络异常，请检查连接后重试")
+          : result.kind === "server"
+          ? t("lead.errors.server", "服务器忙，请稍后再试")
+          : t("lead.errors.invalid", "信息有误，请检查后重新提交");
       setInlineError(result.message || fallback);
     } finally {
       setSubmitting(false);
@@ -128,7 +128,10 @@ export default function Contact() {
           <form onSubmit={handleSubmit} className="space-y-5 max-w-xl mx-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="page-wechat" className="flex items-center gap-1.5">
+                <Label
+                  htmlFor="page-wechat"
+                  className="flex items-center gap-1.5"
+                >
                   <MessageCircle className="w-3.5 h-3.5" />
                   {t("lead.fields.wechat", "微信号")}
                 </Label>
@@ -142,7 +145,10 @@ export default function Contact() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="page-phone" className="flex items-center gap-1.5">
+                <Label
+                  htmlFor="page-phone"
+                  className="flex items-center gap-1.5"
+                >
                   <Phone className="w-3.5 h-3.5" />
                   {t("lead.fields.phone", "手机号")}
                 </Label>
@@ -160,10 +166,7 @@ export default function Contact() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground -mt-2">
-              {t(
-                "lead.hint.channel",
-                "至少填一个 — 微信优先（更快）",
-              )}
+              {t("lead.hint.channel", "至少填一个 — 微信优先（更快）")}
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -228,7 +231,9 @@ export default function Contact() {
                 className="w-full rounded-full"
                 disabled={submitting}
               >
-                {submitting && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
+                {submitting && (
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                )}
                 {t("lead.submit", "提交，等我联系你")}
               </Button>
               <p className="text-xs text-center text-muted-foreground mt-3">

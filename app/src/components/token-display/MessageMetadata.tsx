@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { useTokenCounter } from './hooks/useTokenCounter';
-import { formatTokens, formatCost, formatPercent } from './utils/format';
-import { getModelDefaults } from './utils/modelSpeed';
-import { tokens } from './design-tokens';
+import { useEffect, useRef, useState } from "react";
+import { useTokenCounter } from "./hooks/useTokenCounter";
+import { formatTokens, formatCost, formatPercent } from "./utils/format";
+import { getModelDefaults } from "./utils/modelSpeed";
+import { tokens } from "./design-tokens";
 
 /**
  * Per-message metadata strip. Visual + behaviour: Claude Design 2026-05-08.
@@ -39,7 +39,7 @@ export function MessageMetadata({
   isLoading = false,
   isAborted = false,
   costOverBudget = false,
-  currency = '¥',
+  currency = "¥",
   pricePerInputToken,
   pricePerOutputToken,
 }: MessageMetadataProps) {
@@ -66,10 +66,7 @@ export function MessageMetadata({
     const wasStreaming = wasStreamingRef.current;
     if (wasStreaming && !isStreaming && !isAborted && cost != null) {
       setFlash(true);
-      const t = setTimeout(
-        () => setFlash(false),
-        tokens.animation.flashHoldMs,
-      );
+      const t = setTimeout(() => setFlash(false), tokens.animation.flashHoldMs);
       return () => clearTimeout(t);
     }
     wasStreamingRef.current = isStreaming;
@@ -119,10 +116,10 @@ export function MessageMetadata({
         <span className="meta__k">out</span>
       </span>
 
-      <span className={'meta__cell' + (flash ? ' flash' : '')}>
+      <span className={"meta__cell" + (flash ? " flash" : "")}>
         <span
           className={
-            'meta__v ' + (costOverBudget ? 'meta__v--warn' : 'meta__v--cost')
+            "meta__v " + (costOverBudget ? "meta__v--warn" : "meta__v--cost")
           }
         >
           {formatCost(displayCost, currency)}

@@ -24,7 +24,9 @@ package service
 
 import (
 	"chat/auth"
+	"chat/commerce"
 	"chat/connection"
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -165,6 +167,42 @@ func refundOrder(db *sql.DB, orderNo, reason string, amountCents int64) (*refund
 			return nil, fmt.Errorf("flip to refunded: %w", err)
 		}
 		_ = amountCents // currently informational only; v0.11 may persist partial-refund amount in a separate column
+
+		// PKG-2 Wave 4 D4: also call commerce.RevokeEntitlement so the
+		// unified entitlement layer is in sync. RevokeEntitlement is
+		// IDEMPOTENT (H4); for status 'refunded' (which we just set) it
+		// hits the "refunded → terminal idempotent no-op" branch and
+		// returns EntitlementRevoked + nil. We surface a state-divergence
+		// warning when the returned state isn't EntitlementRevoked, since
+		// that means the refund-state-machine and our local flip got out
+		// of sync (the typical cause is a Wave-1 ENUM mismatch — useful
+		// diagnostic to log).
+		//
+		// NOT a double-call hazard with the LS webhook path: that path
+		// (payment/dispatch_service.go::RefundServiceOrder) calls
+		// RevokeEntitlement DIRECTLY without going through this function,
+		// so there's no overlap. This is for the admin-UI refund handler.
+		state, revErr := commerce.RevokeEntitlement(
+			context.Background(), db, orderNo, commerce.ProductService, reason)
+		if revErr != nil {
+			// Don't fail the refund — local DB state is already 'refunded'
+			// (authoritative). Log loud so ops can investigate the
+			// commerce-layer divergence.
+			globals.Warn(fmt.Sprintf(
+				"service: refund of %s flipped local status to 'refunded' "+
+					"but commerce.RevokeEntitlement failed: %v "+
+					"(local state is authoritative; manual reconciliation may be needed)",
+				orderNo, revErr))
+		} else if state != commerce.EntitlementRevoked {
+			// Both succeeded but they disagree on the resulting unified
+			// state — diagnostic only.
+			globals.Warn(fmt.Sprintf(
+				"service: refund of %s — local status='refunded' but "+
+					"commerce.RevokeEntitlement returned state=%q (expected 'revoked'); "+
+					"may indicate Wave-1 ENUM mismatch or stale local row",
+				orderNo, state))
+		}
+
 		return &refundResult{Reason: reason, AlreadyRefunded: false}, nil
 
 	default:

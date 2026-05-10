@@ -1352,6 +1352,105 @@
       "copy-data": "复制预热 URL 资源列表",
       "warm-tip": "> 如果您在使用 CDN 服务，可以通过此功能预热 CSS / JS 等资源。\n**每次更新后，您可以进行一次资源刷新以保证资源稳定性并提升加载速度。**\nCDN (内容分发网络) 资源预热，预热后资源将会被缓存到 CDN 节点，加速访问。\n通过预热功能，您可以在业务高峰前预先将热门资源缓存到CDN节点，降低源站压力提升用户体验。\n提示：**预热执行会从CDN到源站拉取大量的数据，请关注源站宽带负载情况。**"
     },
+    "orders": {
+      "title": "订单管理",
+      "refresh": "刷新",
+      "filter-status": "状态筛选：",
+      "all-statuses": "全部状态",
+      "search": "搜索",
+      "search-placeholder": "订单号或用户名（前缀）",
+      "clear-filters": "清除筛选",
+      "total": "共 {{total}} 条订单",
+      "load-error": "加载失败：{{error}}",
+      "retry": "重试",
+      "empty": "暂无订单。",
+      "empty-filtered": "没有匹配当前筛选的订单。",
+      "col-order-no": "订单号",
+      "col-username": "用户",
+      "col-service": "服务",
+      "col-status": "状态",
+      "col-amount": "金额",
+      "col-provider": "支付方式",
+      "col-created": "创建时间",
+      "col-actions": "操作",
+      "actions": {
+        "mark-paid": "标记已付款",
+        "refund": "退款"
+      },
+      "cancel": "取消",
+      "confirm-mark-paid": "确认标记已付款",
+      "confirm-refund": "确认退款",
+      "mark-paid-title": "标记订单 {{order_no}} 为已付款",
+      "mark-paid-desc": "用于线下/微信/银行转账等渠道完成支付后的订单。系统会自动发放对应权益（积分/服务额度），并记录操作日志。",
+      "mark-paid-success": "订单 {{order_no}} 已标记为已付款。",
+      "refund-title": "退款订单 {{order_no}}",
+      "refund-desc": "提示：此操作仅更新本系统的订单状态，不会自动从 LemonSqueezy / 虎皮椒发起真实退款，请到对应支付平台后台完成实际退款。",
+      "refund-reason-label": "退款原因（必填）",
+      "refund-reason-placeholder": "如：客户改变主意、服务未达预期、定价调整…",
+      "refund-reason-required": "请填写退款原因。",
+      "refund-amount-label": "退款金额（可选，元）",
+      "refund-amount-placeholder": "留空 = 全额退款",
+      "refund-amount-hint": "仅做记录，本接口不实际执行金额拆分。",
+      "refund-amount-invalid": "退款金额必须是正数。",
+      "refund-success": "订单 {{order_no}} 已退款。",
+      "refund-already-refunded": "订单 {{order_no}} 之前已退款，本次仅更新备注。",
+      "page-of": "第 {{page}} / {{total}} 页",
+      "prev": "上一页",
+      "next": "下一页",
+      "status": {
+        "pending_payment": "待支付",
+        "paid": "已付款",
+        "running": "执行中",
+        "completed": "已完成",
+        "refunded": "已退款",
+        "refunded_post_delivery": "交付后退款",
+        "failed": "失败",
+        "canceled_mid_flight": "中途取消"
+      }
+    },
+    "user-routing": {
+      "title": "用户路由管理",
+      "refresh": "刷新",
+      "filter-group": "按分组筛选：",
+      "all-groups": "全部分组",
+      "total": "共 {{total}} 条",
+      "load-error": "加载失败：{{error}}",
+      "empty": "暂无 NewAPI 绑定的用户。",
+      "col-coai-id": "CoAI ID",
+      "col-username": "用户名",
+      "col-newapi-id": "NewAPI ID",
+      "col-group": "当前分组",
+      "col-quota": "最近配额快照",
+      "col-actions": "操作",
+      "edit": "编辑",
+      "edit-title": "调整 {{username}} 的路由",
+      "edit-desc": "新分组会立即同步到 NewAPI。可以在建议列表里选，或手动输入你在渠道里定义的分组名。",
+      "current-group": "当前分组",
+      "pick-group": "选择建议分组",
+      "custom-group-placeholder": "或手动输入分组名…",
+      "cancel": "取消",
+      "save": "保存",
+      "empty-group-error": "分组名不能为空（要走默认请显式填 'default'）。",
+      "update-success": "{{username}} 的路由已切换到 {{group}}。",
+      "page-of": "第 {{page}} / {{total}} 页",
+      "prev": "上一页",
+      "next": "下一页"
+    },
+    "channels": {
+      "title": "渠道清单",
+      "refresh": "刷新",
+      "read-only-note": "NewAPI 渠道只读视图。v0.19 暂不支持在此处修改渠道分组白名单，请先去 NewAPI 后台修改。",
+      "load-error": "加载失败：{{error}}",
+      "empty": "暂无配置的渠道。",
+      "col-id": "ID",
+      "col-name": "名称",
+      "col-provider": "上游",
+      "col-models": "模型",
+      "col-group": "分组",
+      "col-status": "状态",
+      "status-enabled": "启用",
+      "status-disabled": "禁用"
+    },
     "license": {
       "title": "授权管理",
       "description": "CoAI Pro 版本授权管理",
@@ -1498,7 +1597,9 @@
     "account-full": "账户管理",
     "admin": "后台",
     "admin-full": "后台管理",
-    "pricing-full": "套餐"
+    "pricing-full": "套餐",
+    "orders": "订单",
+    "orders-full": "我的订单"
   },
   "account": {
     "title": "账号管理",
@@ -1947,5 +2048,177 @@
     "cancel": "取消",
     "submit": "提交，等我联系你",
     "disclaimer": "我们只用这些信息回复你这次咨询。不会群发短信，不会卖给第三方。"
+  },
+  "home_dashboard": {
+    "welcome": {
+      "eyebrow": "你的小红书运营助手",
+      "greeting": "你好,{{name}}",
+      "subtitle": "民宿专属内容矩阵,founder 全程陪跑。",
+      "fallback_name": "民宿主"
+    },
+    "orders": {
+      "heading": "我的订单",
+      "view_all": "查看全部订单",
+      "empty_title": "你还没有订单",
+      "empty_body": "想开通服务?直接联系 founder 微信,5 分钟开通。",
+      "empty_cta": "联系 founder 微信",
+      "error_title": "暂时没法加载订单",
+      "error_body": "网络不稳定或服务器在重启,稍后再试一下。",
+      "retry": "重试"
+    },
+    "roadmap": {
+      "heading": "服务路线图"
+    },
+    "phase": {
+      "content": {
+        "title": "Phase 1.A · 小红书内容生成",
+        "desc": "基于你的民宿、客群、客单价,自动生成图文 + 笔记标题 + 标签,founder 一对一审核出稿。"
+      },
+      "publish": {
+        "title": "Phase 1.B · 自动发布",
+        "desc": "笔记定时发布、首条评论自动顶,日历视图掌控全月节奏。"
+      },
+      "engage": {
+        "title": "Phase 1.C · 互动管理",
+        "desc": "评论统一收件箱、私信意图分类(咨询 / 砍价 / 比价),响应不漏人。"
+      },
+      "attribution": {
+        "title": "Phase 1.D · ROI 归因",
+        "desc": "笔记 → 私信 → 入住 全链路追踪,每个月清楚知道哪条笔记带来订单。"
+      }
+    },
+    "status": {
+      "live": "已上线",
+      "soon": "即将到来",
+      "planned": "规划中"
+    },
+    "support": {
+      "title": "有问题?联系 founder",
+      "body": "民宿主直连 founder,无客服转接、无 ticket 系统、不绕弯。",
+      "wechat_label": "微信号",
+      "wechat_handle": "tanaxu626",
+      "email": "tanaxu626@gmail.com",
+      "email_cta": "发邮件"
+    }
+  },
+  "my_orders": {
+    "title": "我的订单",
+    "subtitle": "查看你购买的服务套餐及交付状态。",
+    "refresh": "刷新",
+    "credits": "{{count}} 点数",
+    "created_at": "创建",
+    "paid_at": "支付",
+    "completed_at": "完成",
+    "filter": {
+      "all": "全部",
+      "pending_payment": "待支付",
+      "paid": "已支付",
+      "running": "执行中",
+      "completed": "已完成",
+      "refunded": "已退款"
+    },
+    "status": {
+      "pending_payment": "待支付",
+      "paid": "已支付",
+      "running": "执行中",
+      "completed": "已完成",
+      "refunded": "已退款",
+      "refunded_post_delivery": "交付后退款",
+      "failed": "失败",
+      "canceled_mid_flight": "中途取消"
+    },
+    "empty": {
+      "title": "还没有订单",
+      "body": "你还没有购买任何服务套餐。如需协助开通,请联系我们。",
+      "filtered_title": "该状态下没有订单",
+      "filtered_body": "试试切换其它筛选条件。",
+      "contact_cta": "加微信预约",
+      "contact_dialog_title": "联系预约 demo"
+    },
+    "load_failed": "加载订单失败,请重试。",
+    "retry": "重试"
+  },
+  "order_detail": {
+    "title": "订单详情",
+    "back": "返回订单列表",
+    "loading": "加载中",
+    "refresh": "刷新",
+    "polling": "正在更新...",
+    "not_found": {
+      "title": "未找到此订单",
+      "body": "订单可能已被删除,或者你没有访问权限。"
+    },
+    "metadata": {
+      "title": "订单信息",
+      "amount": "支付金额",
+      "credits": "已发放点数",
+      "payment_provider": "支付方式",
+      "created_at": "创建时间",
+      "paid_at": "支付时间",
+      "completed_at": "完成时间"
+    },
+    "payment_provider": {
+      "lemonsqueezy": "海外卡 (LemonSqueezy)",
+      "hupijiao": "支付宝",
+      "manual": "线下/管家结算"
+    },
+    "refund_log": {
+      "title": "退款记录"
+    },
+    "status": {
+      "pending_payment": {
+        "label": "待支付",
+        "message": "等待支付完成。如已通过其它方式付款,请刷新或联系客服核对。"
+      },
+      "paid": {
+        "label": "已支付",
+        "message": "支付已确认。等待开始执行。"
+      },
+      "running": {
+        "label": "执行中",
+        "message": "正在为你生成内容,这通常需要几分钟。页面会自动刷新。"
+      },
+      "completed": {
+        "label": "已完成",
+        "message": "服务已交付。如有问题,可申请退款或重新下单。"
+      },
+      "refunded": {
+        "label": "已退款",
+        "message": "此订单已退款。"
+      },
+      "refunded_post_delivery": {
+        "label": "交付后退款",
+        "message": "服务已交付,但订单已退款。"
+      },
+      "failed": {
+        "label": "失败",
+        "message": "订单处理失败。请联系客服核对。"
+      },
+      "canceled_mid_flight": {
+        "label": "中途取消",
+        "message": "执行过程中被取消。如需协助,请联系客服。"
+      },
+      "canceled": {
+        "message": "此订单已取消。"
+      }
+    },
+    "action": {
+      "reorder": "再来一单",
+      "refund": "申请退款"
+    },
+    "modal": {
+      "refund_title": "申请退款",
+      "refund_description": "请简要说明原因。我们会在 1 个工作日内处理。",
+      "refund_reason_label": "退款原因",
+      "refund_placeholder": "例如:内容不符合需求 / 未按时交付 / 重复下单",
+      "refund_submit": "提交申请",
+      "refund_too_short": "请至少写 4 个字说明原因",
+      "cancel": "取消"
+    },
+    "toast": {
+      "refund_submitted": "退款申请已提交,我们会尽快处理。",
+      "refund_failed": "提交失败",
+      "reorder_failed": "操作失败"
+    }
   }
 }

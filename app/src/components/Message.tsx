@@ -15,11 +15,7 @@ import {
   Trash,
 } from "lucide-react";
 import { filterMessage } from "@/utils/processor.ts";
-import {
-  copyClipboard,
-  isContainDom,
-  saveAsFile,
-} from "@/utils/dom.ts";
+import { copyClipboard, isContainDom, saveAsFile } from "@/utils/dom.ts";
 import { useTranslation } from "react-i18next";
 import React, { Ref, useRef, useState } from "react";
 import {
@@ -275,21 +271,23 @@ function MessageContent({
       const thinkContent = startMatch[1];
       // if there is an end tag, remove the whole matching part;
       // if not, keep the remaining content
-      const hasEndTag = content.includes('</think>');
-      const restContent = hasEndTag ? 
-        content.replace(startMatch[0], "").trim() :
-        content.substring(content.indexOf('<think>') + 7).trim();
-      
+      const hasEndTag = content.includes("</think>");
+      const restContent = hasEndTag
+        ? content.replace(startMatch[0], "").trim()
+        : content.substring(content.indexOf("<think>") + 7).trim();
+
       return {
         thinkContent,
-        restContent: hasEndTag ? restContent : '',
-        isComplete: hasEndTag
+        restContent: hasEndTag ? restContent : "",
+        isComplete: hasEndTag,
       };
     }
     return null;
   };
 
-  const parsedContent = message.content.length ? parseThinkContent(message.content) : null;
+  const parsedContent = message.content.length
+    ? parseThinkContent(message.content)
+    : null;
 
   return (
     <div className={"content-wrapper"}>
@@ -341,8 +339,8 @@ function MessageContent({
           <>
             {parsedContent ? (
               <>
-                <ThinkContent 
-                  content={parsedContent.thinkContent} 
+                <ThinkContent
+                  content={parsedContent.thinkContent}
                   isComplete={parsedContent.isComplete}
                 />
                 {parsedContent.restContent && (

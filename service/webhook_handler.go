@@ -49,7 +49,16 @@ func MarkOrderPaid(db *sql.DB, orderNo, externalOrderID, provider string) error 
 	if orderNo == "" {
 		return errors.New("service: MarkOrderPaid requires order_no")
 	}
-	if provider != "lemonsqueezy" && provider != "hupijiao" {
+	// PKG-2 Wave 4 D5: extend allowlist to include 'manual' so the admin
+	// mark-paid endpoint (D7) can flip concierge-settled orders to paid
+	// through this same code path. The CHECK constraint on
+	// gtk_service_order.payment_provider already includes 'manual' (per
+	// PKG-1 schema); this guard was the only gate blocking it.
+	//
+	// TODO: log created_by_admin_id once that column exists on
+	// gtk_service_order (Codex M3 — out of scope for Wave 4; would need
+	// schema migration + admin context plumbing).
+	if provider != "lemonsqueezy" && provider != "hupijiao" && provider != "manual" {
 		return fmt.Errorf("service: MarkOrderPaid unknown provider %q", provider)
 	}
 
@@ -77,21 +86,36 @@ func MarkOrderPaid(db *sql.DB, orderNo, externalOrderID, provider string) error 
 
 	switch currentStatus {
 	case "pending_payment":
-		var sqlBody string
-		if provider == "lemonsqueezy" {
-			sqlBody = `
+		// Provider-shaped UPDATE. Manual orders have no provider-side
+		// external id, so we don't bind one — just status + paid_at.
+		var (
+			res sql.Result
+			err error
+		)
+		switch provider {
+		case "lemonsqueezy":
+			res, err = globals.ExecDb(db, `
 				UPDATE gtk_service_order
 				SET status = 'paid', ls_order_id = ?, paid_at = CURRENT_TIMESTAMP
 				WHERE order_no = ? AND status = 'pending_payment'
-			`
-		} else {
-			sqlBody = `
+			`, externalOrderID, orderNo)
+		case "hupijiao":
+			res, err = globals.ExecDb(db, `
 				UPDATE gtk_service_order
 				SET status = 'paid', hupijiao_trade_no = ?, paid_at = CURRENT_TIMESTAMP
 				WHERE order_no = ? AND status = 'pending_payment'
-			`
+			`, externalOrderID, orderNo)
+		case "manual":
+			// D5 + D7: admin mark-paid path. No provider-side external id
+			// column gets bound. externalOrderID arg is currently ignored
+			// (could be a memo string from admin UI but we have no
+			// column to persist it without schema work — Codex M3).
+			res, err = globals.ExecDb(db, `
+				UPDATE gtk_service_order
+				SET status = 'paid', paid_at = CURRENT_TIMESTAMP
+				WHERE order_no = ? AND status = 'pending_payment'
+			`, orderNo)
 		}
-		res, err := globals.ExecDb(db, sqlBody, externalOrderID, orderNo)
 		if err != nil {
 			return fmt.Errorf("flip to paid: %w", err)
 		}

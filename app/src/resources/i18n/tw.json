@@ -1722,7 +1722,29 @@
     "error-unauthorized": "登入已過期,請重新登入後再升級。",
     "error-misconfigured": "結帳尚未設定完畢,請聯絡客服。",
     "error-network": "無法連接伺服器,檢查網路後重試。",
-    "error-unknown": "暫時打不開結帳,請稍後再試。"
+    "error-unknown": "暫時打不開結帳,請稍後再試。",
+    "feature-content": "每月20+ 篇可發布小紅書內容（文案+ 優化封面+ hashtag）",
+    "feature-style": "AI 學你已有爆款的風格— 上傳5+ 篇當few-shot 例子",
+    "feature-publish": "自動發布：內容自動到你手機草稿箱，一鍵確認即發",
+    "feature-engage": "評論/ 私訊AI 草稿，你審一鍵發，訂房諮詢直接打到你",
+    "feature-roi": "每日ROI dashboard：本週X 間訂單從小紅書來",
+    "feature-concierge": "首批5 位客戶高接觸陪跑（founder 當面教+ 調prompt）",
+    "feature-refund": "30 天若入住率沒看到提升，無理由退50%",
+    "cta-demo": "加微信預約demo",
+    "value-replace-title": "替代MCN",
+    "value-replace-body": "你給本地工作室付¥2-5K/月、3 個月退訂是常態。我們用AI 把那套活兒做實，更穩更便宜，還有30 天50% 退款保障。",
+    "value-vertical-title": "民宿垂直",
+    "value-vertical-body": "AI 學過的不是通用語料，是大理民宿爆款數據：洱海、蒼山、旅拍、蜜月、親子、季節性玩法。先做大理一個區域，做透了再擴。",
+    "value-control-title": "你掌控帳號",
+    "value-control-body": "我們不接管你的小紅書帳號。內容生成後推到你手機草稿箱，你一鍵確認即發。封號風險低，帳號永遠是你的。",
+    "faq-vs-mcn-q": "你們和我現在用的MCN 工作室有什麼不同？",
+    "faq-vs-mcn-a": "MCN 是人工寫，受限於一個寫手的小紅書理解。我們用AI + 民宿垂直語料+ 老闆自己的爆款few-shot，輸出更穩。價格¥1980/月通常比當地工作室便宜，還有30 天退款保障。最大的差別是『你掌控帳號』 — 我們不要你的密碼。",
+    "faq-account-q": "我自己已經有小紅書帳號怎麼辦？要給你們密碼嗎？",
+    "faq-account-a": "不需要。我們產生的內容會自動出現在你帳號草稿箱，打開手機一鍵確認即可發佈。整個流程帳號100% 在你手裡，零封號風險。",
+    "trust-concierge": "首批5 客戶高接觸陪跑",
+    "trust-refund": "30 天50% 退款承諾",
+    "trust-account": "帳號永遠在你手上",
+    "contact-title": "聯絡預約demo"
   },
   "dashboard": {
     "welcome-back": "歡迎回來",
@@ -1751,5 +1773,223 @@
     "close": "關閉聊天",
     "panel-title": "聊天",
     "panel-label": "懸浮聊天面板"
+  },
+  "landing": {
+    "eyebrow": "民宿· 小紅書營運· 全託管",
+    "headline": {
+      "before": "你做民宿，",
+      "middle": "我做",
+      "accent": "你的小紅書。"
+    },
+    "sub": "AI 幫你寫文案、出圖、自動發布、應對評論私訊。每月¥1980 全託管，比本地MCN 更穩更便宜。先做大理環洱海。",
+    "cta": {
+      "demo": "聯絡預約demo",
+      "pricing": "了解套餐¥1980/月",
+      "fineprint": "首批客戶高接觸陪跑· 30 天50% 退款承諾· 不打折不分級"
+    },
+    "contact": {
+      "title": "聯絡預約demo"
+    },
+    "services": {
+      "heading": "全閉環4 個環節",
+      "sub": "從寫到發到回到歸因，¥1980/月一價全包。前6 週concierge 模式陪跑，後台逐步自動化。",
+      "content": {
+        "title": "內容生成",
+        "desc": "上傳5-10 張原片+ 1 句房型說明→ AI 寫小紅書爆款文案、出優化封面圖、配hashtag。每週5-7 篇。學你已有爆款的語氣和風格。",
+        "status": "已上線· 陪跑模式",
+        "cta": "看範例"
+      },
+      "publish": {
+        "title": "自動發布",
+        "desc": "內容生成後自動出現在你小紅書草稿箱。手機收到通知→ 一鍵確認即發。帳號100% 你自己掌控，封號風險低，省95% 工時。",
+        "status": "Phase 1.B · 第4-6 週",
+        "cta": "留微信搶先體驗"
+      },
+      "engage": {
+        "title": "互動管理",
+        "desc": "評論AI 自動起草→ 你審→ 一鍵發。私訊AI 初篩（訂房諮詢vs 閒聊）→ 訂房諮詢直接打到你。前100 個人工sample，後續閉環自學習。",
+        "status": "Phase 1.C · 第6-8 週",
+        "cta": "留微信搶先體驗"
+      },
+      "roi": {
+        "title": "ROI 歸因",
+        "desc": "每天看：「這週新增X 間訂單從小紅書來/ 內容投入產出比Y」。 Phase 1 老闆每來訂單30 秒標來源；Phase 2 與攜程/Airbnb 自動直連歸因。",
+        "status": "已上線· 手動歸因",
+        "cta": "看範例"
+      }
+    },
+    "why": {
+      "heading": "為啥找我們做",
+      "replace-mcn": {
+        "title": "替代本地MCN",
+        "body": "你給本地工作室付¥2-5K/月，3 個月退訂是常事。我們用AI 把那套活兒做實，¥1980/月不分級，效果不穩定時30 天50% 退款。"
+      },
+      "vertical": {
+        "title": "民宿垂直AI",
+        "body": "我們不是通用AI 工具。 AI 學過的是大理民宿爆款的語料：洱海、蒼山、旅拍、蜜月、親子、季節性玩法。先做大理一個區域，做透了再擴。"
+      },
+      "your-account": {
+        "title": "帳號100% 你掌控",
+        "body": "我們不接管你的小紅書帳號。內容生成後推到你手機草稿箱，你一鍵確認即發。封號風險低，帳號永遠是你的。"
+      }
+    },
+    "footer": {
+      "tagline": "AI 取代MCN，更穩更便宜，民宿主自己掌控。",
+      "attribution": "首階段只做大理環洱海· 優質池1K+ 民宿主· 單檔¥1980/月不分級· 30 天50% 退款承諾"
+    }
+  },
+  "nav": {
+    "home": "首頁",
+    "token": "Token 套餐",
+    "services": "服務市場",
+    "pool": "模型池",
+    "pricing": "民宿套餐",
+    "contact": "聯繫",
+    "cta": "預約demo"
+  },
+  "footer": {
+    "tagline": "民宿主的小紅書營運官· 大理環洱海先發",
+    "product": "產品",
+    "contact": "聯繫",
+    "legal": "條款",
+    "privacy": "私隱政策",
+    "terms": "服務條款",
+    "rights": "保留所有權利",
+    "icp": "ICP 備案: 待備案",
+    "book-demo": "預約demo",
+    "hours": "週一至週日9:00-21:00"
+  },
+  "hero": {
+    "eyebrow": "一個Key 調一池模型· 一個市場買一組服務",
+    "line1": "聚合AI 算力，",
+    "line2": "開箱即用",
+    "line3": "的智能體服務。",
+    "sub": "買Token 套餐：一個API Key 通吃GPT、Claude、DeepSeek、Qwen 等十餘款模型，基於NewAPI，sub2API 即將接入官方API。買服務：小紅書代營運、資料製作、DIY 智能體－按次計費，底層仍是算力。",
+    "cta-token": "查看Token 套餐",
+    "cta-market": "逛服務市場",
+    "trust": {
+      "models": "模型在池",
+      "services": "類服務上架",
+      "key": "Key 全調用"
+    },
+    "rail": {
+      "label": "Live grid",
+      "realtime": "即時",
+      "heading": "模型池即時",
+      "delta": "{{count}} 個模型在線· 平均延遲{{ms}}ms",
+      "loading": "載入中...",
+      "cta": "複製我的API Key"
+    }
+  },
+  "pool": {
+    "eyebrow": "Live grid · 實時",
+    "heading": "模型池",
+    "sub": "你買Token 套餐後，一個API Key 能呼叫以下模型。底層基於NewAPI 路由，自動選取最便宜可用的頻道。延遲為最近1 小時滑動平均。",
+    "loading": "載入中...",
+    "stats": {
+      "models": "模型在線",
+      "channels": "頻道在用",
+      "latency": "平均延遲"
+    },
+    "col": {
+      "model": "模型",
+      "provider": "供應商",
+      "tier": "檔位",
+      "latency": "延遲"
+    },
+    "disclaimer": "Snapshot 取自"
+  },
+  "token": {
+    "eyebrow": "Token 套餐· 模型池接入",
+    "heading": {
+      "line1": "一個Key,",
+      "line2": "一池模型。"
+    },
+    "sub": "OpenAI 相容端點，Bearer 鑑權。 GPT/Claude/DeepSeek/Qwen 之間切換只改model 欄位－不換帳號、不換Key。底層NewAPI 路由，sub2API 橋接官方API 進行中。",
+    "plan": {
+      "name": "標準版",
+      "badge": "唯一檔位",
+      "month": "<g id=\"3\">月</g>.....",
+      "tagline": "5,000 credits · 約5,000 次標準呼叫· 池內全模型",
+      "feat": {
+        "1": "一個sk-xxx API Key,OpenAI 相容",
+        "2": "5,000 credits/月,標準呼叫¥0.02/次(≈1k+1k tokens)",
+        "3": "切模型只改model 欄位－路由+ 計費自動",
+        "4": "Light/Standard/Premium 分檔:DeepSeek/Qwen 0.5×,Claude-haiku 1×,GPT-4o/Sonnet 3×",
+        "5": "Dashboard 即時餘額· 用量明細· 模型分佈"
+      },
+      "cta": "聯繫開通",
+      "disclaimer": "首批客戶1:1 陪跑· 微信支付/ 支付寶/ 銀行轉帳均可· LemonSqueezy 信用卡支付即將上線"
+    },
+    "why": {
+      "one": {
+        "title": "一Key 通模型",
+        "body": "不用每個供應商各開一個Key、各開一份帳單、各看一個dashboard。一次集成,全部搞定。"
+      },
+      "two": {
+        "title": "Credit 抽象",
+        "body": "我們吸收官方API 和sub2API 之間75× 成本差。 Light/Standard/Premium 分檔透明,差價不歸你管。"
+      },
+      "three": {
+        "title": "Pool 自動調度",
+        "body": "底層NewAPI 自動選每次最便宜可用通路。某家供應商掛了,你看不見。"
+      }
+    },
+    "pool-link": "查看完整模型池"
+  },
+  "services": {
+    "eyebrow": "服務市場",
+    "heading": "AI 服務，按結果買。",
+    "sub": "服務= 我們調好的prompt + token 包。算力是底層,你看到的是定價的結果:&#39;¥19 一篇小紅書&#39;、&#39;¥299 月度30 篇&#39;、&#39;¥1980/月全託管&#39;。",
+    "loading": "載入中...",
+    "empty": "敬請期待－首批服務即將上架",
+    "tile": {
+      "cta": "了解詳情"
+    }
+  },
+  "lead": {
+    "title": "預約demo",
+    "desc": "留下聯絡方式,我們24 小時內透過微信或電話聯絡你,聊聊你的民宿現狀和小紅書帳號狀況。",
+    "eyebrow": "預約demo",
+    "heading": {
+      "line1": "聊聊你的民宿，",
+      "line2": "我們看怎麼幫上你。"
+    },
+    "lede": "留下聯絡方式— founder 24 小時內透過微信或電話和你聊。我們會先問你民宿的現況、看你已有的小紅書帳號，再判斷這套服務對你是否合適。不合適會直接說不合適。",
+    "fields": {
+      "wechat": "微訊號",
+      "phone": "手機號",
+      "homestay": "民宿名",
+      "loc": "位置",
+      "notes": "想了解什麼/ 現在最大的痛點",
+      "preferred": "推薦",
+      "alt": "微信不方便填這個",
+      "optional": "選填",
+      "wechat-ph": "your-wechat-id",
+      "homestay-ph": "比如「洱海花房」",
+      "loc-ph": "例如「大理雙廊」",
+      "notes-ph": "例如：現在每週自己寫3 篇小紅書太累，效果一般"
+    },
+    "errors": {
+      "no-channel": "請至少填寫微訊號或手機號碼(我們用來聯絡你)",
+      "rate": "請稍後再試(1 分鐘內最多5 次)",
+      "network": "網路異常，請檢查連線後重試",
+      "server": "伺服器忙，請稍後再試",
+      "invalid": "資料有誤，請檢查後重新提交"
+    },
+    "success": {
+      "title": "已收到！"
+    },
+    "thanks": {
+      "title": "提交成功",
+      "body": "我們會在24 小時內透過你留的聯絡方式與你溝通。想直接聯絡：加founder 微信即可（聊聊你的民宿現況）。",
+      "again": "再提交一個"
+    },
+    "hint": {
+      "channel": "至少填一個— 微信優先（更快）"
+    },
+    "cancel": "取消",
+    "submit": "提交，等我聯絡你",
+    "disclaimer": "我們只用這些資訊回覆你這次諮詢。不會群發短信，不會賣給第三方。"
   }
 }
