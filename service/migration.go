@@ -229,6 +229,19 @@ func addEnumValueIfMissing(db *sql.DB, table, column, value string) error {
 		return fmt.Errorf("column %s.%s has no COLUMN_TYPE — does it exist?", table, column)
 	}
 
+	// Bail no-op if column isn't actually ENUM. The Wave 1 agent assumed
+	// gtk_service_order.status was ENUM, but the historical schema declares
+	// it as VARCHAR(32) (with a SQLite-only CHECK constraint, no MySQL
+	// enforcement). MySQL has no DB-level constraint to extend, so there's
+	// nothing to do here — application code (CompareAndSwapServiceOrderStatus
+	// in commerce/entitlement.go) is the authority on legal status values.
+	// Discovered by deploy panic 2026-05-10 ("varchar(32,'refunded_post_delivery')"
+	// = invalid SQL when helper spliced into a VARCHAR column type).
+	ct := columnType.String
+	if len(ct) < 5 || ct[:5] != "enum(" {
+		return nil
+	}
+
 	// Quick membership check: '<value>' substring within the
 	// ENUM('a','b',...) definition string. False positives only if the
 	// value itself appears as a substring of another value (e.g. 'paid'

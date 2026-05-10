@@ -3,7 +3,7 @@
 // Why a VIEW (not a materialized table or denormalized column):
 //
 //	Per-service margin = revenue (svc.price_cny_cents_paid) - upstream cost
-//	(SUM(usage.cost_cents) WHERE usage.order_id = svc.order_no AND
+//	(SUM(usg.cost_cents) WHERE usage.order_id = svc.order_no AND
 //	usage.source = 'service_order'). Both pieces of data already live in
 //	their respective authoritative tables (gtk_service_order +
 //	gtk_app_usage_log); a VIEW keeps the join logic in one place that
@@ -99,12 +99,12 @@ func CreateServiceMarginView(db *sql.DB) error {
 			  svc.service_slug                        AS service_slug,
 			  svc.created_at                          AS order_created_at,
 			  svc.price_cny_cents_paid                AS price_cny_cents_paid,
-			  COALESCE(SUM(usage.cost_cents), 0)      AS upstream_cost_cents,
-			  svc.price_cny_cents_paid - COALESCE(SUM(usage.cost_cents), 0) AS margin_cents
+			  COALESCE(SUM(usg.cost_cents), 0)      AS upstream_cost_cents,
+			  svc.price_cny_cents_paid - COALESCE(SUM(usg.cost_cents), 0) AS margin_cents
 			FROM gtk_service_order svc
-			LEFT JOIN gtk_app_usage_log usage
-			  ON usage.order_id = svc.order_no
-			 AND usage.source   = 'service_order'
+			LEFT JOIN gtk_app_usage_log usg
+			  ON usg.order_id = svc.order_no
+			 AND usg.source   = 'service_order'
 			WHERE svc.status IN ('completed', 'refunded_post_delivery')
 			GROUP BY svc.id, svc.service_slug, svc.created_at, svc.price_cny_cents_paid
 		`)
@@ -121,12 +121,12 @@ func CreateServiceMarginView(db *sql.DB) error {
 		  svc.service_slug                        AS service_slug,
 		  svc.created_at                          AS order_created_at,
 		  svc.price_cny_cents_paid                AS price_cny_cents_paid,
-		  COALESCE(SUM(usage.cost_cents), 0)      AS upstream_cost_cents,
-		  svc.price_cny_cents_paid - COALESCE(SUM(usage.cost_cents), 0) AS margin_cents
+		  COALESCE(SUM(usg.cost_cents), 0)      AS upstream_cost_cents,
+		  svc.price_cny_cents_paid - COALESCE(SUM(usg.cost_cents), 0) AS margin_cents
 		FROM gtk_service_order svc
-		LEFT JOIN gtk_app_usage_log usage
-		  ON usage.order_id = svc.order_no
-		 AND usage.source   = 'service_order'
+		LEFT JOIN gtk_app_usage_log usg
+		  ON usg.order_id = svc.order_no
+		 AND usg.source   = 'service_order'
 		WHERE svc.status IN ('completed', 'refunded_post_delivery')
 		GROUP BY svc.id, svc.service_slug, svc.created_at, svc.price_cny_cents_paid
 	`)
