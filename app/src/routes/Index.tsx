@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button.tsx";
 import {
   ChevronDown,
   MessageCircle,
+  PackageCheck,
   Shield,
   Wallet,
   LibraryBig,
@@ -16,7 +17,7 @@ import router from "@/router.tsx";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/components/ui/lib/utils.ts";
 import { useSelector } from "react-redux";
-import { selectAdmin } from "@/store/auth.ts";
+import { selectAdmin, selectAuthenticated } from "@/store/auth.ts";
 import {
   hideToolbarSelector,
   hideToolbarTextSelector,
@@ -100,6 +101,7 @@ function BarItem({ icon, path, name }: BarItemProps) {
 
 function ToolBar() {
   const admin = useSelector(selectAdmin);
+  const auth = useSelector(selectAuthenticated);
   const hideToolbar = useSelector(hideToolbarSelector);
   const [stacked, setStacked] = React.useState(hideToolbar || isMobile());
 
@@ -126,6 +128,12 @@ function ToolBar() {
       )}
       {/* <BarItem icon={<DraftingCompass />} path={`/key`} name={"key"} /> */}
       {/* <BarItem icon={<PieChart />} path={`/log`} name={"log"} /> */}
+      {/* PKG-N4 — /orders is auth-gated by <AuthRequired> in router.tsx, so
+          mirror that here: only show the toolbar entry when the caller is
+          actually logged in (same pattern as /admin below). */}
+      {auth && (
+        <BarItem icon={<PackageCheck />} path={`/orders`} name={"orders"} />
+      )}
       <BarItem icon={<User />} path={`/account`} name={"account"} />
       {admin && <BarItem icon={<Shield />} path={`/admin`} name={"admin"} />}
     </div>

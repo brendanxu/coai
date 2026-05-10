@@ -1381,7 +1381,9 @@
     "admin-full": "Dashboard",
     "key": "key",
     "key-full": "API",
-    "pricing-full": "Pricing"
+    "pricing-full": "Pricing",
+    "orders": "Orders",
+    "orders-full": "My orders"
   },
   "notify": "Notice",
   "new-notify": "New notification",
@@ -1904,7 +1906,11 @@
       "title": "No orders yet",
       "body": "You haven't purchased any service packages. Reach out if you'd like help getting started.",
       "filtered_title": "Nothing in this status",
-      "filtered_body": "Try a different filter."
-    }
+      "filtered_body": "Try a different filter.",
+      "contact_cta": "Talk to us",
+      "contact_dialog_title": "Book a demo"
+    },
+    "load_failed": "Couldn't load your orders. Please retry.",
+    "retry": "Retry"
   }
 }
