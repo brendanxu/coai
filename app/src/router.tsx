@@ -56,6 +56,9 @@ const AdminUserRouting = lazyFactor(
 const AdminChannelsRouting = lazyFactor(
   () => import("@/routes/admin/AdminChannels.tsx"),
 );
+// PKG-N1 — admin order management (/admin/orders). Closes the
+// "founder uses curl to mark concierge orders paid" gap from the audit.
+const AdminOrders = lazyFactor(() => import("@/routes/admin/AdminOrders.tsx"));
 
 const router = createBrowserRouter([
   {
@@ -347,6 +350,16 @@ const router = createBrowserRouter([
             element: (
               <Suspense>
                 <AdminChannelsRouting />
+              </Suspense>
+            ),
+          },
+          // PKG-N1 — service order management (mark-paid / refund) UI.
+          {
+            id: "admin-orders",
+            path: "orders",
+            element: (
+              <Suspense>
+                <AdminOrders />
               </Suspense>
             ),
           },

@@ -11,6 +11,7 @@ import {
   Gauge,
   GitFork,
   History,
+  PackageCheck,
   Radio,
   Route,
   ServerCog,
@@ -76,6 +77,12 @@ function MenuBar() {
         title={t("admin.market.title")}
         icon={<BookCopy />}
         path={"/market"}
+      />
+      {/* PKG-N1 — service order management (mark-paid / refund). */}
+      <MenuItem
+        title={t("admin.orders.title")}
+        icon={<PackageCheck />}
+        path={"/orders"}
       />
       <MenuItem
         title={t("admin.broadcast")}
