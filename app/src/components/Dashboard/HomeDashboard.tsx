@@ -203,13 +203,15 @@ function ActiveOrdersSection() {
   async function load() {
     setState({ kind: "loading" });
     try {
-      // listMyOrders() swallows transport errors and returns []. We can't
-      // distinguish "real empty" from "error" at this layer, so any
-      // resolved value is treated as ready and only thrown promises hit
-      // the error branch. (Future improvement: have listMyOrders() throw
-      // on real errors so we can show a retry instead of a misleading
-      // empty state.)
-      const orders = await listMyOrders(undefined);
+      // PKG-N5 changed listMyOrders to return {orders, error} so silent
+      // failures distinguish from real empty. Treat error=true as the
+      // error branch (retry CTA), error=false + empty as legitimate empty.
+      const { orders, error } = await listMyOrders(undefined);
+      if (error) {
+        console.debug("[HomeDashboard] orders load failed (error flag)");
+        setState({ kind: "error" });
+        return;
+      }
       // Sort defensively by created_at desc so the top-3 slice is
       // deterministic regardless of server ordering.
       const sorted = [...orders].sort((a, b) =>
