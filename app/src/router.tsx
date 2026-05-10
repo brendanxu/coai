@@ -33,6 +33,9 @@ const Methodology = lazyFactor(() => import("@/routes/Methodology.tsx"));
 // v0.6.1 — dedicated /chat route (chat moved off /)
 const Chat = lazyFactor(() => import("@/routes/Chat.tsx"));
 
+// PKG-5 — customer self-serve service order list (/orders).
+const MyOrders = lazyFactor(() => import("@/routes/MyOrders.tsx"));
+
 const AdminPage = lazyFactor(() => import("@/routes/Admin.tsx"));
 const AdminDashboard = lazyFactor(() => import("@/routes/admin/DashBoard.tsx"));
 const AdminMarket = lazyFactor(() => import("@/routes/admin/Market.tsx"));
@@ -145,6 +148,19 @@ const router = createBrowserRouter([
           <AuthRequired>
             <Suspense>
               <Dashboard />
+            </Suspense>
+          </AuthRequired>
+        ),
+      },
+      // PKG-5 — /orders. Customer-scoped service order list.
+      // Backend: GET /gtk/v1/orders + GET /gtk/v1/orders/:order_no.
+      {
+        id: "my-orders",
+        path: "orders",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <MyOrders />
             </Suspense>
           </AuthRequired>
         ),
