@@ -65,7 +65,7 @@ func HandlerAPI(c *gin.Context) {
 	}
 
 	response, quota := manager.NativeChatHandler(c, nil, globals.GPT3Turbo0613, []globals.Message{
-		{Role: globals.User, Content: message},
+		{Role: globals.User, Content: globals.MessageContent{Plain: message}},
 	}, body.Web)
 
 	c.JSON(http.StatusOK, gin.H{

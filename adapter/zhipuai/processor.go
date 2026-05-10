@@ -14,7 +14,7 @@ func formatMessages(props *adaptercommon.ChatProps) interface{} {
 	if globals.IsVisionModel(props.Model) {
 		return utils.Each[globals.Message, Message](props.Message, func(message globals.Message) Message {
 			if message.Role == globals.User {
-				content, urls := utils.ExtractImages(message.Content, true)
+				content, urls := utils.ExtractImages(message.Content.String(), true)
 				images := utils.EachNotNil[string, MessageContent](urls, func(url string) *MessageContent {
 					obj, err := utils.NewImage(url)
 					props.Buffer.AddImage(obj)
@@ -84,7 +84,7 @@ func getChoices(form *ChatStreamResponse) *globals.Chunk {
 	choice := form.Choices[0].Delta
 
 	return &globals.Chunk{
-		Content:      choice.Content,
+		Content:      choice.Content.String(),
 		ToolCall:     choice.ToolCalls,
 		FunctionCall: choice.FunctionCall,
 	}

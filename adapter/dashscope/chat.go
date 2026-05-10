@@ -37,7 +37,7 @@ func (c *ChatInstance) FormatMessages(message []globals.Message) []Message {
 
 		messages = append(messages, Message{
 			Role:    v.Role,
-			Content: v.Content,
+			Content: v.Content.String(),
 		})
 	}
 

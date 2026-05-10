@@ -94,7 +94,7 @@ func createRelayImageObject(c *gin.Context, form RelayImageForm, prompt string, 
 	messages := []globals.Message{
 		{
 			Role:    globals.User,
-			Content: prompt,
+			Content: globals.MessageContent{Plain: prompt},
 		},
 	}
 

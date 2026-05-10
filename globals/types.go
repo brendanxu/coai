@@ -1,15 +1,97 @@
 package globals
 
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
+
 type Hook func(data *Chunk) error
 
 type Message struct {
-	Role             string        `json:"role"`
-	Content          string        `json:"content"`
-	Name             *string       `json:"name,omitempty"`
-	FunctionCall     *FunctionCall `json:"function_call,omitempty"`     // only `function` role
-	ToolCallId       *string       `json:"tool_call_id,omitempty"`      // only `tool` role
-	ToolCalls        *ToolCalls    `json:"tool_calls,omitempty"`        // only `assistant` role
-	ReasoningContent *string       `json:"reasoning_content,omitempty"` // only for deepseek reasoner models
+	Role             string         `json:"role"`
+	Content          MessageContent `json:"content"`
+	Name             *string        `json:"name,omitempty"`
+	FunctionCall     *FunctionCall  `json:"function_call,omitempty"`     // only `function` role
+	ToolCallId       *string        `json:"tool_call_id,omitempty"`      // only `tool` role
+	ToolCalls        *ToolCalls     `json:"tool_calls,omitempty"`        // only `assistant` role
+	ReasoningContent *string        `json:"reasoning_content,omitempty"` // only for deepseek reasoner models
+}
+
+// MessageContent carries either a plain string (legacy OpenAI clients) or
+// typed content blocks (Anthropic-style clients that attach cache_control).
+// Custom JSON dispatch keeps both client shapes round-trippable.
+type MessageContent struct {
+	Plain  string         `json:"-"`
+	Blocks []ContentBlock `json:"-"`
+}
+
+type ContentBlock struct {
+	Type         string        `json:"type"`
+	Text         string        `json:"text,omitempty"`
+	ImageURL     *ImageURL     `json:"image_url,omitempty"`
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
+}
+
+type CacheControl struct {
+	Type string `json:"type"`
+	TTL  string `json:"ttl,omitempty"`
+}
+
+type ImageURL struct {
+	URL    string  `json:"url"`
+	Detail *string `json:"detail,omitempty"`
+}
+
+func (m MessageContent) MarshalJSON() ([]byte, error) {
+	if len(m.Blocks) > 0 {
+		return json.Marshal(m.Blocks)
+	}
+	return json.Marshal(m.Plain)
+}
+
+func (m *MessageContent) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		m.Plain = s
+		m.Blocks = nil
+		return nil
+	}
+
+	var blocks []ContentBlock
+	if err := json.Unmarshal(data, &blocks); err == nil {
+		m.Plain = ""
+		m.Blocks = blocks
+		return nil
+	}
+
+	return fmt.Errorf("MessageContent: expected string or array, got %s", string(data))
+}
+
+func (m MessageContent) String() string {
+	if m.Plain != "" {
+		return m.Plain
+	}
+
+	var b strings.Builder
+	for _, block := range m.Blocks {
+		if block.Type == "text" {
+			b.WriteString(block.Text)
+		}
+	}
+	return b.String()
+}
+
+func (m MessageContent) HasCacheControl() (ttl string, ok bool) {
+	for _, block := range m.Blocks {
+		if block.CacheControl != nil {
+			if block.CacheControl.TTL == "" {
+				return "5m", true
+			}
+			return block.CacheControl.TTL, true
+		}
+	}
+	return "", false
 }
 
 type Chunk struct {

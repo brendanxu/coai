@@ -65,7 +65,7 @@ func VideosRelayAPI(c *gin.Context) {
 	}
 
 	messages := []globals.Message{
-		{Role: globals.User, Content: prompt},
+		{Role: globals.User, Content: globals.MessageContent{Plain: prompt}},
 	}
 	check, plan := checkEnableState(db, cache, user, form.Model, messages)
 	if check != nil {

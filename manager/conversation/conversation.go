@@ -286,21 +286,21 @@ func (c *Conversation) InsertMessages(messages []globals.Message, index int) {
 func (c *Conversation) AddMessageFromUser(message string) {
 	c.AddMessage(globals.Message{
 		Role:    globals.User,
-		Content: message,
+		Content: globals.MessageContent{Plain: message},
 	})
 }
 
 func (c *Conversation) AddMessageFromAssistant(message string) {
 	c.AddMessage(globals.Message{
 		Role:    globals.Assistant,
-		Content: message,
+		Content: globals.MessageContent{Plain: message},
 	})
 }
 
 func (c *Conversation) AddMessageFromSystem(message string) {
 	c.AddMessage(globals.Message{
 		Role:    globals.System,
-		Content: message,
+		Content: globals.MessageContent{Plain: message},
 	})
 }
 
@@ -381,7 +381,7 @@ func (c *Conversation) HandleMessageFromByte(db *sql.DB, data []byte) bool {
 }
 
 func (c *Conversation) GetLatestMessage() string {
-	return c.Message[len(c.Message)-1].Content
+	return c.Message[len(c.Message)-1].Content.String()
 }
 
 func (c *Conversation) SaveResponse(db *sql.DB, message string) {
@@ -419,7 +419,7 @@ func (c *Conversation) EditMessage(index int, message string) {
 	if index < 0 || index >= len(c.Message) {
 		return
 	}
-	c.Message[index].Content = message
+	c.Message[index].Content = globals.MessageContent{Plain: message}
 }
 
 func (c *Conversation) DeleteMessage(index int) {

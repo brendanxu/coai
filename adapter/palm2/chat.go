@@ -26,7 +26,8 @@ func (c *ChatInstance) GetChatEndpoint(model string, stream bool) string {
 func (c *ChatInstance) ConvertMessage(message []globals.Message) []PalmMessage {
 	var result []PalmMessage
 	for i, item := range message {
-		if len(item.Content) == 0 {
+		content := item.Content.String()
+		if len(content) == 0 {
 			// palm model: message must include non empty content
 			continue
 		}
@@ -37,13 +38,13 @@ func (c *ChatInstance) ConvertMessage(message []globals.Message) []PalmMessage {
 
 		if i > 0 && item.Role == result[len(result)-1].Author {
 			// palm model: messages must alternate between authors
-			result[len(result)-1].Content += " " + item.Content
+			result[len(result)-1].Content += " " + content
 			continue
 		}
 
 		result = append(result, PalmMessage{
 			Author:  item.Role,
-			Content: item.Content,
+			Content: content,
 		})
 	}
 	return result
@@ -202,5 +203,5 @@ func (c *ChatInstance) GetLatestPrompt(props *adaptercommon.ChatProps) string {
 	if len(props.Message) == 0 {
 		return ""
 	}
-	return props.Message[len(props.Message)-1].Content
+	return props.Message[len(props.Message)-1].Content.String()
 }

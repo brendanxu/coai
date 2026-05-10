@@ -59,7 +59,7 @@ func (c *ChatInstance) GetChatBody(props *adaptercommon.ChatProps, stream bool) 
 	for _, msg := range props.Message {
 		enterMsg := EnterMessage{
 			Role:        msg.Role,
-			Content:     msg.Content,
+			Content:     msg.Content.String(),
 			ContentType: "text",
 		}
 

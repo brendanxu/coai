@@ -104,7 +104,7 @@ func createChatTask(
 		if globals.IsVideoModel(model) {
 			props := adaptercommon.CreateVideoProps(&adaptercommon.VideoProps{
 				Model:  model,
-				Prompt: segment[len(segment)-1].Content,
+				Prompt: segment[len(segment)-1].Content.String(),
 			})
 			props.User = auth.GetUsernameString(db, user)
 

@@ -16,7 +16,7 @@ func (c *ChatInstance) CreateStreamChatRequest(props *adaptercommon.ChatProps, h
 	defer conn.DeferClose()
 
 	model := strings.TrimPrefix(props.Model, "bing-")
-	prompt := props.Message[len(props.Message)-1].Content
+	prompt := props.Message[len(props.Message)-1].Content.String()
 	if err := conn.SendJSON(&ChatRequest{
 		Prompt: prompt,
 		Hash:   c.Secret,

@@ -57,7 +57,7 @@ func (c *ChatInstance) GetChatBody(props *adaptercommon.ChatProps, stream bool) 
 	query := ""
 	for _, msg := range props.Message {
 		if msg.Role == "user" {
-			query = msg.Content
+			query = msg.Content.String()
 			break
 		}
 	}

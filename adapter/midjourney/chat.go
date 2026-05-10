@@ -72,7 +72,7 @@ func (c *ChatInstance) GetPrompt(props *adaptercommon.ChatProps) string {
 		return ""
 	}
 
-	content := props.Message[len(props.Message)-1].Content
+	content := props.Message[len(props.Message)-1].Content.String()
 	return c.GetCleanPrompt(props.Model, content)
 }
 

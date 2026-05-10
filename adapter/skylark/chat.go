@@ -24,7 +24,7 @@ func getMessages(messages []globals.Message) []*model.ChatCompletionMessage {
 
 		msg := &model.ChatCompletionMessage{
 			Role:             message.Role,
-			Content:          &model.ChatCompletionMessageContent{StringValue: volcengine.String(message.Content)},
+			Content:          &model.ChatCompletionMessageContent{StringValue: volcengine.String(message.Content.String())},
 			FunctionCall:     getFunctionCall(message.ToolCalls),
 			ReasoningContent: message.ReasoningContent,
 		}

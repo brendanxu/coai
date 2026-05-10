@@ -3,7 +3,6 @@ package manager
 import (
 	"chat/globals"
 	"chat/utils"
-	"fmt"
 )
 
 type Message struct {
@@ -21,9 +20,10 @@ type ImageUrl struct {
 }
 
 type MessageContent struct {
-	Type     string    `json:"type"`
-	Text     *string   `json:"text,omitempty"`
-	ImageUrl *ImageUrl `json:"image_url,omitempty"`
+	Type         string                `json:"type"`
+	Text         *string               `json:"text,omitempty"`
+	ImageUrl     *ImageUrl             `json:"image_url,omitempty"`
+	CacheControl *globals.CacheControl `json:"cache_control,omitempty"`
 }
 
 type MessageContents []MessageContent
@@ -146,27 +146,39 @@ type RelayVideoJob struct {
 	Status             string           `json:"status"`
 }
 
-func transformContent(content interface{}) string {
+func transformContent(content interface{}) globals.MessageContent {
 	switch v := content.(type) {
 	case string:
-		return v
+		return globals.MessageContent{Plain: v}
 	default:
-		var result string
+		blocks := utils.MapToStruct[[]globals.ContentBlock](v)
+		if blocks != nil {
+			return globals.MessageContent{Blocks: *blocks}
+		}
+
 		data := utils.MapToStruct[MessageContents](v)
 		if data == nil || len(*data) == 0 {
-			return ""
+			return globals.MessageContent{}
 		}
 
+		converted := make([]globals.ContentBlock, 0, len(*data))
 		for _, v := range *data {
+			block := globals.ContentBlock{
+				Type:         v.Type,
+				CacheControl: v.CacheControl,
+			}
 			if v.Text != nil {
-				result += *v.Text
+				block.Text = *v.Text
 			}
-
 			if v.ImageUrl != nil {
-				result += fmt.Sprintf(" %s ", v.ImageUrl.Url)
+				block.ImageURL = &globals.ImageURL{
+					URL:    v.ImageUrl.Url,
+					Detail: v.ImageUrl.Detail,
+				}
 			}
+			converted = append(converted, block)
 		}
-		return result
+		return globals.MessageContent{Blocks: converted}
 	}
 }
 

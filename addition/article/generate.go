@@ -24,7 +24,7 @@ type Response struct {
 func GenerateArticle(c *gin.Context, user *auth.User, model string, hash string, title string, prompt string, enableWeb bool) Response {
 	message, quota := manager.NativeChatHandler(c, user, model, []globals.Message{{
 		Role:    globals.User,
-		Content: fmt.Sprintf("%s\n%s", prompt, title),
+		Content: globals.MessageContent{Plain: fmt.Sprintf("%s\n%s", prompt, title)},
 	}}, enableWeb)
 
 	return Response{

@@ -102,8 +102,8 @@ func (c *ChatInstance) ProcessLine(data string) (string, error) {
 
 		if c.isFirstReasoning == false && !c.isReasonOver && delta.ReasoningContent == nil {
 			c.isReasonOver = true
-			if delta.Content != "" {
-				return fmt.Sprintf("\n</think>\n\n%s", delta.Content), nil
+			if delta.Content.String() != "" {
+				return fmt.Sprintf("\n</think>\n\n%s", delta.Content.String()), nil
 			}
 			return "\n</think>\n\n", nil
 		}
@@ -117,7 +117,7 @@ func (c *ChatInstance) ProcessLine(data string) (string, error) {
 			return content, nil
 		}
 
-		return delta.Content, nil
+		return delta.Content.String(), nil
 	}
 
 	if form := processChatErrorResponse(data); form != nil {
@@ -151,7 +151,7 @@ func (c *ChatInstance) CreateChatRequest(props *adaptercommon.ChatProps) (string
 	}
 
 	message := data.Choices[0].Message
-	content := message.Content
+	content := message.Content.String()
 	if message.ReasoningContent != nil {
 		content = fmt.Sprintf("<think>\n%s\n</think>\n\n%s", *message.ReasoningContent, content)
 	}

@@ -11,14 +11,14 @@ import (
 type Hook func(message []globals.Message, token int) (string, error)
 
 func toWebSearchingMessage(message []globals.Message) []globals.Message {
-	data, _ := GenerateSearchResult(message[len(message)-1].Content)
+	data, _ := GenerateSearchResult(message[len(message)-1].Content.String())
 
 	return utils.Insert(message, 0, globals.Message{
 		Role: globals.System,
-		Content: fmt.Sprintf("You will play the role of an AI Q&A assistant, where your knowledge base is not offline, but can be networked in real time, and you can provide real-time networked information with links to networked search sources."+
+		Content: globals.MessageContent{Plain: fmt.Sprintf("You will play the role of an AI Q&A assistant, where your knowledge base is not offline, but can be networked in real time, and you can provide real-time networked information with links to networked search sources."+
 			"Current time: %s, Real-time internet search results: %s",
 			time.Now().Format("2006-01-02 15:04:05"), data,
-		),
+		)},
 	})
 }
 

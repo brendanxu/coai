@@ -20,7 +20,7 @@ func (c *ChatInstance) GetChatEndpoint(props *adaptercommon.ChatProps) string {
 func (c *ChatInstance) GetCompletionPrompt(messages []globals.Message) string {
 	result := ""
 	for _, message := range messages {
-		result += fmt.Sprintf("%s: %s\n", message.Role, message.Content)
+		result += fmt.Sprintf("%s: %s\n", message.Role, message.Content.String())
 	}
 	return result
 }
@@ -30,7 +30,7 @@ func (c *ChatInstance) GetLatestPrompt(props *adaptercommon.ChatProps) string {
 		return ""
 	}
 
-	return props.Message[len(props.Message)-1].Content
+	return props.Message[len(props.Message)-1].Content.String()
 }
 
 func (c *ChatInstance) GetChatBody(props *adaptercommon.ChatProps, stream bool) interface{} {
@@ -79,7 +79,7 @@ func (c *ChatInstance) CreateChatRequest(props *adaptercommon.ChatProps) (string
 	} else if data.Error.Message != "" {
 		return "", fmt.Errorf("openai error: %s", data.Error.Message)
 	}
-	return data.Choices[0].Message.Content, nil
+	return data.Choices[0].Message.Content.String(), nil
 }
 
 // CreateStreamChatRequest is the stream response body for openai

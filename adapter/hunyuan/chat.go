@@ -16,7 +16,9 @@ func (c *ChatInstance) FormatMessages(messages []globals.Message) []globals.Mess
 		case globals.Assistant, globals.User:
 			bound := len(result) > 0 && result[len(result)-1].Role == message.Role
 			if bound {
-				result[len(result)-1].Content += message.Content
+				result[len(result)-1].Content = globals.MessageContent{
+					Plain: result[len(result)-1].Content.String() + message.Content.String(),
+				}
 			} else {
 				result = append(result, message)
 			}
@@ -49,7 +51,7 @@ func (c *ChatInstance) CreateStreamChatRequest(props *adaptercommon.ChatProps, c
 		}
 
 		choice := chunk.Choices[0].Delta
-		if err := callback(&globals.Chunk{Content: choice.Content}); err != nil {
+		if err := callback(&globals.Chunk{Content: choice.Content.String()}); err != nil {
 			return err
 		}
 	}

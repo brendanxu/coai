@@ -84,14 +84,16 @@ func ClearMessages(model string, messages []globals.Message) []globals.Message {
 			return message
 		}
 
-		images := utils.ExtractBase64Images(message.Content)
+		content := message.Content.String()
+		images := utils.ExtractBase64Images(content)
 		for _, image := range images {
 			if len(image) <= 46 {
 				continue
 			}
 
-			message.Content = strings.Replace(message.Content, image, utils.Extract(image, 46, " ..."), -1)
+			content = strings.Replace(content, image, utils.Extract(image, 46, " ..."), -1)
 		}
+		message.Content = globals.MessageContent{Plain: content}
 		return message
 	})
 }

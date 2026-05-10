@@ -82,7 +82,8 @@ func (c *ChatInstance) GetGeminiContents(model string, message []globals.Message
 	result := make([]GeminiContent, 0)
 	for _, item := range message {
 		role := getGeminiRole(item.Role)
-		if len(item.Content) == 0 {
+		content := item.Content.String()
+		if len(content) == 0 {
 			// gemini model: message must include non empty content
 			continue
 		}
@@ -98,13 +99,13 @@ func (c *ChatInstance) GetGeminiContents(model string, message []globals.Message
 
 		if len(result) > 0 && role == result[len(result)-1].Role {
 			// gemini model: messages must alternate between authors
-			result[len(result)-1].Parts = getGeminiContent(result[len(result)-1].Parts, item.Content, model)
+			result[len(result)-1].Parts = getGeminiContent(result[len(result)-1].Parts, content, model)
 			continue
 		}
 
 		result = append(result, GeminiContent{
 			Role:  getGeminiRole(item.Role),
-			Parts: getGeminiContent(make([]GeminiChatPart, 0), item.Content, model),
+			Parts: getGeminiContent(make([]GeminiChatPart, 0), content, model),
 		})
 	}
 

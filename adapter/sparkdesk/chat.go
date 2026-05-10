@@ -55,7 +55,7 @@ func (c *ChatInstance) GetMessages(props *adaptercommon.ChatProps) []Message {
 		}
 		messages = append(messages, Message{
 			Role:    message.Role,
-			Content: message.Content,
+			Content: message.Content.String(),
 		})
 	}
 
