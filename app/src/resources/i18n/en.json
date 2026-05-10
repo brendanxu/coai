@@ -333,16 +333,6 @@
     "uploading": "File upload on the way...",
     "uploading-prompt": "Uploading file, please be patient"
   },
-  "generate": {
-    "title": "AI Project Generator",
-    "input-placeholder": "Generate a Python game",
-    "failed": "Generation failed",
-    "reason": "Reason: ",
-    "success": "Generation successful",
-    "success-prompt": "Project generated successfully! Please select the download format.",
-    "empty": "Generating...",
-    "download": "Download {{name}} format"
-  },
   "api": {
     "title": "API Key",
     "copied": "Copied",
@@ -430,19 +420,6 @@
     "theme": "Themes",
     "light": "Light",
     "dark": "Dark"
-  },
-  "article": {
-    "title": "Batch Generate Articles",
-    "input-placeholder": "Please enter the article titles (one per line)",
-    "prompt-placeholder": "Please enter the preset (to help AI generate articles, e.g.: academic paper format, 800 words)",
-    "web-checkbox": "Enable web search function",
-    "generate": "Generate",
-    "progress-title": "Generating ({{current}}/{{total}})",
-    "generate-success": "Generation Successful",
-    "generate-success-prompt": "Articles generated successfully! Please select the download format.",
-    "generate-failed": "Generation Failed",
-    "generate-failed-prompt": "Failed to generate articles. Please check your network and try again.",
-    "download-format": "Download {{name}} format"
   },
   "admin": {
     "dashboard": "Data analysis",
@@ -1817,12 +1794,6 @@
     "carbon-empty-title": "No carbon to report yet",
     "carbon-empty-body": "Send your first chat and we'll start counting.",
     "chat-floating-hint": "Multi-model chat is ready · click the 🌱 in the bottom-right anytime"
-  },
-  "chat-floating": {
-    "open": "Open chat",
-    "close": "Close chat",
-    "panel-title": "Chat",
-    "panel-label": "Floating chat panel"
   },
   "home_dashboard": {
     "welcome": {

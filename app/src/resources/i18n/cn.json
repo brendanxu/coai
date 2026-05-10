@@ -552,16 +552,6 @@
     "empty-file": "无内容文件",
     "empty-file-prompt": "文件内容为空，已自动忽略"
   },
-  "generate": {
-    "title": "AI 项目生成器",
-    "input-placeholder": "生成一个python小游戏",
-    "failed": "生成失败",
-    "reason": "原因：",
-    "success": "生成成功",
-    "success-prompt": "成功生成项目！请选择下载格式。",
-    "empty": "生成中...",
-    "download": "下载 {{name}} 格式"
-  },
   "api": {
     "title": "API 设置",
     "copied": "复制成功",
@@ -698,19 +688,6 @@
     "repetition-penalty-tip": "(RepetitionPenalty) 控制模型生成的重复程度，提高此值可以减少重复，但是可能会导致模型生成不连贯的文本（与 FrequencyPenalty 相似）",
     "reset-settings": "重置全部设置",
     "reset-settings-description": "是否确定？此操作无法撤消。这将永久重置全部设置。"
-  },
-  "article": {
-    "title": "批量生成文章",
-    "input-placeholder": "请输入文章标题（一行一个）",
-    "prompt-placeholder": "请输入预设（帮助 AI 生成文章，如：学术论文格式，800 字）",
-    "web-checkbox": "是否开启联网搜索功能",
-    "generate": "生成",
-    "progress-title": "生成中 （总共 {{total}} 篇， {{current}} 篇已生成）",
-    "generate-success": "生成成功",
-    "generate-success-prompt": "文章生成成功！请选择下载格式。",
-    "generate-failed": "生成失败",
-    "generate-failed-prompt": "文章生成失败，请检查您的网络并重试。",
-    "download-format": "下载 {{name}} 格式"
   },
   "admin": {
     "dashboard": "数据分析",
@@ -1888,12 +1865,6 @@
     "carbon-empty-title": "本月还没有碳数据",
     "carbon-empty-body": "发出第一条对话,我们就开始记录。",
     "chat-floating-hint": "多模型对话已就绪 · 点右下角 🌱 随时开聊"
-  },
-  "chat-floating": {
-    "open": "打开聊天",
-    "close": "关闭聊天",
-    "panel-title": "聊天",
-    "panel-label": "悬浮聊天面板"
   },
   "home_dashboard": {
     "welcome": {
