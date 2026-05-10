@@ -1869,7 +1869,11 @@
       "title": "还没有订单",
       "body": "你还没有购买任何服务套餐。如需协助开通,请联系我们。",
       "filtered_title": "该状态下没有订单",
-      "filtered_body": "试试切换其它筛选条件。"
-    }
+      "filtered_body": "试试切换其它筛选条件。",
+      "contact_cta": "加微信预约",
+      "contact_dialog_title": "联系预约 demo"
+    },
+    "load_failed": "加载订单失败,请重试。",
+    "retry": "重试"
   }
 }

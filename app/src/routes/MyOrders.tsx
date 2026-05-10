@@ -26,7 +26,8 @@ import {
 } from "@/api/orders.ts";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Loader2, PackageOpen, RefreshCw } from "lucide-react";
+import { Loader2, MessageCircle, PackageOpen, RefreshCw } from "lucide-react";
+import WaitlistDialog from "@/components/Marketing/WaitlistDialog.tsx";
 
 // Status filter chips. "" = no filter (all statuses).
 type FilterValue = "" | OrderStatus;
@@ -224,20 +225,57 @@ function OrderCard({ order }: { order: CustomerOrderSummary }) {
 
 function EmptyState({ filter }: { filter: FilterValue }) {
   const { t } = useTranslation();
+  // PKG-N4 — only the "all empty" branch (no filter applied) gets the
+  // concierge contact CTA. If the user is staring at "Nothing in this
+  // status" they don't want a sales contact, they want to clear the chip.
+  const isFilteredEmpty = !!filter;
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+
   return (
-    <div className="text-center py-20 border border-dashed border-border rounded-lg">
-      <PackageOpen
-        size={32}
-        className="mx-auto text-muted-foreground/60 mb-4"
+    <>
+      <div className="text-center py-20 border border-dashed border-border rounded-lg">
+        <PackageOpen
+          size={32}
+          className="mx-auto text-muted-foreground/60 mb-4"
+        />
+        <h2 className="text-lg font-medium mb-2">
+          {isFilteredEmpty
+            ? t("my_orders.empty.filtered_title")
+            : t("my_orders.empty.title")}
+        </h2>
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+          {isFilteredEmpty
+            ? t("my_orders.empty.filtered_body")
+            : t("my_orders.empty.body")}
+        </p>
+        {!isFilteredEmpty && (
+          <div className="mt-6">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setWaitlistOpen(true)}
+              className="gap-1.5"
+            >
+              <MessageCircle size={14} />
+              {t("my_orders.empty.contact_cta", "加微信预约")}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* PKG-N4 — concierge-first wedge has no self-serve checkout, so the
+          "no orders yet" path opens the same email-capture used on the
+          marketing pages. Mounted unconditionally inside the fragment;
+          `open` controls visibility. */}
+      <WaitlistDialog
+        open={waitlistOpen}
+        onOpenChange={setWaitlistOpen}
+        service="any"
+        serviceTitle={t(
+          "my_orders.empty.contact_dialog_title",
+          "联系预约 demo",
+        )}
       />
-      <h2 className="text-lg font-medium mb-2">
-        {filter
-          ? t("my_orders.empty.filtered_title")
-          : t("my_orders.empty.title")}
-      </h2>
-      <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-        {filter ? t("my_orders.empty.filtered_body") : t("my_orders.empty.body")}
-      </p>
-    </div>
+    </>
   );
 }
