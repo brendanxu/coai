@@ -46,6 +46,11 @@ func Register(app *gin.RouterGroup) {
 	// Public — hupijiao webhook target. Auth is HMAC-MD5 against
 	// hupijiao.merchant_secret (verified inside the handler).
 	app.POST("/gtk/v1/service/hupijiao-callback", HupijiaoCallbackAPI)
+	// Authenticated, customer-scoped. PKG-5 self-serve order tracking.
+	// Both endpoints filter by coai_user_id at the SQL level — see
+	// customer_orders.go header for security rationale.
+	app.GET("/gtk/v1/orders", ListMyOrdersAPI)
+	app.GET("/gtk/v1/orders/:order_no", MyOrderDetailAPI)
 }
 
 // MarkPaidRequest is the JSON body for POST /admin/mark-paid.
