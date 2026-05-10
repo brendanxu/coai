@@ -40,9 +40,81 @@ func Register(app *gin.RouterGroup) {
 	// moved; founder handles the LS / hupijiao dashboard refund
 	// separately). v0.10 ② per recommendation 11.Q5.
 	app.POST("/gtk/v1/admin/refund", RefundAPI)
+	// Admin-only — mark a manual / concierge order as paid (PKG-2 Wave 4
+	// D7, Q5 GO). Wraps commerce.MarkPaid which calls GrantEntitlement.
+	app.POST("/gtk/v1/admin/mark-paid", MarkPaidAPI)
 	// Public — hupijiao webhook target. Auth is HMAC-MD5 against
 	// hupijiao.merchant_secret (verified inside the handler).
 	app.POST("/gtk/v1/service/hupijiao-callback", HupijiaoCallbackAPI)
+}
+
+// MarkPaidRequest is the JSON body for POST /admin/mark-paid.
+//
+// product_type is required and (v0) must be "service". Token plans go
+// through the LS dashboard, not this endpoint.
+type MarkPaidRequest struct {
+	OrderNo     string `json:"order_no" binding:"required"`
+	ProductType string `json:"product_type" binding:"required,oneof=service"`
+}
+
+// MarkPaidAPI is the admin-only HTTP handler for marking a manual order
+// as paid. Mirrors RefundAPI's auth + envelope pattern.
+//
+// Use cases (per Q5 GO):
+//   - Concierge order paid via offline channel (wechat / bank transfer).
+//   - LS / hupijiao webhook lost; admin re-fires the entitlement grant.
+//
+// Status semantics: idempotent. If the order is already past
+// 'pending_payment', commerce.GrantEntitlement's CAS no-ops without
+// erroring.
+func MarkPaidAPI(c *gin.Context) {
+	admin := auth.RequireAdmin(c)
+	if admin == nil {
+		return // RequireAdmin already wrote the 401/403 envelope.
+	}
+
+	var req MarkPaidRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	adminID := admin.GetID(connection.DB)
+	err := commerce.MarkPaid(
+		c.Request.Context(),
+		connection.DB,
+		req.OrderNo,
+		commerce.ProductType(req.ProductType),
+		adminID,
+	)
+	if err != nil {
+		// commerce.MarkPaid wraps GrantEntitlement errors; surface as 500.
+		// The "unsupported product_type" branch shouldn't trigger because
+		// of the binding validator, but if a future caller bypasses
+		// validation we still want a clear error.
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success":  false,
+			"message":  "mark-paid failed: " + err.Error(),
+			"order_no": req.OrderNo,
+		})
+		return
+	}
+
+	globals.Info(fmt.Sprintf(
+		"service: order %s marked paid by admin %d (product_type=%s)",
+		req.OrderNo, adminID, req.ProductType))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"order_no":     req.OrderNo,
+			"product_type": req.ProductType,
+			"status":       "paid",
+		},
+	})
 }
 
 // CatalogAPI returns the public service catalog. Public — no auth gate.
