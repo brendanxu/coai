@@ -148,6 +148,24 @@ func migrateMySQL(db *sql.DB) error {
 		"INT NULL AFTER hupijiao_trade_no"); err != nil {
 		return fmt.Errorf("add subscription_id column: %w", err)
 	}
+
+	// PKG-2 Wave 1 (Q8 / CR5 in plan v2): extend status ENUM with two
+	// refund-flow states distinguished by architecture §9.1:
+	//   refunded_post_delivery — refund after status='completed'
+	//   canceled_mid_flight    — refund while status='running'
+	// Wave 2.5 B3 (commerce.RevokeEntitlement) writes these states to
+	// preserve audit-time intent; pre-PKG-2 code only had the lossy
+	// 'refunded' bucket. SQLite branch already includes them inline in
+	// the CREATE TABLE CHECK constraint below — addEnumValueIfMissing is
+	// a no-op there.
+	if err := addEnumValueIfMissing(db, "gtk_service_order", "status",
+		"refunded_post_delivery"); err != nil {
+		return fmt.Errorf("extend status enum (refunded_post_delivery): %w", err)
+	}
+	if err := addEnumValueIfMissing(db, "gtk_service_order", "status",
+		"canceled_mid_flight"); err != nil {
+		return fmt.Errorf("extend status enum (canceled_mid_flight): %w", err)
+	}
 	return nil
 }
 
@@ -173,6 +191,98 @@ func addColumnIfMissing(db *sql.DB, table, column, columnDef string) error {
 	_, err := globals.ExecDb(db, fmt.Sprintf(
 		"ALTER TABLE %s ADD COLUMN %s %s", table, column, columnDef))
 	return err
+}
+
+// addEnumValueIfMissing extends a MySQL ENUM column with a new allowed
+// value, idempotently. Reads INFORMATION_SCHEMA.COLUMNS.COLUMN_TYPE to
+// see the current ENUM(...) definition; if `value` is already a member,
+// no-op. Otherwise emits ALTER TABLE ... MODIFY COLUMN status
+// ENUM(<existing values>, '<new value>') NOT NULL DEFAULT <preserved>.
+//
+// Constraints / assumptions (kept narrow because this helper only needs
+// to serve PKG-2 Wave 1 today):
+//   - column must be a NOT NULL ENUM
+//   - the existing DEFAULT clause is preserved by re-parsing the
+//     COLUMN_DEFAULT cell
+//   - SQLite engine no-ops; the SQLite branch of migrateSQLite includes
+//     all values inline (CHECK constraint can't be ALTERed in SQLite
+//     without a table rebuild, which test schemas don't need).
+//
+// Quoting safety: `value` is single-quoted into the ALTER without
+// further escaping. PKG-2 callers pass static literals
+// ('refunded_post_delivery', 'canceled_mid_flight') — never user input.
+// If a future caller passes user input, add a literal allowlist or
+// regex sanitizer here.
+func addEnumValueIfMissing(db *sql.DB, table, column, value string) error {
+	if globals.SqliteEngine {
+		return nil
+	}
+	var columnType, columnDefault sql.NullString
+	row := globals.QueryRowDb(db, `
+		SELECT COLUMN_TYPE, COLUMN_DEFAULT FROM INFORMATION_SCHEMA.COLUMNS
+		WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+	`, table, column)
+	if err := row.Scan(&columnType, &columnDefault); err != nil {
+		return fmt.Errorf("read column type %s.%s: %w", table, column, err)
+	}
+	if !columnType.Valid {
+		return fmt.Errorf("column %s.%s has no COLUMN_TYPE — does it exist?", table, column)
+	}
+
+	// Quick membership check: '<value>' substring within the
+	// ENUM('a','b',...) definition string. False positives only if the
+	// value itself appears as a substring of another value (e.g. 'paid'
+	// inside 'unpaid') — Wave 1 callers don't have that risk.
+	needle := "'" + value + "'"
+	if containsSubstr(columnType.String, needle) {
+		return nil
+	}
+
+	// Splice the new value into the existing ENUM(...) literal.
+	// columnType.String looks like:  enum('pending_payment','paid',...)
+	// We append before the closing paren to avoid re-quoting the whole list.
+	closeParen := lastIndexByte(columnType.String, ')')
+	if closeParen < 0 {
+		return fmt.Errorf("malformed COLUMN_TYPE for %s.%s: %s", table, column, columnType.String)
+	}
+	newType := columnType.String[:closeParen] + "," + needle + columnType.String[closeParen:]
+
+	defaultClause := ""
+	if columnDefault.Valid {
+		defaultClause = fmt.Sprintf(" DEFAULT '%s'", columnDefault.String)
+	}
+	stmt := fmt.Sprintf("ALTER TABLE %s MODIFY COLUMN %s %s NOT NULL%s",
+		table, column, newType, defaultClause)
+	if _, err := globals.ExecDb(db, stmt); err != nil {
+		return fmt.Errorf("modify enum %s.%s += %s: %w", table, column, value, err)
+	}
+	return nil
+}
+
+// containsSubstr is a tiny inline strings.Contains to avoid pulling
+// "strings" just for this one helper. (Migration package keeps imports
+// minimal so it can be rebased against upstream CoAI cleanly.)
+func containsSubstr(s, sub string) bool {
+	return len(sub) == 0 || (len(s) >= len(sub) && indexOf(s, sub) >= 0)
+}
+
+func indexOf(s, sub string) int {
+	n := len(sub)
+	for i := 0; i+n <= len(s); i++ {
+		if s[i:i+n] == sub {
+			return i
+		}
+	}
+	return -1
+}
+
+func lastIndexByte(s string, b byte) int {
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == b {
+			return i
+		}
+	}
+	return -1
 }
 
 func migrateSQLite(db *sql.DB) error {
@@ -236,7 +346,7 @@ func migrateSQLite(db *sql.DB) error {
 		  hupijiao_trade_no     TEXT,
 		  subscription_id       INTEGER,
 		  status                TEXT    NOT NULL DEFAULT 'pending_payment'
-		                         CHECK (status IN ('pending_payment','paid','running','completed','refunded','failed')),
+		                         CHECK (status IN ('pending_payment','paid','running','completed','refunded','failed','refunded_post_delivery','canceled_mid_flight')),
 		  paid_at               DATETIME,
 		  completed_at          DATETIME,
 		  agent_run_id          TEXT,
