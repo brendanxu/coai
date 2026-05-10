@@ -1822,6 +1822,58 @@
     "panel-title": "Chat",
     "panel-label": "Floating chat panel"
   },
+  "home_dashboard": {
+    "welcome": {
+      "eyebrow": "Your Xiaohongshu operations sidekick",
+      "greeting": "Hi {{name}}",
+      "subtitle": "Vertical playbook for B&B hosts, with founder-led delivery.",
+      "fallback_name": "host"
+    },
+    "orders": {
+      "heading": "My orders",
+      "view_all": "View all orders",
+      "empty_title": "No orders yet",
+      "empty_body": "Want to start? Ping the founder on WeChat — onboarding takes 5 minutes.",
+      "empty_cta": "Contact founder on WeChat",
+      "error_title": "Couldn't load your orders",
+      "error_body": "Network blip or the server is restarting. Try again in a moment.",
+      "retry": "Retry"
+    },
+    "roadmap": {
+      "heading": "Service roadmap"
+    },
+    "phase": {
+      "content": {
+        "title": "Phase 1.A · Xiaohongshu content generation",
+        "desc": "Photos + post titles + tags generated from your B&B's profile and target guest. Founder reviews every batch one-on-one before it ships."
+      },
+      "publish": {
+        "title": "Phase 1.B · Auto-publish",
+        "desc": "Scheduled posts, auto-pinned first comments, calendar view to own the whole month's cadence."
+      },
+      "engage": {
+        "title": "Phase 1.C · Engagement inbox",
+        "desc": "Unified comment inbox + DM intent triage (inquiry / haggle / compare) so no lead falls through the cracks."
+      },
+      "attribution": {
+        "title": "Phase 1.D · ROI attribution",
+        "desc": "Post → DM → booking, end-to-end. Know exactly which post drove which reservation, every month."
+      }
+    },
+    "status": {
+      "live": "Live",
+      "soon": "Coming soon",
+      "planned": "Planned"
+    },
+    "support": {
+      "title": "Need help? Reach the founder",
+      "body": "B&B hosts talk to the founder directly — no support tier, no ticket queue, no runaround.",
+      "wechat_label": "WeChat",
+      "wechat_handle": "tanaxu626",
+      "email": "tanaxu626@gmail.com",
+      "email_cta": "Email us"
+    }
+  },
   "my_orders": {
     "title": "My orders",
     "subtitle": "Service packages you've purchased and their delivery status.",

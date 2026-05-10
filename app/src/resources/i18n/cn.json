@@ -1893,6 +1893,58 @@
     "panel-title": "聊天",
     "panel-label": "悬浮聊天面板"
   },
+  "home_dashboard": {
+    "welcome": {
+      "eyebrow": "你的小红书运营助手",
+      "greeting": "你好,{{name}}",
+      "subtitle": "民宿专属内容矩阵,founder 全程陪跑。",
+      "fallback_name": "民宿主"
+    },
+    "orders": {
+      "heading": "我的订单",
+      "view_all": "查看全部订单",
+      "empty_title": "你还没有订单",
+      "empty_body": "想开通服务?直接联系 founder 微信,5 分钟开通。",
+      "empty_cta": "联系 founder 微信",
+      "error_title": "暂时没法加载订单",
+      "error_body": "网络不稳定或服务器在重启,稍后再试一下。",
+      "retry": "重试"
+    },
+    "roadmap": {
+      "heading": "服务路线图"
+    },
+    "phase": {
+      "content": {
+        "title": "Phase 1.A · 小红书内容生成",
+        "desc": "基于你的民宿、客群、客单价,自动生成图文 + 笔记标题 + 标签,founder 一对一审核出稿。"
+      },
+      "publish": {
+        "title": "Phase 1.B · 自动发布",
+        "desc": "笔记定时发布、首条评论自动顶,日历视图掌控全月节奏。"
+      },
+      "engage": {
+        "title": "Phase 1.C · 互动管理",
+        "desc": "评论统一收件箱、私信意图分类(咨询 / 砍价 / 比价),响应不漏人。"
+      },
+      "attribution": {
+        "title": "Phase 1.D · ROI 归因",
+        "desc": "笔记 → 私信 → 入住 全链路追踪,每个月清楚知道哪条笔记带来订单。"
+      }
+    },
+    "status": {
+      "live": "已上线",
+      "soon": "即将到来",
+      "planned": "规划中"
+    },
+    "support": {
+      "title": "有问题?联系 founder",
+      "body": "民宿主直连 founder,无客服转接、无 ticket 系统、不绕弯。",
+      "wechat_label": "微信号",
+      "wechat_handle": "tanaxu626",
+      "email": "tanaxu626@gmail.com",
+      "email_cta": "发邮件"
+    }
+  },
   "my_orders": {
     "title": "我的订单",
     "subtitle": "查看你购买的服务套餐及交付状态。",
