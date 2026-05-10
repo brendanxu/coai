@@ -122,7 +122,7 @@ func createUserPlanTable(db *sql.DB) error {
 			  expire_at    DATETIME,
 			  remaining    TEXT,
 			  purchased_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			  order_id     TEXT    NOT NULL,
+			  order_id     TEXT    NOT NULL UNIQUE,
 			  FOREIGN KEY (user_id) REFERENCES auth(id) ON DELETE CASCADE,
 			  FOREIGN KEY (plan_id) REFERENCES gtk_plan(id) ON DELETE RESTRICT
 			);
@@ -132,7 +132,7 @@ func createUserPlanTable(db *sql.DB) error {
 		if _, err := globals.ExecDb(db, `CREATE INDEX IF NOT EXISTS idx_gtk_user_plan_user_status ON gtk_user_plan(user_id, status);`); err != nil {
 			return err
 		}
-		_, err := globals.ExecDb(db, `CREATE INDEX IF NOT EXISTS idx_gtk_user_plan_order ON gtk_user_plan(order_id);`)
+		_, err := globals.ExecDb(db, `CREATE UNIQUE INDEX IF NOT EXISTS idx_gtk_user_plan_order ON gtk_user_plan(order_id);`)
 		return err
 	}
 	_, err := globals.ExecDb(db, `
@@ -146,7 +146,7 @@ func createUserPlanTable(db *sql.DB) error {
 		  purchased_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		  order_id     VARCHAR(100) NOT NULL,
 		  INDEX idx_user_status (user_id, status),
-		  INDEX idx_order (order_id),
+		  UNIQUE KEY idx_order (order_id),
 		  FOREIGN KEY (user_id) REFERENCES auth(id) ON DELETE CASCADE,
 		  FOREIGN KEY (plan_id) REFERENCES gtk_plan(id) ON DELETE RESTRICT
 		);
