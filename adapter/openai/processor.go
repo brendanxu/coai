@@ -9,11 +9,51 @@ import (
 	"regexp"
 )
 
+func hasContentBlocks(messages []globals.Message) bool {
+	for _, message := range messages {
+		if len(message.Content.Blocks) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func convertContentBlocks(blocks []globals.ContentBlock) MessageContents {
+	return utils.Each(blocks, func(block globals.ContentBlock) MessageContent {
+		content := MessageContent{
+			Type:         block.Type,
+			CacheControl: block.CacheControl,
+		}
+		if block.Text != "" {
+			content.Text = utils.ToPtr(block.Text)
+		}
+		if block.ImageURL != nil {
+			content.ImageUrl = &ImageUrl{
+				Url:    block.ImageURL.URL,
+				Detail: block.ImageURL.Detail,
+			}
+		}
+		return content
+	})
+}
+
 func formatMessages(props *adaptercommon.ChatProps) interface{} {
-	if globals.IsVisionModel(props.Model) {
+	if globals.IsVisionModel(props.Model) || hasContentBlocks(props.Message) {
 		return utils.Each[globals.Message, Message](props.Message, func(message globals.Message) Message {
+			if len(message.Content.Blocks) > 0 {
+				return Message{
+					Role:             message.Role,
+					Content:          convertContentBlocks(message.Content.Blocks),
+					Name:             message.Name,
+					FunctionCall:     message.FunctionCall,
+					ToolCalls:        message.ToolCalls,
+					ToolCallId:       message.ToolCallId,
+					ReasoningContent: message.ReasoningContent,
+				}
+			}
+
 			if message.Role == globals.User {
-				content, urls := utils.ExtractImages(message.Content, true)
+				content, urls := utils.ExtractImages(message.Content.String(), true)
 				images := utils.EachNotNil[string, MessageContent](urls, func(url string) *MessageContent {
 					obj, err := utils.NewImage(url)
 					props.Buffer.AddImage(obj)
@@ -47,7 +87,7 @@ func formatMessages(props *adaptercommon.ChatProps) interface{} {
 				Content: MessageContents{
 					MessageContent{
 						Type: "text",
-						Text: &message.Content,
+						Text: utils.ToPtr(message.Content.String()),
 					},
 				},
 				Name:         message.Name,
@@ -81,7 +121,7 @@ func getChoices(form *ChatStreamResponse) *globals.Chunk {
 	choice := form.Choices[0].Delta
 
 	return &globals.Chunk{
-		Content:      choice.Content,
+		Content:      choice.Content.String(),
 		ToolCall:     choice.ToolCalls,
 		FunctionCall: choice.FunctionCall,
 	}

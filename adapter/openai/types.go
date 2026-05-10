@@ -8,9 +8,10 @@ type ImageUrl struct {
 }
 
 type MessageContent struct {
-	Type     string    `json:"type"`
-	Text     *string   `json:"text,omitempty"`
-	ImageUrl *ImageUrl `json:"image_url,omitempty"`
+	Type         string                `json:"type"`
+	Text         *string               `json:"text,omitempty"`
+	ImageUrl     *ImageUrl             `json:"image_url,omitempty"`
+	CacheControl *globals.CacheControl `json:"cache_control,omitempty"`
 }
 
 type MessageContents []MessageContent
