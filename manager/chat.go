@@ -9,6 +9,7 @@ import (
 	"chat/channel"
 	"chat/globals"
 	"chat/manager/conversation"
+	"chat/usage"
 	"chat/utils"
 	"time"
 
@@ -38,7 +39,14 @@ func CollectQuota(c *gin.Context, user *auth.User, buffer *utils.Buffer, uncount
 	}
 
 	if !uncountable {
-		user.UseQuota(db, quota)
+		if !user.UseQuota(db, quota) {
+			globals.Warn("usage: quota mutation failed; skip audit log")
+			return
+		}
+	}
+
+	if err := usage.WriteUsageLog(db, user, buffer, buffer.Model); err != nil {
+		globals.Warn(fmt.Sprintf("usage: log write failed (non-fatal): %s", err))
 	}
 }
 
