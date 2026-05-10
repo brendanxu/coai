@@ -4,11 +4,9 @@ import "@/assets/pages/home.less";
 import { Button } from "@/components/ui/button.tsx";
 import {
   ChevronDown,
-  MessageCircle,
   PackageCheck,
   Shield,
   Wallet,
-  LibraryBig,
   User,
 } from "lucide-react";
 import React from "react";
@@ -31,10 +29,6 @@ import {
 } from "@/components/ui/tooltip.tsx";
 import NavBar from "@/components/app/NavBar.tsx";
 import { HIDE_CREDIT_UI } from "@/conf/env.ts";
-// v0.6.1 — global floating chat must mount inside RouterProvider so it can
-// call useLocation. Index.tsx is the layout that wraps every child route,
-// making it the natural mount point.
-import { ChatFloating } from "@/components/ChatFloating/index.tsx";
 
 type BarItemProps = {
   icon: React.ReactElement;
@@ -117,12 +111,9 @@ function ToolBar() {
       >
         <ChevronDown className={`h-3.5 w-3.5`} />
       </div>
-      {/* v0.6.1 — chat moved off /. The toolbar's "chat" affordance now
-          targets /chat directly. Without this, clicking the message-circle
-          icon would land on the dashboard (the page you came from). */}
-      <BarItem icon={<MessageCircle />} path={`/chat`} name={"chat"} />
-      <BarItem icon={<LibraryBig />} path={`/model`} name={"model"} />
-      {/* <BarItem icon={<Compass />} path={`/preset`} name={"preset"} /> */}
+      {/* v0.21 cleanup — /chat + /model toolbar entries removed. greentokey's
+          two business lines (Token wholesale + Service market 民宿 SaaS) don't
+          surface generic chat or a model marketplace. */}
       {!HIDE_CREDIT_UI && (
         <BarItem icon={<Wallet />} path={`/wallet`} name={"wallet"} />
       )}
@@ -148,9 +139,6 @@ function Home() {
         <ToolBar />
         <Outlet />
       </div>
-      {/* v0.6.1 — global floating chat. Renders on every child route.
-          Auto-hides on /chat where the full chat UI is already on screen. */}
-      <ChatFloating />
     </ErrorBoundary>
   );
 }

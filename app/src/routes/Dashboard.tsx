@@ -18,8 +18,7 @@ import { EquivalentNarrative } from "@/components/Carbon/EquivalentNarrative.tsx
 import { ShareCard } from "@/components/Carbon/ShareCard.tsx";
 import { LeafIcon } from "@/components/Carbon/icons.tsx";
 import { formatCO2 } from "@/components/Carbon/tier.ts";
-import { Button } from "@/components/ui/button.tsx";
-import { ArrowDown, ArrowUp, ArrowRight } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import type { AppDispatch } from "@/store/index.ts";
 import { cn } from "@/components/ui/lib/utils.ts";
 
@@ -74,14 +73,12 @@ function EmptyState() {
       <LeafIcon size={48} className="mx-auto text-[hsl(var(--secondary))] mb-6" />
       <h2 className="text-2xl font-display mb-3">No carbon to report yet</h2>
       <p className="text-muted-foreground max-w-md mx-auto mb-8">
-        Send your first message and we&apos;ll start estimating the impact of every
-        chat — and showing you the trend.
+        Once you start running services through greentokey we&apos;ll estimate the
+        carbon impact and show you the trend here.
       </p>
-      {/* v0.6.1 — chat moved to /chat; this CTA used to land on / which is
-          now the dashboard (the page the user just came from). */}
-      <Link to="/chat">
-        <Button>Start chatting →</Button>
-      </Link>
+      {/* v0.21 cleanup — /chat is gone; the empty-state CTA used to send users
+          there. greentokey doesn't surface a generic chat anymore, so the CTA
+          is removed. */}
     </div>
   );
 }
@@ -182,21 +179,11 @@ export default function Dashboard() {
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-3">
         <ShareCard summary={summary} />
-        <Link to="/methodology">
-          <Button variant="ghost" className="gap-1">
-            Methodology
-            <ArrowRight size={14} />
-          </Button>
-        </Link>
       </div>
 
       {/* Footer disclaimer */}
       <div className="border-t border-border pt-6 text-xs text-muted-foreground tabular-nums leading-relaxed">
-        Estimate ±{summary.error_margin_pct}%. Coefficient v{summary.coefficient_version}.{" "}
-        <Link to="/methodology" className="underline hover:no-underline">
-          See methodology
-        </Link>
-        .
+        Estimate ±{summary.error_margin_pct}%. Coefficient v{summary.coefficient_version}.
       </div>
     </div>
   );

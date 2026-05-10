@@ -18,8 +18,6 @@ import { Button } from "@/components/ui/button.tsx";
 import router from "@/router.tsx";
 import React from "react";
 import {
-  LibraryBig,
-  MessageCircle,
   PackageCheck,
   Shield,
   Sparkles,
@@ -69,13 +67,11 @@ function MenuBar({ children, className }: MenuBarProps) {
               {username}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <BarItem icon={<MessageCircle />} path={`/`} name={"chat"} />
-            <BarItem icon={<LibraryBig />} path={`/model`} name={"model"} />
-            {/* <BarItem icon={<Compass />} path={`/preset`} name={"preset"} /> */}
+            {/* v0.21 cleanup — chat (icon-as-/) + model marketplace entries removed.
+                See PKG-CLEANUP. */}
             {!HIDE_CREDIT_UI && (
               <BarItem icon={<Wallet />} path={`/wallet`} name={"wallet"} />
             )}
-            {/* <BarItem icon={<DraftingCompass />} path={`/key`} name={"key"} /> */}
             <BarItem icon={<Sparkles />} path={`/pricing`} name={"pricing"} />
             {/* PKG-N4 — /orders is auth-gated; this whole branch is already
                 gated on `auth`, so no extra check needed here. */}

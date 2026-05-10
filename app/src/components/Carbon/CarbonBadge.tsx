@@ -77,10 +77,7 @@ export function CarbonBadge({ tokens, model, streaming, className }: Props) {
             <p className="text-xs leading-relaxed">
               Coefficient calibrating for <code className="font-mono">{model}</code>. We
               don&apos;t guess — once the per-1k-token estimate is sourced, this badge
-              will fill in. <br />
-              <a href="/methodology" className="underline hover:no-underline">
-                Read methodology →
-              </a>
+              will fill in.
             </p>
           </TooltipContent>
         </Tooltip>
@@ -123,10 +120,7 @@ export function CarbonBadge({ tokens, model, streaming, className }: Props) {
               {" · "}±{errorMargin}%
             </p>
             <p className="text-muted-foreground">
-              Coefficient v{estimate.version} · {" "}
-              <a href="/methodology" className="underline hover:no-underline">
-                methodology
-              </a>
+              Coefficient v{estimate.version}
             </p>
           </div>
         </TooltipContent>
