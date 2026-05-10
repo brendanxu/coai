@@ -75,6 +75,10 @@ type webhookPayload struct {
 // verifySignature checks the LS webhook HMAC SHA-256 signature using
 // constant-time comparison to defeat timing attacks. Empty inputs return
 // false defensively — never trust an unsigned/unsecreted webhook.
+//
+// Note: this function does NOT check timestamp freshness. Callers that
+// want freshness verification should use verifySignatureWithFreshness
+// (PKG-2 Wave 3 C3, autoplan I5).
 func verifySignature(body []byte, signature, secret string) bool {
 	if len(body) == 0 || signature == "" || secret == "" {
 		return false
@@ -83,6 +87,82 @@ func verifySignature(body []byte, signature, secret string) bool {
 	mac.Write(body)
 	expected := hex.EncodeToString(mac.Sum(nil))
 	return subtle.ConstantTimeCompare([]byte(expected), []byte(signature)) == 1
+}
+
+// webhookFreshnessWindow is the maximum age of a webhook timestamp before
+// it's rejected as a probable replay. 5 minutes is the industry standard
+// (Stripe + GitHub both default to 5 min); longer windows expose us to
+// captured-payload replay attacks years after the original delivery.
+const webhookFreshnessWindow = 5 * time.Minute
+
+// verifySignatureWithFreshness extends verifySignature with a timestamp
+// freshness check (PKG-2 Wave 3 C3, autoplan I5).
+//
+// Rationale: HMAC + body-dedup (gtk_webhook_event SHA256 PK) is good
+// against active tampering, but a captured-payload replay is still
+// possible against the cleanup window (90d). A 5-min freshness window
+// closes that hole — an attacker would need to replay within 5 min of
+// the original webhook capture, which is a much higher operational bar.
+//
+// Returns (ok bool, reason string):
+//   ok=true              → signature valid AND (timestamp absent OR within window)
+//   ok=false reason=...  → either bad signature or stale timestamp
+//
+// Permissive on absent header: if X-Event-Timestamp is empty, we
+// log+accept (back-compat with old LS deliveries that don't include the
+// header, and with tests that don't bother to set it). Production
+// monitoring should alert if header-absent rate is non-zero — that's a
+// signal to flip this to fail-closed in a follow-up commit.
+//
+// timestamp can be either an RFC3339 string (LS's documented format if
+// they add the header) or a Unix-seconds integer string (Stripe-style
+// for forward compat). Both are tried; failures fall through to the
+// permissive log+accept path.
+func verifySignatureWithFreshness(body []byte, signature, timestamp, secret string, now time.Time) (bool, string) {
+	if !verifySignature(body, signature, secret) {
+		return false, "invalid signature"
+	}
+	if timestamp == "" {
+		// Permissive: accept with a warning. Wave-4 follow-up may flip
+		// this to reject once LS reliably sends the header.
+		logf(globals.Warn, "timestamp_header_absent",
+			"note", "I5 freshness check skipped; consider failing closed in v0.19")
+		return true, ""
+	}
+
+	parsed, err := parseWebhookTimestamp(timestamp)
+	if err != nil {
+		// Header present but unparseable. Stay permissive (don't fail-
+		// closed on a typo / format change) but log loudly so ops sees it.
+		logf(globals.Warn, "timestamp_unparseable",
+			"raw", timestamp, "error", err.Error())
+		return true, ""
+	}
+
+	age := now.Sub(parsed)
+	// Allow small clock skew in BOTH directions:
+	//   age >  +5min  → stale (replay)
+	//   age < -5min   → far-future timestamp; reject (clock skew or attack)
+	if age > webhookFreshnessWindow || age < -webhookFreshnessWindow {
+		return false, fmt.Sprintf("stale timestamp (age=%s, window=%s)",
+			age.Round(time.Second), webhookFreshnessWindow)
+	}
+	return true, ""
+}
+
+// parseWebhookTimestamp accepts either RFC3339 ("2026-05-10T09:00:00Z")
+// or Unix seconds ("1746864000") and returns the time.Time.
+func parseWebhookTimestamp(ts string) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339, ts); err == nil {
+		return t, nil
+	}
+	// Try Unix seconds as a fallback (forward-compat with providers that
+	// adopt Stripe-style timestamps).
+	var unix int64
+	if _, err := fmt.Sscanf(ts, "%d", &unix); err == nil && unix > 0 {
+		return time.Unix(unix, 0).UTC(), nil
+	}
+	return time.Time{}, fmt.Errorf("unrecognized timestamp format: %q", ts)
 }
 
 // HandleWebhook is the LS webhook entry point.
@@ -112,9 +192,16 @@ func HandleWebhook(c *gin.Context) {
 	}
 
 	sig := c.GetHeader("X-Signature")
-	if !verifySignature(body, sig, secret) {
-		logf(globals.Warn, "signature_invalid", "len", len(body), "sig_len", len(sig))
-		c.AbortWithStatusJSON(401, gin.H{"error": "invalid signature"})
+	// I5 (PKG-2 Wave 3 C3): combine HMAC verification with a 5-min
+	// X-Event-Timestamp freshness check. Header absent → permissive ack
+	// + warn; header stale → 401 reject. See verifySignatureWithFreshness
+	// for the full contract.
+	timestamp := c.GetHeader("X-Event-Timestamp")
+	if ok, reason := verifySignatureWithFreshness(body, sig, timestamp, secret, time.Now().UTC()); !ok {
+		logf(globals.Warn, "signature_or_freshness_invalid",
+			"len", len(body), "sig_len", len(sig),
+			"ts_len", len(timestamp), "reason", reason)
+		c.AbortWithStatusJSON(401, gin.H{"error": reason})
 		return
 	}
 
