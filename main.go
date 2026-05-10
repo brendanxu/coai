@@ -5,6 +5,7 @@ import (
 	"chat/addition"
 	"chat/admin"
 	"chat/auth"
+	"chat/billing"
 	"chat/carbon"
 	"chat/channel"
 	"chat/cli"
@@ -21,6 +22,7 @@ import (
 	"chat/usage"
 	"chat/utils"
 	"chat/waitlist"
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -155,6 +157,11 @@ func main() {
 	}
 	if err := waitlist.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey waitlist migration failed: %s", err))
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := billing.StartCron(ctx, connection.DB); err != nil {
+		globals.Warn(fmt.Sprintf("billing: cron start failed: %s", err))
 	}
 	if !newapi.IsConfigured() {
 		// Boot-time visibility: greentokey starts cleanly even if NewAPI
