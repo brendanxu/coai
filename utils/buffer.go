@@ -50,23 +50,29 @@ type Buffer struct {
 	// billing layer prefers it because it accounts for cache_creation /
 	// cache_read tokens that tiktoken can't see.
 	Upstream *globals.UpstreamUsage `json:"upstream,omitempty"`
+
+	// PreferredCacheTTL is the customer-declared cache_control TTL detected
+	// from the request body. The adapter supplies token counts from upstream;
+	// this request-side marker tells W4 billing whether cache writes should
+	// use the 5m or 1h rate when Anthropic omits TTL from usage.
+	PreferredCacheTTL string `json:"-"`
 }
 
 func initInputToken(model string, history []globals.Message) int {
 	if globals.IsVisionModel(model) {
 		for _, message := range history {
 			if message.Role == globals.User {
-				content, _ := ExtractImages(message.Content, true)
-				message.Content = content
+				content, _ := ExtractImages(message.Content.String(), true)
+				message.Content = globals.MessageContent{Plain: content}
 			}
 		}
 
 		history = Each(history, func(message globals.Message) globals.Message {
 			if message.Role == globals.User {
-				raw, _ := ExtractImages(message.Content, true)
+				raw, _ := ExtractImages(message.Content.String(), true)
 				return globals.Message{
 					Role:         message.Role,
-					Content:      raw,
+					Content:      globals.MessageContent{Plain: raw},
 					Name:         message.Name,
 					FunctionCall: message.FunctionCall,
 					ToolCalls:    message.ToolCalls,
@@ -81,18 +87,29 @@ func initInputToken(model string, history []globals.Message) int {
 	return NumTokensFromMessages(history, model, false)
 }
 
+func preferredCacheTTL(history []globals.Message) string {
+	for _, message := range history {
+		if t, ok := message.Content.HasCacheControl(); ok {
+			return t
+		}
+	}
+	return ""
+}
+
 func NewBuffer(model string, history []globals.Message, charge Charge) *Buffer {
 	token := initInputToken(model, history)
+	ttl := preferredCacheTTL(history)
 
 	return &Buffer{
-		Model:           model,
-		Quota:           CountInputQuota(charge, token),
-		InputTokens:     token,
-		Charge:          charge,
-		FunctionCall:    nil,
-		ToolCalls:       nil,
-		ToolCallsCursor: 0,
-		StartTime:       ToPtr(time.Now()),
+		Model:             model,
+		Quota:             CountInputQuota(charge, token),
+		InputTokens:       token,
+		Charge:            charge,
+		FunctionCall:      nil,
+		ToolCalls:         nil,
+		ToolCallsCursor:   0,
+		StartTime:         ToPtr(time.Now()),
+		PreferredCacheTTL: ttl,
 	}
 }
 
@@ -137,6 +154,9 @@ func (b *Buffer) GetRecordQuota() float32 {
 func (b *Buffer) RecordUpstreamUsage(u *globals.UpstreamUsage) {
 	if u == nil {
 		return
+	}
+	if u.CacheTTL == "" && b.PreferredCacheTTL != "" {
+		u.CacheTTL = b.PreferredCacheTTL
 	}
 	b.Upstream = u
 	if u.InputTokens > 0 {

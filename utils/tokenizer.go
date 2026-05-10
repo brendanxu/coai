@@ -65,7 +65,7 @@ func NumTokensFromMessages(messages []globals.Message, model string, responseTyp
 	}
 
 	for _, message := range messages {
-		tokens += len(tkm.Encode(message.Content, nil, nil))
+		tokens += len(tkm.Encode(message.Content.String(), nil, nil))
 
 		if !responseType {
 			tokens += len(tkm.Encode(message.Role, nil, nil)) + tokensPerMessage
@@ -87,7 +87,7 @@ func NumTokensFromResponse(response string, model string) int {
 		return 0
 	}
 
-	return NumTokensFromMessages([]globals.Message{{Content: response}}, model, true)
+	return NumTokensFromMessages([]globals.Message{{Content: globals.MessageContent{Plain: response}}}, model, true)
 }
 
 func CountInputQuota(charge Charge, token int) float32 {
