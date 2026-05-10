@@ -129,6 +129,97 @@ func TestPendingProvisions_RejectsInvalidStatus(t *testing.T) {
 	}
 }
 
+// TestBinding_GroupDefault verifies the PKG-2 Wave 1 (Q2 / CR8)
+// newapi_group plumbing on the binding row:
+//
+//   - SaveBinding without a Group field set writes 'default' (helper
+//     normalizes empty string to NewAPI's own column default).
+//   - LoadBinding reads the column back into Binding.Group.
+//
+// This is the unit-level confirmation of CR8's "~50 LOC" plumbing path;
+// live NewAPI roundtrip via SyncBindingGroup is gated behind
+// newapi.IsConfigured() at call time and exercised in higher-level
+// integration tests (PKG-3+).
+func TestBinding_GroupDefault(t *testing.T) {
+	db := newSqliteWithFKDeps(t)
+	if err := Migrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO auth (id) VALUES (42)`); err != nil {
+		t.Fatalf("seed auth: %v", err)
+	}
+
+	// Insert without Group → expect 'default' on read.
+	if err := SaveBinding(db, &Binding{
+		CoaiUserID:     42,
+		NewapiUserID:   100,
+		NewapiTokenID:  200,
+		NewapiTokenKey: "sk-test-default",
+		LastKnownQuota: 500_000,
+	}); err != nil {
+		t.Fatalf("save binding (no group): %v", err)
+	}
+	got, err := LoadBinding(db, 42)
+	if err != nil {
+		t.Fatalf("load binding: %v", err)
+	}
+	if got.Group != "default" {
+		t.Errorf("group default = %q, want 'default'", got.Group)
+	}
+}
+
+// TestBinding_GroupPreserved verifies an explicit Group survives the
+// upsert + readback round-trip — important for the SyncBindingGroup
+// flow (write to DB only after NewAPI ack) so admin-driven group flips
+// stick.
+func TestBinding_GroupPreserved(t *testing.T) {
+	db := newSqliteWithFKDeps(t)
+	if err := Migrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO auth (id) VALUES (43)`); err != nil {
+		t.Fatalf("seed auth: %v", err)
+	}
+
+	// First write: group='service-runtime' (e.g. service-product user).
+	if err := SaveBinding(db, &Binding{
+		CoaiUserID:     43,
+		NewapiUserID:   101,
+		NewapiTokenID:  201,
+		NewapiTokenKey: "sk-test-service",
+		Group:          "service-runtime",
+		LastKnownQuota: 1_000_000,
+	}); err != nil {
+		t.Fatalf("save binding (service-runtime): %v", err)
+	}
+	got, err := LoadBinding(db, 43)
+	if err != nil {
+		t.Fatalf("load binding: %v", err)
+	}
+	if got.Group != "service-runtime" {
+		t.Errorf("group = %q, want 'service-runtime'", got.Group)
+	}
+
+	// Upsert with a different group flips the stored value.
+	if err := SaveBinding(db, &Binding{
+		CoaiUserID:     43,
+		NewapiUserID:   101,
+		NewapiTokenID:  201,
+		NewapiTokenKey: "sk-test-service",
+		Group:          "premium",
+		LastKnownQuota: 1_000_000,
+	}); err != nil {
+		t.Fatalf("re-save binding (premium): %v", err)
+	}
+	got, err = LoadBinding(db, 43)
+	if err != nil {
+		t.Fatalf("load binding (after flip): %v", err)
+	}
+	if got.Group != "premium" {
+		t.Errorf("group after upsert = %q, want 'premium'", got.Group)
+	}
+}
+
 // newSqliteWithFKDeps spins an in-memory SQLite DB with the FK targets
 // gtk_newapi_pending_provisions needs (auth + gtk_plan). Calling
 // plans.Migrate would create an import cycle, so we hand-roll a minimal

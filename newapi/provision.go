@@ -52,6 +52,13 @@ type PlanSpec struct {
 	// set this to (now + 32 days) and let the renewal webhook push it
 	// forward.
 	ExpiresAt time.Time
+
+	// Group is the NewAPI per-user routing group (PKG-2 Wave 1, Q2 / CR8 /
+	// architecture §16 §19). Empty → "default" (handled by SaveBinding
+	// normalization). Token-plan users typically stay on "default";
+	// service-runtime users go to a dedicated group so admin can swap
+	// channels per group without touching token plans.
+	Group string
 }
 
 // ProvisionForPlan ensures the (greentokey user_id) has a NewAPI user +
@@ -108,9 +115,14 @@ func ProvisionForPlan(ctx context.Context, db *sql.DB, coaiUserID int64, spec Pl
 				existing.ID, coaiUserID,
 			))
 		} else {
+			// PKG-2 Wave 1 (Q2 / CR8): plumb spec.Group through to NewAPI so
+			// admin can route token-plan vs service-runtime traffic to
+			// different upstream channels via NewAPI's group config. Empty
+			// spec.Group → NewAPI defaults to "default" (omitempty).
 			created, errCreate := cli.CreateUser(ctx, CreateUserRequest{
 				Username:    username,
 				DisplayName: fmt.Sprintf("greentokey user %d", coaiUserID),
+				Group:       spec.Group,
 			})
 			if errCreate != nil {
 				return nil, fmt.Errorf("create newapi user: %w", errCreate)
@@ -144,11 +156,15 @@ func ProvisionForPlan(ctx context.Context, db *sql.DB, coaiUserID int64, spec Pl
 	}
 
 	// Step 5: persist the binding.
+	// PKG-2 Wave 1 (Q2 / CR8): write spec.Group into the binding so future
+	// reads (admin UI, dashboards, channel-routing decisions) match the
+	// NewAPI side. SaveBinding normalizes empty Group → "default".
 	out := &Binding{
 		CoaiUserID:     coaiUserID,
 		NewapiUserID:   newapiUser.ID,
 		NewapiTokenID:  tok.ID,
 		NewapiTokenKey: tok.Key,
+		Group:          spec.Group,
 		LastKnownQuota: spec.QuotaUnits,
 	}
 	if err := SaveBinding(db, out); err != nil {
