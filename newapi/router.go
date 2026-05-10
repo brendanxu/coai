@@ -27,9 +27,15 @@ import (
 
 // Register wires the gtk/v1 newapi routes onto the main API router group.
 // Called from main.go:registerApiRouter alongside payment.Register etc.
+//
+// PKG-4 (architecture §19) added the /gtk/v1/admin/* surface for
+// per-user channel routing admin; those routes live in admin_routing.go
+// and are mounted via RegisterAdminRoutes here so main.go's existing
+// newapi.Register call picks them up without a separate hookup.
 func Register(app *gin.RouterGroup) {
 	app.GET("/gtk/v1/pool", PoolAPI)
 	app.GET("/gtk/v1/binding", BindingAPI)
+	RegisterAdminRoutes(app)
 }
 
 // PoolAPI returns the current model pool snapshot. Public — no auth gate.

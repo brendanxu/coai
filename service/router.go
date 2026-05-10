@@ -21,6 +21,7 @@ import (
 	"chat/commerce"
 	"chat/connection"
 	"chat/globals"
+	"chat/newapi"
 	"errors"
 	"fmt"
 	"net/http"
@@ -43,9 +44,66 @@ func Register(app *gin.RouterGroup) {
 	// Admin-only — mark a manual / concierge order as paid (PKG-2 Wave 4
 	// D7, Q5 GO). Wraps commerce.MarkPaid which calls GrantEntitlement.
 	app.POST("/gtk/v1/admin/mark-paid", MarkPaidAPI)
+	// Admin-only — read-only ops visibility into the
+	// gtk_newapi_pending_provisions retry queue (PKG-3). Counts by
+	// status; lets dashboards / Grafana panel surface drain health
+	// without granting raw DB access. Pairs with the
+	// bin/check-pending-provisioning.sh cron alert.
+	app.GET("/gtk/v1/admin/pending-provisions", PendingProvisionsAPI)
 	// Public — hupijiao webhook target. Auth is HMAC-MD5 against
 	// hupijiao.merchant_secret (verified inside the handler).
 	app.POST("/gtk/v1/service/hupijiao-callback", HupijiaoCallbackAPI)
+	// Authenticated, customer-scoped. PKG-5 self-serve order tracking.
+	// Both endpoints filter by coai_user_id at the SQL level — see
+	// customer_orders.go header for security rationale.
+	app.GET("/gtk/v1/orders", ListMyOrdersAPI)
+	app.GET("/gtk/v1/orders/:order_no", MyOrderDetailAPI)
+}
+
+// PendingProvisionsAPI returns the current state of the NewAPI
+// provisioning retry queue (PKG-3). Admin-only; mirrors the auth +
+// envelope pattern of MarkPaidAPI / RefundAPI.
+//
+// Response shape:
+//
+//	{
+//	  "success": true,
+//	  "data": {
+//	    "pending":   <int64>,  // never-tried rows from this boot
+//	    "retrying":  <int64>,  // attempted at least once, still in retry window
+//	    "succeeded": <int64>,  // historical successes (cumulative)
+//	    "failed":    <int64>,  // gave up after maxRetries — needs human review
+//	    "total":     <int64>   // sum of the four buckets
+//	  }
+//	}
+//
+// 'failed' > 0 is the row-count to alert on; 'pending' / 'retrying'
+// fluctuate normally during transient NewAPI outages.
+func PendingProvisionsAPI(c *gin.Context) {
+	admin := auth.RequireAdmin(c)
+	if admin == nil {
+		return // RequireAdmin already wrote the 401/403 envelope.
+	}
+
+	pending, retrying, succeeded, failed, err := newapi.PendingProvisionStats(connection.DB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "pending-provisions stats failed: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"pending":   pending,
+			"retrying":  retrying,
+			"succeeded": succeeded,
+			"failed":    failed,
+			"total":     pending + retrying + succeeded + failed,
+		},
+	})
 }
 
 // MarkPaidRequest is the JSON body for POST /admin/mark-paid.

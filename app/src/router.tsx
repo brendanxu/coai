@@ -33,6 +33,9 @@ const Methodology = lazyFactor(() => import("@/routes/Methodology.tsx"));
 // v0.6.1 — dedicated /chat route (chat moved off /)
 const Chat = lazyFactor(() => import("@/routes/Chat.tsx"));
 
+// PKG-5 — customer self-serve service order list (/orders).
+const MyOrders = lazyFactor(() => import("@/routes/MyOrders.tsx"));
+
 const AdminPage = lazyFactor(() => import("@/routes/Admin.tsx"));
 const AdminDashboard = lazyFactor(() => import("@/routes/admin/DashBoard.tsx"));
 const AdminMarket = lazyFactor(() => import("@/routes/admin/Market.tsx"));
@@ -46,6 +49,13 @@ const AdminSubscription = lazyFactor(
   () => import("@/routes/admin/Subscription.tsx"),
 );
 const AdminLogger = lazyFactor(() => import("@/routes/admin/Logger.tsx"));
+// PKG-4 (architecture §19) — per-user channel routing admin pages.
+const AdminUserRouting = lazyFactor(
+  () => import("@/routes/admin/UserRouting.tsx"),
+);
+const AdminChannelsRouting = lazyFactor(
+  () => import("@/routes/admin/AdminChannels.tsx"),
+);
 
 const router = createBrowserRouter([
   {
@@ -145,6 +155,19 @@ const router = createBrowserRouter([
           <AuthRequired>
             <Suspense>
               <Dashboard />
+            </Suspense>
+          </AuthRequired>
+        ),
+      },
+      // PKG-5 — /orders. Customer-scoped service order list.
+      // Backend: GET /gtk/v1/orders + GET /gtk/v1/orders/:order_no.
+      {
+        id: "my-orders",
+        path: "orders",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <MyOrders />
             </Suspense>
           </AuthRequired>
         ),
@@ -302,6 +325,28 @@ const router = createBrowserRouter([
             element: (
               <Suspense>
                 <AdminLogger />
+              </Suspense>
+            ),
+          },
+          // PKG-4 (architecture §19): per-user channel routing admin.
+          {
+            id: "admin-user-routing",
+            path: "user-routing",
+            element: (
+              <Suspense>
+                <AdminUserRouting />
+              </Suspense>
+            ),
+          },
+          // /admin/channels-routing (NOT /admin/channels — that path is
+          // unused but the singular /admin/channel is taken by the
+          // CoAI-upstream channel admin page).
+          {
+            id: "admin-channels-routing",
+            path: "channels-routing",
+            element: (
+              <Suspense>
+                <AdminChannelsRouting />
               </Suspense>
             ),
           },

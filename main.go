@@ -20,10 +20,12 @@ import (
 	"chat/service"
 	"chat/utils"
 	"chat/waitlist"
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"net/url"
+	"time"
 )
 
 func readCorsOrigins() {
@@ -135,6 +137,23 @@ func main() {
 		// fail on a per-purchase basis.
 		globals.Warn("newapi: admin_access_token not configured — purchase → key provisioning will no-op")
 	}
+
+	// PKG-3 PKG-TOKEN-PRODUCT-RENTAL: drain pending NewAPI provisions in
+	// background. PKG-2's commerce.GrantEntitlement enqueues a row into
+	// gtk_newapi_pending_provisions when ProvisionForPlan fails
+	// transiently (network blip, NewAPI 5xx, etc.). This goroutine
+	// retries with exponential backoff so the user gets their sk-xxx
+	// token shortly after the outage clears, without manual ops
+	// intervention.
+	//
+	// Interval matches the bin/check-pending-provisioning.sh cron's
+	// 5-minute alerting window — worker pulses every 60s so transient
+	// failures usually resolve well before the cron fires the
+	// stuck-row alert. ctx.Background() is correct here: the worker
+	// owns its lifetime for the life of the process; graceful
+	// shutdown is a follow-up (greentokey doesn't currently propagate
+	// a process-wide cancel signal).
+	go newapi.DrainPendingProvisionsForever(context.Background(), connection.DB, 60*time.Second)
 
 	utils.RegisterStaticRoute(app)
 	registerApiRouter(app)
