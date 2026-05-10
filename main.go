@@ -8,6 +8,7 @@ import (
 	"chat/carbon"
 	"chat/channel"
 	"chat/cli"
+	"chat/commerce"
 	"chat/connection"
 	"chat/globals"
 	"chat/manager"
@@ -85,11 +86,15 @@ func main() {
 	// Runs after middleware.RegisterMiddleware connects DB; idempotent on reboot.
 	//
 	// Order is FK-dependency driven, NOT alphabetical (PKG-1 broke the
-	// alphabetical assumption by introducing cross-package FKs):
-	//   payment  creates gtk_ls_subscription      ← gtk_service_order's FK target
-	//   service  creates gtk_service              ← gtk_plan's PKG-1 FK target
-	//   plans    creates gtk_plan                 ← gtk_newapi_pending_provisions's PKG-1 FK target
-	//   newapi   creates gtk_newapi_pending_provisions
+	// alphabetical assumption by introducing cross-package FKs; PKG-2 added
+	// commerce):
+	//   payment   creates gtk_ls_subscription      ← gtk_service_order's FK target
+	//   service   creates gtk_service              ← gtk_plan's PKG-1 FK target
+	//   commerce  creates gtk_payment_session      (FK only to auth — no order
+	//                                                dependency, but logically
+	//                                                grouped with payment)
+	//   plans     creates gtk_plan                 ← gtk_newapi_pending_provisions's PKG-1 FK target
+	//   newapi    creates gtk_newapi_pending_provisions + gtk_newapi_binding
 	// Fresh MySQL boot would PANIC if newapi runs before plans (or plans before
 	// service) because InnoDB rejects FOREIGN KEY pointing at a non-existent
 	// table at CREATE TABLE / ADD CONSTRAINT time. SQLite is permissive and
@@ -102,6 +107,9 @@ func main() {
 	}
 	if err := service.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey service migration failed: %s", err))
+	}
+	if err := commerce.Migrate(connection.DB); err != nil {
+		panic(fmt.Sprintf("greentokey commerce migration failed: %s", err))
 	}
 	if err := plans.Migrate(connection.DB); err != nil {
 		panic(fmt.Sprintf("greentokey plans migration failed: %s", err))
