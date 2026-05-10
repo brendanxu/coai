@@ -17,21 +17,21 @@ import { selectAdmin, selectAuthenticated, selectInit } from "@/store/auth.ts";
 import Index from "@/routes/Index.tsx";
 import License from "@/routes/admin/License.tsx";
 
-const Model = lazyFactor(() => import("@/routes/Model.tsx"));
 const Wallet = lazyFactor(() => import("@/routes/Wallet.tsx"));
 const Account = lazyFactor(() => import("@/routes/Account.tsx"));
 const Pricing = lazyFactor(() => import("@/routes/Pricing.tsx"));
 
-const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
-const Article = lazyFactor(() => import("@/routes/Article.tsx"));
 
-// v0.6 carbon
+// v0.6 carbon — /dashboard kept (founder may use ESG narrative later);
+// /methodology removed (long-form essay had no traffic and the Carbon
+// surfaces that linked to it have been rewritten to drop the link).
 const Dashboard = lazyFactor(() => import("@/routes/Dashboard.tsx"));
-const Methodology = lazyFactor(() => import("@/routes/Methodology.tsx"));
 
-// v0.6.1 — dedicated /chat route (chat moved off /)
-const Chat = lazyFactor(() => import("@/routes/Chat.tsx"));
+// v0.21 cleanup — /chat, /generate, /model, /article, /methodology all
+// deleted. Two business lines (Token wholesale + Service market 民宿 SaaS)
+// don't need a generic chat / image-gen / model-marketplace / writer /
+// long-form methodology surface. See PKG-CLEANUP.
 
 // PKG-5 — customer self-serve service order list (/orders).
 const MyOrders = lazyFactor(() => import("@/routes/MyOrders.tsx"));
@@ -80,27 +80,6 @@ const router = createBrowserRouter([
         id: "home",
         path: "",
         element: <Home />,
-      },
-      // v0.6.1 — dedicated chat route. Anonymous users with skip_welcome=1
-      // are redirected here from Home. Logged-in users land on the dashboard
-      // and reach chat via the ToolBar icon, dashboard CTA, or floating button.
-      {
-        id: "chat",
-        path: "chat",
-        element: (
-          <Suspense>
-            <Chat />
-          </Suspense>
-        ),
-      },
-      {
-        id: "model",
-        path: "model",
-        element: (
-          <Suspense>
-            <Model />
-          </Suspense>
-        ),
       },
       // /wallet route — hidden when HIDE_CREDIT_UI=true (greentokey BYOK has
       // no internal credit/quota model). Direct access to /wallet falls through
@@ -191,15 +170,6 @@ const router = createBrowserRouter([
               <OrderDetail />
             </Suspense>
           </AuthRequired>
-        ),
-      },
-      {
-        id: "methodology",
-        path: "methodology",
-        element: (
-          <Suspense>
-            <Methodology />
-          </Suspense>
         ),
       },
       {
@@ -384,31 +354,6 @@ const router = createBrowserRouter([
         ],
         ErrorBoundary: NotFound,
       },
-      {
-        id: "generation",
-        path: "/generate",
-        element: (
-          <AuthRequired>
-            <Suspense>
-              <Generation />
-            </Suspense>
-          </AuthRequired>
-        ),
-        ErrorBoundary: NotFound,
-      },
-      {
-        id: "article",
-        path: "/article",
-        element: (
-          <AuthRequired>
-            <Suspense>
-              <Article />
-            </Suspense>
-          </AuthRequired>
-        ),
-        ErrorBoundary: NotFound,
-      },
-
       ...(useDeeptrain
         ? []
         : [
