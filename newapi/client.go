@@ -221,6 +221,49 @@ func (c *Client) CreateToken(ctx context.Context, targetUserID int64, req Create
 	return &env.Data, nil
 }
 
+// DisableToken flips a NewAPI token's status to 2 (disabled). Used by
+// commerce/entitlement.go RevokeEntitlement on full-refund of a token
+// plan: the user paid, got an sk-xxx api-key, then refunded — we have to
+// stop that key from working before the refund settles or they'll keep
+// using it on our dime.
+//
+// PKG-2 Wave 2.5 B3 added this. Mirrors UpdateUserQuota's partial-update
+// pattern: send only id + status, NewAPI honors partial PUT body.
+// Status=2 is NewAPI's "disabled" value (see types.go Token.Status:
+// 1=enabled, 2=disabled).
+//
+// Idempotent on the NewAPI side: re-disabling an already-disabled token
+// is a no-op success. Callers (RevokeEntitlement) rely on this for their
+// own H4 idempotency contract — re-revoking should not error.
+//
+// Returns nil on success, ErrTokenNotFound when NewAPI replies success=false
+// with a "token not found" message (caller should treat as already-removed,
+// matches Revoke idempotency), or wrapped error on transport / decode
+// failures (treated as transient by RevokeEntitlement, which still flips
+// the local DB state).
+func (c *Client) DisableToken(ctx context.Context, tokenID int64) error {
+	// Reuse the partial-update endpoint shape (PUT /api/token/). We only
+	// need to send id + status — NewAPI leaves other fields untouched.
+	req := struct {
+		ID     int64 `json:"id"`
+		Status int   `json:"status"`
+	}{ID: tokenID, Status: 2}
+	var env envelope[any]
+	if err := c.do(ctx, "PUT", "/api/token/", req, 0, &env); err != nil {
+		return err
+	}
+	if !env.Success {
+		// Common NewAPI error: "token不存在" / "token not found" when the
+		// id is stale (e.g. an old binding referencing a token NewAPI
+		// already pruned). Map to typed sentinel for caller convenience.
+		if env.Message == "token不存在" || env.Message == "token not found" {
+			return ErrTokenNotFound
+		}
+		return fmt.Errorf("newapi: disable token: %s", env.Message)
+	}
+	return nil
+}
+
 // truncate keeps log strings bounded so a malformed response body doesn't
 // flood logs.
 func truncate(s string, max int) string {
