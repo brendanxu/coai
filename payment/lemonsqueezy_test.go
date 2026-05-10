@@ -3,6 +3,7 @@ package payment
 import (
 	"bytes"
 	"chat/globals"
+	"chat/plans"
 	"crypto/hmac"
 	"crypto/sha256"
 	"database/sql"
@@ -12,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/spf13/viper"
 )
 
 // computeHMAC produces a hex-encoded HMAC-SHA256 of body using secret.
@@ -208,6 +209,54 @@ func samplePayload(eventName string) []byte {
 	return b
 }
 
+func samplePlanPayload(eventName string) []byte {
+	p := map[string]interface{}{
+		"meta": map[string]interface{}{
+			"event_name": eventName,
+			"test_mode":  true,
+			"custom_data": map[string]interface{}{
+				"type":      "plan",
+				"plan_code": "starter-100k",
+				"user_id":   "42",
+			},
+		},
+		"data": map[string]interface{}{
+			"id": "ls-order-plan-001",
+			"attributes": map[string]interface{}{
+				"variant_id": 999,
+				"status":     "paid",
+				"renews_at":  "2026-05-27T12:00:00Z",
+				"test_mode":  true,
+			},
+		},
+	}
+	b, _ := json.Marshal(p)
+	return b
+}
+
+func seedPlanRechargeTables(t *testing.T, db *sql.DB) {
+	t.Helper()
+	if err := plans.Migrate(db); err != nil {
+		t.Fatalf("plans migrate: %v", err)
+	}
+	if _, err := db.Exec(`
+		CREATE TABLE quota (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER UNIQUE,
+			quota REAL,
+			used REAL
+		)
+	`); err != nil {
+		t.Fatalf("seed quota table: %v", err)
+	}
+	if _, err := globals.ExecDb(db, `
+		INSERT INTO gtk_plan (code, name, type, price_cents, duration_days, quota_config, is_active)
+		VALUES ('starter-100k', 'Starter 100K', 'pack', 9900, 30, '{"quota": 100000}', TRUE)
+	`); err != nil {
+		t.Fatalf("seed plan: %v", err)
+	}
+}
+
 func TestHandleWebhook_HappyPath_SubscriptionCreated(t *testing.T) {
 	r, db := newTestEngine(t)
 	secret := "test-webhook-secret"
@@ -241,6 +290,50 @@ func TestHandleWebhook_HappyPath_SubscriptionCreated(t *testing.T) {
 	}
 	if lsID != "ls-sub-001" {
 		t.Fatalf("got ls_subscription_id=%q want ls-sub-001", lsID)
+	}
+}
+
+func TestHandleWebhook_PlanCustomDataRedeemsQuota(t *testing.T) {
+	r, db := newTestEngine(t)
+	seedPlanRechargeTables(t, db)
+
+	secret := "test-webhook-secret"
+	viper.Set("lemonsqueezy.webhook_secret", secret)
+	t.Cleanup(func() { viper.Set("lemonsqueezy.webhook_secret", "") })
+
+	body := samplePlanPayload("order_created")
+	req := httptest.NewRequest("POST", "/webhook/lemonsqueezy", bytes.NewReader(body))
+	req.Header.Set("X-Signature", computeHMAC(body, secret))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != 200 {
+		t.Fatalf("got %d want 200; body=%s", w.Code, w.Body.String())
+	}
+
+	var planRows int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM gtk_user_plan WHERE order_id = 'ls-order-plan-001'`).Scan(&planRows); err != nil {
+		t.Fatalf("count gtk_user_plan: %v", err)
+	}
+	if planRows != 1 {
+		t.Fatalf("got %d gtk_user_plan rows, want 1", planRows)
+	}
+
+	var quota float64
+	if err := db.QueryRow(`SELECT quota FROM quota WHERE user_id = 42`).Scan(&quota); err != nil {
+		t.Fatalf("read quota: %v", err)
+	}
+	if quota != 100000 {
+		t.Fatalf("got quota=%f want 100000", quota)
+	}
+
+	var legacyRows int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM subscription WHERE user_id = 42`).Scan(&legacyRows); err != nil {
+		t.Fatalf("count legacy subscription: %v", err)
+	}
+	if legacyRows != 0 {
+		t.Fatalf("plan checkout should skip legacy subscription path; got %d rows", legacyRows)
 	}
 }
 

@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"chat/auth"
 	"chat/globals"
 	"chat/newapi"
 	"chat/service"
@@ -50,7 +51,7 @@ const (
 	eventResumed       = "subscription_resumed"
 	eventCancelled     = "subscription_cancelled"
 	eventPaymentFailed = "subscription_payment_failed"
-	eventOrderCreated  = "order_created" // v0.10 ③ — fired for service-order one-shots AND for first-month subscriptions
+	eventOrderCreated  = "order_created"                // v0.10 ③ — fired for service-order one-shots AND for first-month subscriptions
 	eventSubPayment    = "subscription_payment_success" // v0.10 ③ — fired on monthly renewals; deferred handling
 )
 
@@ -91,9 +92,10 @@ func verifySignature(body []byte, signature, secret string) bool {
 // HandleWebhook is the LS webhook entry point.
 //
 // HTTP responses:
-//   401 — bad/missing signature, or webhook_secret env not configured
-//   500 — DB write failed (LS will retry; idempotency table catches the retry)
-//   200 — processed OR duplicate event_id (idempotent)
+//
+//	401 — bad/missing signature, or webhook_secret env not configured
+//	500 — DB write failed (LS will retry; idempotency table catches the retry)
+//	200 — processed OR duplicate event_id (idempotent)
 //
 // We always read the raw body BEFORE binding so HMAC verification sees the
 // exact bytes LS signed. Gin's binding consumes the body; doing it after
@@ -284,6 +286,24 @@ func isDupErr(err error) bool {
 }
 
 func dispatch(db *sql.DB, p *webhookPayload) error {
+	if planCode := planCodeFromCustomData(p.Meta.CustomData); planCode != "" {
+		userID, err := userIDFromCustomData(p.Meta.CustomData)
+		if err != nil {
+			return fmt.Errorf("ls webhook: plan custom_data user_id: %w", err)
+		}
+		switch p.Meta.EventName {
+		case eventOrderCreated, eventCreated, eventSubPayment:
+			if err := auth.RedeemPlanForOrder(db, userID, planCode, p.Data.ID); err != nil {
+				return fmt.Errorf("ls webhook: redeem plan: %w", err)
+			}
+			return nil
+		default:
+			logf(globals.Info, "plan_event_acked_without_redeem",
+				"event", p.Meta.EventName, "plan_code", planCode, "ls_id", p.Data.ID)
+			return nil
+		}
+	}
+
 	// v0.10 ③ — branch on greentokey_order_no presence in custom_data.
 	// Service orders carry it (set by service/checkout.go); Layer 2
 	// 套餐 subscriptions don't. Either path is idempotent.
@@ -308,6 +328,24 @@ func dispatch(db *sql.DB, p *webhookPayload) error {
 	}
 }
 
+// planCodeFromCustomData detects the new L2 token-plan checkout payload. The
+// canonical field is plan_code, but plan_id is accepted as a compatibility
+// alias because the initial dispatch prompt used both names.
+func planCodeFromCustomData(custom map[string]interface{}) string {
+	rawType, ok := custom["type"]
+	if !ok || fmt.Sprintf("%v", rawType) != "plan" {
+		return ""
+	}
+	for _, key := range []string{"plan_code", "plan_id"} {
+		if raw, ok := custom[key]; ok {
+			if s := strings.TrimSpace(fmt.Sprintf("%v", raw)); s != "" {
+				return s
+			}
+		}
+	}
+	return ""
+}
+
 // serviceOrderNoFromCustomData extracts greentokey_order_no if present.
 // Returns empty string if absent (Layer 2 套餐 path).
 func serviceOrderNoFromCustomData(custom map[string]interface{}) string {
@@ -329,18 +367,18 @@ func serviceOrderNoFromCustomData(custom map[string]interface{}) string {
 // v0.10 first-cut handling:
 //   - order_created           → MarkOrderPaid (one-shot or first-month)
 //   - subscription_created    → MarkOrderPaid (covers first-month);
-//                                NOTE: does NOT call upsertSubscription
-//                                because that path is for Layer 2 token
-//                                packs, not Layer 3 service orders.
+//     NOTE: does NOT call upsertSubscription
+//     because that path is for Layer 2 token
+//     packs, not Layer 3 service orders.
 //   - subscription_cancelled  → log only; the order itself is already
-//                                paid, founder handles refund via
-//                                /api/gtk/v1/admin/refund if needed.
+//     paid, founder handles refund via
+//     /api/gtk/v1/admin/refund if needed.
 //   - subscription_payment_success → DEFERRED. Each monthly renewal
-//                                should create a NEW gtk_service_order
-//                                row + flip it to paid. v0.11 cron job
-//                                or follow-up commit handles this. For
-//                                v0.10 first deploy: log + ack so LS
-//                                stops retrying.
+//     should create a NEW gtk_service_order
+//     row + flip it to paid. v0.11 cron job
+//     or follow-up commit handles this. For
+//     v0.10 first deploy: log + ack so LS
+//     stops retrying.
 //   - other                   → log + ack.
 func dispatchServiceOrder(db *sql.DB, p *webhookPayload, orderNo string) error {
 	switch p.Meta.EventName {
@@ -393,9 +431,9 @@ func userIDFromCustomData(custom map[string]interface{}) (int64, error) {
 }
 
 // upsertSubscription handles created/updated/resumed events. The semantics:
-//   * created: first time this user subscribes — INSERT subscription row + INSERT mapping
-//   * updated: renewal or plan change — UPDATE subscription.expired_at to new renews_at
-//   * resumed: user un-cancelled before period ended — clear cancelled_at, refresh status
+//   - created: first time this user subscribes — INSERT subscription row + INSERT mapping
+//   - updated: renewal or plan change — UPDATE subscription.expired_at to new renews_at
+//   - resumed: user un-cancelled before period ended — clear cancelled_at, refresh status
 //
 // All three converge on "ensure subscription.expired_at == LS renews_at" and
 // "upsert mapping row with current LS state". The DB primitives are the same.
@@ -445,19 +483,21 @@ func upsertSubscription(db *sql.DB, p *webhookPayload) error {
 // quota unit count.
 //
 // Credit semantics (locked 2026-04-30, see newapi/credit.go):
-//   1 credit = 1500 NewAPI quota units
-//   ¥99/月 = $15/月 = 5000 credits = 7,500,000 quota units
+//
+//	1 credit = 1500 NewAPI quota units
+//	¥99/月 = $15/月 = 5000 credits = 7,500,000 quota units
 //
 // Per-call burn (assuming 1k input + 1k output):
-//   轻量 (light)    0.5 credits   — DeepSeek-chat / Qwen-flash etc.
-//   标准 (standard) 1.0 credits   — DeepSeek-r1 / Claude Haiku / GPT-4o-mini
-//   高级 (premium)  3.0 credits   — GPT-4o / Claude Sonnet / Claude Opus
+//
+//	轻量 (light)    0.5 credits   — DeepSeek-chat / Qwen-flash etc.
+//	标准 (standard) 1.0 credits   — DeepSeek-r1 / Claude Haiku / GPT-4o-mini
+//	高级 (premium)  3.0 credits   — GPT-4o / Claude Sonnet / Claude Opus
 //
 // v0.9 levels (placeholder; v1 will move to gtk_plan.credits):
 //
-//   levelStarter (1)  →  5,000 credits / month  → ¥99 or $15
-//   levelPro     (2)  → 20,000 credits / month  → ¥299 or $45
-//   levelScale   (3)  → 80,000 credits / month  → ¥999 or $145
+//	levelStarter (1)  →  5,000 credits / month  → ¥99 or $15
+//	levelPro     (2)  → 20,000 credits / month  → ¥299 or $45
+//	levelScale   (3)  → 80,000 credits / month  → ¥999 or $145
 //
 // Only level 1 is wired in v0.9; 2/3 documented for forward compat.
 func creditsForLevel(level int) int64 {
