@@ -20,6 +20,7 @@ import React from "react";
 import {
   LibraryBig,
   MessageCircle,
+  PackageCheck,
   Shield,
   Sparkles,
   User,
@@ -76,6 +77,9 @@ function MenuBar({ children, className }: MenuBarProps) {
             )}
             {/* <BarItem icon={<DraftingCompass />} path={`/key`} name={"key"} /> */}
             <BarItem icon={<Sparkles />} path={`/pricing`} name={"pricing"} />
+            {/* PKG-N4 — /orders is auth-gated; this whole branch is already
+                gated on `auth`, so no extra check needed here. */}
+            <BarItem icon={<PackageCheck />} path={`/orders`} name={"orders"} />
             <BarItem icon={<User />} path={`/account`} name={"account"} />
             {/* <BarItem icon={<PieChart />} path={`/log`} name={"log"} /> */}
             {admin && (

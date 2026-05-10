@@ -1325,7 +1325,9 @@
     "admin-full": "Dashboard",
     "key": "key",
     "key-full": "API",
-    "pricing-full": "Pricing"
+    "pricing-full": "Pricing",
+    "orders": "Orders",
+    "orders-full": "My orders"
   },
   "notify": "Notice",
   "new-notify": "New notification",

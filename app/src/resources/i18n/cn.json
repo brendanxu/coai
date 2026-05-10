@@ -1541,7 +1541,9 @@
     "account-full": "账户管理",
     "admin": "后台",
     "admin-full": "后台管理",
-    "pricing-full": "套餐"
+    "pricing-full": "套餐",
+    "orders": "订单",
+    "orders-full": "我的订单"
   },
   "account": {
     "title": "账号管理",
