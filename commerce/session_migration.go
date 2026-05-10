@@ -26,15 +26,26 @@ import (
 	"fmt"
 )
 
-// Migrate creates gtk_payment_session. Idempotent: safe to call on every
-// boot. Dispatches MySQL vs SQLite DDL based on globals.SqliteEngine
-// because SQLite lacks ENUM and ON UPDATE CURRENT_TIMESTAMP.
+// Migrate creates gtk_payment_session + gtk_service_margin_v VIEW.
+// Idempotent: safe to call on every boot. Dispatches MySQL vs SQLite DDL
+// based on globals.SqliteEngine because SQLite lacks ENUM and ON UPDATE
+// CURRENT_TIMESTAMP.
+//
+// PKG-2 Wave 4 D6: also (re)creates the gtk_service_margin_v VIEW. The
+// VIEW depends on gtk_service_order (created by service.Migrate) and
+// gtk_app_usage_log (created by chat-side migration / inlined by
+// service-test fixtures). Because main.go runs commerce.Migrate AFTER
+// service.Migrate (per the PKG-1 boot-order chain), the dependency is
+// satisfied at production boot time.
 //
 // Mirrors the payment / waitlist / plans / service / newapi / carbon
 // pattern: one Migrate(db) entry point, idempotent, dual-engine.
 func Migrate(db *sql.DB) error {
 	if err := createPaymentSessionTable(db); err != nil {
 		return fmt.Errorf("create gtk_payment_session: %w", err)
+	}
+	if err := CreateServiceMarginView(db); err != nil {
+		return fmt.Errorf("create gtk_service_margin_v: %w", err)
 	}
 	return nil
 }
