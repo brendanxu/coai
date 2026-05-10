@@ -44,6 +44,11 @@ func Register(app *gin.RouterGroup) {
 	// Admin-only — mark a manual / concierge order as paid (PKG-2 Wave 4
 	// D7, Q5 GO). Wraps commerce.MarkPaid which calls GrantEntitlement.
 	app.POST("/gtk/v1/admin/mark-paid", MarkPaidAPI)
+	// Admin-only — read-only list of all service orders, with username
+	// joined in. Powers the PKG-N1 /admin/orders UI: founder finds the
+	// order, then fires mark-paid / refund against it. Closes the
+	// "manual curl per 民宿 customer" gap surfaced in the audit.
+	app.GET("/gtk/v1/admin/orders", ListAdminOrdersAPI)
 	// Admin-only — read-only ops visibility into the
 	// gtk_newapi_pending_provisions retry queue (PKG-3). Counts by
 	// status; lets dashboards / Grafana panel surface drain health
