@@ -63,14 +63,20 @@ type Envelope<T> = {
  *
  * statusFilter: optional. Pass undefined / "" for "all statuses".
  *
- * Returns [] on any error (transport, 5xx, malformed envelope) — the
- * page renders an empty state rather than a stack trace. We deliberately
- * don't surface error details in the UI; ops can read them from the
- * browser console / server logs.
+ * PKG-N5: returns a discriminated result with an `error` flag rather
+ * than silently swallowing failures into `[]`. Empty + error=false ===
+ * "no orders yet"; empty + error=true === "we couldn't reach the
+ * server". Caller is responsible for surfacing the error (toast /
+ * banner) so a 5xx / network blip stops looking identical to a brand-
+ * new account.
+ *
+ * envelope success === false (server returned a structured failure) is
+ * also flagged as error=true; otherwise the empty data branch would
+ * skip past it silently.
  */
 export async function listMyOrders(
   statusFilter?: OrderStatus | "",
-): Promise<CustomerOrderSummary[]> {
+): Promise<{ orders: CustomerOrderSummary[]; error: boolean }> {
   try {
     const params: Record<string, string> = {};
     if (statusFilter) params.status = statusFilter;
@@ -78,12 +84,15 @@ export async function listMyOrders(
       Envelope<{ orders: CustomerOrderSummary[]; total: number }>
     >("/gtk/v1/orders", { params });
     if (resp.data?.success && Array.isArray(resp.data.data?.orders)) {
-      return resp.data.data!.orders;
+      return { orders: resp.data.data!.orders, error: false };
     }
-    return [];
+    // 200 OK but envelope reports failure — count as an error so the
+    // caller can show "couldn't load" instead of "no orders".
+    console.error("[orders] list returned non-success envelope", resp.data);
+    return { orders: [], error: true };
   } catch (e) {
-    console.debug("[orders] list failed", e);
-    return [];
+    console.error("[orders] list failed", e);
+    return { orders: [], error: true };
   }
 }
 

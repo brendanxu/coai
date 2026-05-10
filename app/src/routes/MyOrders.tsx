@@ -19,6 +19,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   listMyOrders,
   type CustomerOrderSummary,
@@ -26,7 +27,13 @@ import {
 } from "@/api/orders.ts";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Loader2, MessageCircle, PackageOpen, RefreshCw } from "lucide-react";
+import {
+  AlertTriangle,
+  Loader2,
+  MessageCircle,
+  PackageOpen,
+  RefreshCw,
+} from "lucide-react";
 import WaitlistDialog from "@/components/Marketing/WaitlistDialog.tsx";
 
 // Status filter chips. "" = no filter (all statuses).
@@ -90,12 +97,22 @@ export default function MyOrders() {
   const [filter, setFilter] = useState<FilterValue>("");
   const [orders, setOrders] = useState<CustomerOrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  // PKG-N5 — track load failure so we can render a retry banner instead
+  // of the empty state. Without this, transport / 5xx errors looked
+  // identical to "no orders yet".
+  const [loadError, setLoadError] = useState(false);
 
   async function refetch(f: FilterValue = filter) {
     setLoading(true);
     try {
-      const rows = await listMyOrders(f || undefined);
-      setOrders(rows);
+      const result = await listMyOrders(f || undefined);
+      setOrders(result.orders);
+      setLoadError(result.error);
+      if (result.error) {
+        toast.error(
+          t("my_orders.load_failed", "加载订单失败,请重试。"),
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -156,6 +173,10 @@ export default function MyOrders() {
         <div className="flex justify-center py-16">
           <Loader2 size={20} className="animate-spin text-muted-foreground" />
         </div>
+      ) : loadError && total === 0 ? (
+        // PKG-N5 — distinguish "fetch failed" from "no orders". Empty state
+        // gets the contact CTA; this gets a retry button.
+        <ErrorState onRetry={() => refetch()} loading={loading} />
       ) : total === 0 ? (
         <EmptyState filter={filter} />
       ) : (
@@ -220,6 +241,40 @@ function OrderCard({ order }: { order: CustomerOrderSummary }) {
         )}
       </div>
     </li>
+  );
+}
+
+function ErrorState({
+  onRetry,
+  loading,
+}: {
+  onRetry: () => void;
+  loading: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="text-center py-20 border border-dashed border-destructive/40 rounded-lg">
+      <AlertTriangle
+        size={32}
+        className="mx-auto text-destructive/70 mb-4"
+      />
+      <h2 className="text-lg font-medium mb-2">
+        {t("my_orders.load_failed", "加载订单失败,请重试。")}
+      </h2>
+      <div className="mt-6">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={onRetry}
+          disabled={loading}
+          className="gap-1.5"
+        >
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          {t("my_orders.retry", "重试")}
+        </Button>
+      </div>
+    </div>
   );
 }
 
