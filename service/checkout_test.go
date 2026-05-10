@@ -26,7 +26,7 @@ func TestBuildLSServiceCheckoutURL_HappyPath(t *testing.T) {
 		LSVariantID: "1234567",
 	}
 
-	got, err := BuildLSServiceCheckoutURL(42, "SVC-AB12CD34", svc)
+	got, err := BuildLSServiceCheckoutURL(42, "SVC-AB12CD34", svc, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -53,14 +53,14 @@ func TestBuildLSServiceCheckoutURL_HappyPath(t *testing.T) {
 }
 
 func TestBuildLSServiceCheckoutURL_RejectsNilService(t *testing.T) {
-	if _, err := BuildLSServiceCheckoutURL(1, "ord", nil); err == nil {
+	if _, err := BuildLSServiceCheckoutURL(1, "ord", nil, ""); err == nil {
 		t.Error("expected error for nil service")
 	}
 }
 
 func TestBuildLSServiceCheckoutURL_RejectsEmptyOrderNo(t *testing.T) {
 	svc := &Service{LSVariantID: "1"}
-	if _, err := BuildLSServiceCheckoutURL(1, "", svc); err == nil {
+	if _, err := BuildLSServiceCheckoutURL(1, "", svc, ""); err == nil {
 		t.Error("expected error for empty order_no")
 	}
 }
@@ -68,7 +68,7 @@ func TestBuildLSServiceCheckoutURL_RejectsEmptyOrderNo(t *testing.T) {
 func TestBuildLSServiceCheckoutURL_DetectsMissingStoreSlug(t *testing.T) {
 	viper.Set("lemonsqueezy.store_slug", "")
 	svc := &Service{LSVariantID: "1"}
-	_, err := BuildLSServiceCheckoutURL(1, "ord", svc)
+	_, err := BuildLSServiceCheckoutURL(1, "ord", svc, "")
 	if !errors.Is(err, ErrCheckoutNotConfigured) {
 		t.Errorf("want ErrCheckoutNotConfigured, got %v", err)
 	}
@@ -79,7 +79,7 @@ func TestBuildLSServiceCheckoutURL_DetectsBadStoreSlug(t *testing.T) {
 	t.Cleanup(func() { viper.Set("lemonsqueezy.store_slug", "") })
 
 	svc := &Service{LSVariantID: "1"}
-	_, err := BuildLSServiceCheckoutURL(1, "ord", svc)
+	_, err := BuildLSServiceCheckoutURL(1, "ord", svc, "")
 	if err == nil {
 		t.Error("expected error for malformed store_slug")
 	}
@@ -90,7 +90,7 @@ func TestBuildLSServiceCheckoutURL_DetectsMissingVariantID(t *testing.T) {
 	t.Cleanup(func() { viper.Set("lemonsqueezy.store_slug", "") })
 
 	svc := &Service{Slug: "test", LSVariantID: ""}
-	_, err := BuildLSServiceCheckoutURL(1, "ord", svc)
+	_, err := BuildLSServiceCheckoutURL(1, "ord", svc, "")
 	if err == nil {
 		t.Error("expected error for empty variant_id (per-service unconfigured)")
 	}
@@ -105,7 +105,7 @@ func TestBuildLSServiceCheckoutURL_DetectsBadVariantID(t *testing.T) {
 
 	for _, bad := range []string{"abc", "0", "-1", "1.5", "foo bar"} {
 		svc := &Service{Slug: "test", LSVariantID: bad}
-		if _, err := BuildLSServiceCheckoutURL(1, "ord", svc); err == nil {
+		if _, err := BuildLSServiceCheckoutURL(1, "ord", svc, ""); err == nil {
 			t.Errorf("variant_id %q should be rejected", bad)
 		}
 	}
@@ -142,14 +142,14 @@ func TestHupijiaoSign_DeterministicAndExcludesHash(t *testing.T) {
 }
 
 func TestBuildHupijiaoQR_RejectsNilService(t *testing.T) {
-	if _, err := BuildHupijiaoQR(1, "ord", nil); err == nil {
+	if _, err := BuildHupijiaoQR(1, "ord", nil, ""); err == nil {
 		t.Error("expected error for nil service")
 	}
 }
 
 func TestBuildHupijiaoQR_RejectsZeroPrice(t *testing.T) {
 	svc := &Service{Slug: "free-thing", PriceCNYCents: 0}
-	_, err := BuildHupijiaoQR(1, "ord", svc)
+	_, err := BuildHupijiaoQR(1, "ord", svc, "")
 	if err == nil {
 		t.Error("hupijiao requires price > 0")
 	}
@@ -159,7 +159,7 @@ func TestBuildHupijiaoQR_DetectsMissingMerchantConfig(t *testing.T) {
 	viper.Set("hupijiao.merchant_id", "")
 	viper.Set("hupijiao.merchant_secret", "")
 	svc := &Service{Slug: "test", Name: "Test", PriceCNYCents: 1900}
-	_, err := BuildHupijiaoQR(1, "ord", svc)
+	_, err := BuildHupijiaoQR(1, "ord", svc, "")
 	if !errors.Is(err, ErrCheckoutNotConfigured) {
 		t.Errorf("want ErrCheckoutNotConfigured, got %v", err)
 	}
@@ -195,7 +195,7 @@ func TestBuildHupijiaoQR_HappyPath_AgainstFakeServer(t *testing.T) {
 		Name:          "单图小红书内容",
 		PriceCNYCents: 1900, // ¥19
 	}
-	got, err := BuildHupijiaoQR(42, "SVC-AB12CD34", svc)
+	got, err := BuildHupijiaoQR(42, "SVC-AB12CD34", svc, "")
 	if err != nil {
 		t.Fatalf("BuildHupijiaoQR: %v", err)
 	}
@@ -248,7 +248,7 @@ func TestBuildHupijiaoQR_HandlesUpstreamError(t *testing.T) {
 	t.Cleanup(func() { httpClient = prev })
 
 	svc := &Service{Slug: "test", Name: "Test", PriceCNYCents: 100}
-	_, err := BuildHupijiaoQR(1, "ord", svc)
+	_, err := BuildHupijiaoQR(1, "ord", svc, "")
 	if err == nil {
 		t.Fatal("expected error from upstream errcode != 0")
 	}

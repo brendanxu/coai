@@ -18,8 +18,11 @@ package service
 
 import (
 	"chat/auth"
+	"chat/commerce"
 	"chat/connection"
+	"chat/globals"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -121,6 +124,34 @@ func CreateOrderAPI(c *gin.Context) {
 		return
 	}
 
+	// PKG-2 Wave 4 D3: open a payment session for the order. Session is
+	// the bridge between checkout-time and webhook-time
+	// (commerce.ClosePaymentSession matches by session_id, CR7). All three
+	// providers benefit:
+	//   - lemonsqueezy → embed session_id in custom_data
+	//   - hupijiao     → embed in prepay metadata (best-effort; hupijiao's
+	//                    `plugins` field already carries greentokey_user_id
+	//                    so we tack on greentokey_session_id alongside)
+	//   - manual       → no provider payload to embed in; admin reconciles
+	//                    via the gtk_payment_session row (visibility win)
+	//
+	// Failure to open the session is logged + non-fatal: the order row is
+	// already authoritative, and webhook-side ClosePaymentSession tolerates
+	// missing session_id (Wave 3 C2: pre-Wave-4 fallback path).
+	session, sessErr := commerce.OpenPaymentSession(
+		connection.DB, orderNo, commerce.ProductService,
+		req.PaymentProvider, svc.PriceCNYCents, coaiUserID,
+	)
+	if sessErr != nil {
+		globals.Warn(fmt.Sprintf(
+			"service: OpenPaymentSession failed for order %s (provider=%s, user=%d): %v — proceeding without session_id",
+			orderNo, req.PaymentProvider, coaiUserID, sessErr))
+	}
+	var sessionID string
+	if session != nil {
+		sessionID = session.SessionID
+	}
+
 	// Fill checkout payload by provider. The order row is already
 	// inserted at this point — if checkout building fails, the order
 	// stays in pending_payment for manual cleanup. Better than
@@ -136,7 +167,7 @@ func CreateOrderAPI(c *gin.Context) {
 
 	switch req.PaymentProvider {
 	case "lemonsqueezy":
-		checkoutURL, err := BuildLSServiceCheckoutURL(coaiUserID, orderNo, svc)
+		checkoutURL, err := BuildLSServiceCheckoutURL(coaiUserID, orderNo, svc, sessionID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success":  false,
@@ -148,7 +179,7 @@ func CreateOrderAPI(c *gin.Context) {
 		resp["checkout_url"] = checkoutURL
 
 	case "hupijiao":
-		qr, err := BuildHupijiaoQR(coaiUserID, orderNo, svc)
+		qr, err := BuildHupijiaoQR(coaiUserID, orderNo, svc, sessionID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success":  false,
@@ -167,7 +198,10 @@ func CreateOrderAPI(c *gin.Context) {
 		// Concierge / offline settlement. tana or founder calls the
 		// customer, takes payment via wechat / bank transfer / cash,
 		// then PATCHes the order to status='paid' via the admin
-		// endpoint (not yet built — Subsystem B work).
+		// endpoint (D7 admin/mark-paid).
+		// session_id is captured in the gtk_payment_session row so admin
+		// UI / D7 reconcile workflow has visibility — no provider-side
+		// payload to embed.
 		resp["concierge"] = true
 		resp["concierge_message"] = "我们将与您联系完成付款"
 	}

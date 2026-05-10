@@ -32,7 +32,6 @@ import (
 	"chat/globals"
 	"chat/newapi"
 	"chat/plans"
-	"chat/service"
 	"context"
 	"database/sql"
 	"errors"
@@ -43,6 +42,90 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+// PKG-2 Wave 4 D3: a previous version of this test imported chat/service to
+// call service.Migrate(db). After D3 added a chat/commerce import to
+// service/router.go (CreateOrderAPI now opens a payment session at
+// checkout), Go's test compilation hit an import cycle:
+//
+//	commerce_test → chat/service → chat/commerce
+//
+// To break the cycle, the schema for gtk_agent / gtk_service /
+// gtk_service_order is now inlined here as SQLite DDL — the columns
+// match service/migration.go::migrateSQLite() at PKG-2 Wave 1 freeze
+// (status ENUM includes the two added states 'refunded_post_delivery'
+// and 'canceled_mid_flight'). If service/migration.go evolves
+// significantly, mirror the changes here.
+//
+// The driver doesn't run multi-statement scripts in a single Exec, so we
+// run each CREATE TABLE separately.
+func applyInlineServiceSchema(db *sql.DB) error {
+	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS gtk_agent (
+		  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+		  slug            TEXT    NOT NULL UNIQUE,
+		  name            TEXT    NOT NULL,
+		  description     TEXT,
+		  system_prompt   TEXT    NOT NULL,
+		  preferred_model TEXT    NOT NULL,
+		  min_tier        TEXT    NOT NULL DEFAULT 'standard'
+		                   CHECK (min_tier IN ('light','standard','premium')),
+		  inputs_schema   TEXT,
+		  status          TEXT    NOT NULL DEFAULT 'draft'
+		                   CHECK (status IN ('active','draft','retired')),
+		  version         INTEGER NOT NULL DEFAULT 1,
+		  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		  updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS gtk_service (
+		  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+		  slug                TEXT    NOT NULL UNIQUE,
+		  name                TEXT    NOT NULL,
+		  description         TEXT,
+		  category            TEXT    NOT NULL
+		                       CHECK (category IN ('diy_agent','content_pack','managed_ops')),
+		  agent_slug          TEXT    NOT NULL,
+		  price_cny_cents     INTEGER NOT NULL,
+		  included_credits    INTEGER NOT NULL DEFAULT 0,
+		  billing_type        TEXT    NOT NULL DEFAULT 'one_time'
+		                       CHECK (billing_type IN ('one_time','monthly','per_use')),
+		  status              TEXT    NOT NULL DEFAULT 'draft'
+		                       CHECK (status IN ('active','draft','retired')),
+		  ls_variant_id       TEXT,
+		  display_order       INTEGER NOT NULL DEFAULT 0,
+		  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		  updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS gtk_service_order (
+		  id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+		  order_no              TEXT    NOT NULL UNIQUE,
+		  coai_user_id          INTEGER NOT NULL,
+		  service_id            INTEGER NOT NULL,
+		  service_slug          TEXT    NOT NULL,
+		  price_cny_cents_paid  INTEGER NOT NULL,
+		  credits_granted       INTEGER NOT NULL DEFAULT 0,
+		  payment_provider      TEXT    NOT NULL
+		                         CHECK (payment_provider IN ('lemonsqueezy','hupijiao','manual')),
+		  ls_order_id           TEXT    UNIQUE,
+		  hupijiao_trade_no     TEXT,
+		  subscription_id       INTEGER,
+		  status                TEXT    NOT NULL DEFAULT 'pending_payment'
+		                         CHECK (status IN ('pending_payment','paid','running','completed','refunded','failed','refunded_post_delivery','canceled_mid_flight')),
+		  paid_at               DATETIME,
+		  completed_at          DATETIME,
+		  agent_run_id          TEXT,
+		  refund_reason         TEXT,
+		  created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		  updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+	}
+	for _, stmt := range stmts {
+		if _, err := db.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // ----------------------------------------------------------------------
 // Test fixtures
@@ -86,10 +169,11 @@ func newSqliteEntitlementDB(t *testing.T) *sql.DB {
 		t.Fatalf("seed auth rows: %v", err)
 	}
 
-	// service.Migrate first (it creates gtk_agent / gtk_service /
-	// gtk_service_order — gtk_plan in plans.Migrate may FK to gtk_service).
-	if err := service.Migrate(db); err != nil {
-		t.Fatalf("service.Migrate: %v", err)
+	// Inline service schema (was service.Migrate before PKG-2 Wave 4 D3
+	// added the chat/commerce → chat/service → chat/commerce import
+	// cycle). See applyInlineServiceSchema header for context.
+	if err := applyInlineServiceSchema(db); err != nil {
+		t.Fatalf("applyInlineServiceSchema: %v", err)
 	}
 	if err := plans.Migrate(db); err != nil {
 		t.Fatalf("plans.Migrate: %v", err)

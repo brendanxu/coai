@@ -2,11 +2,14 @@ package payment
 
 import (
 	"chat/auth"
+	"chat/commerce"
+	"chat/globals"
 	"chat/utils"
 	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -49,7 +52,46 @@ func CheckoutAPI(c *gin.Context) {
 	db := utils.GetDBFromContext(c)
 	userID := user.GetID(db)
 
-	checkoutURL, err := buildCheckoutURL(userID)
+	// PKG-2 Wave 4 D2: open a payment session BEFORE building the URL so
+	// we can embed session_id in LS custom_data. Webhook dispatch
+	// (dispatch_token.go via Wave 3 C1 + commerce.ClosePaymentSession in
+	// Wave 2 B1) matches inbound by session_id (CR7) — this is the only
+	// key both ends control at checkout time, since the LS subscription_id
+	// only exists post-payment.
+	//
+	// Synthetic order_no for token plans: gtk_user_plan doesn't have a row
+	// yet (the webhook creates it). Per Wave 4 D2 spec, we mint a placeholder
+	// "ls_pending_<user>_<ts>" so the session row is internally consistent;
+	// reconciliation happens on session_id, not order_no.
+	syntheticOrderNo := fmt.Sprintf("ls_pending_%d_%d", userID, time.Now().Unix())
+
+	// Token-plan checkout amount: derive from the configured variant price.
+	// At v0 we don't have per-checkout amount in viper; use the
+	// quotaUnitsForLevel × creditsForLevel-derived USD price implied by
+	// levelStarter (¥99 ≈ $15) as the documented placeholder. Actual
+	// authority for amount remains the LS webhook payload — this is purely
+	// the audit field on gtk_payment_session.
+	const placeholderAmountCents int64 = 1500 // $15.00 starter
+
+	session, sessErr := commerce.OpenPaymentSession(
+		db, syntheticOrderNo, commerce.ProductToken,
+		"lemonsqueezy", placeholderAmountCents, userID,
+	)
+	if sessErr != nil {
+		// Don't break the user's checkout flow on a session-row insert
+		// failure. Log + proceed without session_id; the webhook layer
+		// already tolerates absent session_id (Wave 3 C1: "pre-Wave-4
+		// checkout; ClosePaymentSession skipped").
+		logf(globals.Warn, "checkout_session_open_failed",
+			"user_id", userID, "error", sessErr)
+	}
+
+	var sessionID string
+	if session != nil {
+		sessionID = session.SessionID
+	}
+
+	checkoutURL, err := buildCheckoutURL(userID, sessionID)
 	if err != nil {
 		c.JSON(500, gin.H{"status": false, "error": err.Error()})
 		return
@@ -65,7 +107,12 @@ func CheckoutAPI(c *gin.Context) {
 // so it survives all the way through to the webhook payload's
 // `meta.custom_data.user_id`. That's how the webhook handler links a payment
 // back to the greentokey user.
-func buildCheckoutURL(userID int64) (string, error) {
+//
+// PKG-2 Wave 4 D2: also embeds greentokey_session_id (when non-empty) so
+// the inbound webhook can call commerce.ClosePaymentSession. Empty
+// sessionID is tolerated — the webhook layer logs + skips the close
+// (pre-Wave-4 contract).
+func buildCheckoutURL(userID int64, sessionID string) (string, error) {
 	slug := viper.GetString("lemonsqueezy.store_slug")
 	variantID := viper.GetString("lemonsqueezy.variant_id")
 	if slug == "" {
@@ -83,6 +130,9 @@ func buildCheckoutURL(userID int64) (string, error) {
 
 	params := url.Values{}
 	params.Set("checkout[custom][user_id]", fmt.Sprintf("%d", userID))
+	if sessionID != "" {
+		params.Set("checkout[custom][greentokey_session_id]", sessionID)
+	}
 
 	return fmt.Sprintf("https://%s.lemonsqueezy.com/buy/%s?%s",
 		slug, variantID, params.Encode()), nil
