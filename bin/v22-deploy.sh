@@ -101,11 +101,17 @@ case "$step" in
     ;;
 
   smoke)
-    echo "==> 1. /token-plans HTML 200 + new CTA text present"
-    if curl -sf https://api.greentokey.com/token-plans | grep -qE "微信 / 支付宝|WeChat / Alipay"; then
-      echo "✅ /token-plans renders new dual-rail CTA"
+    echo "==> 1. /token-plans HTML 200 + JS bundle contains new CTA i18n keys"
+    # SPA: curl returns HTML shell + <div id=root>; CTA text only renders
+    # after JS hydrates. So we grep the JS bundle directly for our i18n
+    # key (preserved verbatim through vite minification) instead of the
+    # rendered text. False-negative previously due to grep on raw HTML.
+    if ssh "$VPS_HOST" "grep -lq 'token.plan.cta.cny\\|token.plan.cta.usd' /opt/greentokey/coai-source/app/dist/assets/*.js" 2>/dev/null; then
+      echo "✅ /token-plans bundle contains dual-rail CTA i18n keys"
     else
-      echo "❌ /token-plans missing new CTA text — check coai container"
+      # Fallback: HTML still 200 means SPA shell serves; check that at least.
+      code=$(curl -s -o /dev/null -w "%{http_code}" https://api.greentokey.com/token-plans)
+      echo "⚠ JS-bundle grep failed; HTML shell HTTP=$code (200 = SPA loads, manual browser-check needed)"
     fi
 
     echo ""
@@ -119,9 +125,18 @@ case "$step" in
     echo "    HTTP $code (200 with 'login required' envelope OK; 404 = endpoint not wired)"
 
     echo ""
-    echo "==> 4. Hupijiao callback still public (POST without sig → 401)"
+    echo "==> 4. Hupijiao callback handler reachable (POST without sig → 401 OR 500-not-configured)"
+    # Two valid responses depending on whether hupijiao.merchant_secret is set:
+    #   401: secret IS configured + signature mismatch (post-merchant-signup)
+    #   500: secret NOT configured + handler refuses callback (pre-merchant-signup, current state)
+    # 404 here would mean route not registered = real problem.
     code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.greentokey.com/api/gtk/v1/service/hupijiao-callback")
-    echo "    HTTP $code (401 expected — signature missing)"
+    case "$code" in
+      401) echo "    HTTP 401 ✅ (merchant configured + signature missing — expected)" ;;
+      500) echo "    HTTP 500 ✅ (merchant not configured yet — expected pre-signup)" ;;
+      404) echo "    HTTP 404 ❌ route not registered — service/router.go drift?" ;;
+      *)   echo "    HTTP $code ⚠ unexpected, eyeball the response body" ;;
+    esac
 
     echo ""
     echo "==> 5. /api/gtk/v1/services + /api/gtk/v1/pool sanity"
