@@ -80,6 +80,87 @@ func Migrate(db *sql.DB) error {
 	if err := seedBillingConfig(db); err != nil {
 		return fmt.Errorf("seed gtk_billing_config: %w", err)
 	}
+	if err := seedTokenPlans(db); err != nil {
+		return fmt.Errorf("seed gtk_plan token plans: %w", err)
+	}
+	return nil
+}
+
+// tokenPlanSeed lists the public token-product plans shipped with v0.22
+// (token-distribution self-serve launch). Operations adds new plans by
+// INSERT into gtk_plan directly — never UPDATE these seed rows in place,
+// because gtk_user_plan rows reference plan_id and historical billing
+// must replay against the price that was effective at purchase time.
+//
+// Idempotent: only inserted when no row with matching code exists, so
+// re-boot is a no-op and ops-side INSERTs (with code != these) survive.
+//
+// PriceCents stored in CNY (¥99 = 9900). LemonSqueezy variant maps the
+// USD price separately (¥99 ≈ $14 — close-enough single-tier alignment).
+// Mainland customers pay CNY via hupijiao; overseas pay USD via LS.
+var tokenPlanSeed = []struct {
+	code         string
+	name         string
+	planType     string // legacy 'subscription' or 'pack'
+	productType  string // L23 'token' or 'service'
+	billingMode  string // 'subscription' / 'one_time' / 'top_up' / 'manual'
+	priceCents   int64  // in CNY 分
+	durationDays int64
+	quotaGrant   int64
+	quotaConfig  string // raw JSON; consumed by auth.RedeemPlanForOrder
+}{
+	{
+		code:         "token-99",
+		name:         "Token 套餐 ¥99/月",
+		planType:     "subscription",
+		productType:  "token",
+		billingMode:  "subscription",
+		priceCents:   9900,
+		durationDays: 30,
+		quotaGrant:   5000,
+		quotaConfig:  `{"quota":5000,"reset":"monthly"}`,
+	},
+}
+
+// seedTokenPlans inserts the v0.22 launch token-plan catalog. Idempotent
+// per-row: skips when gtk_plan.code already exists. Engines diverge on
+// JSON column handling (MySQL JSON vs SQLite TEXT) but the parametrised
+// INSERT is portable as-is — driver translates ? bind to native type.
+//
+// SQLite path is skipped: ~10 test files across commerce/service/usage
+// hardcode INSERT INTO gtk_plan (id, ...) VALUES (1, ...) and would
+// collide with this seed's auto-id. Production uses MySQL exclusively
+// so the seed runs on real boot; tests opt into a token-99 row via
+// their own INSERT when they need one. Trade-off: this seed is exercised
+// only in prod boot (and in a planned docker-mysql migration drill, not
+// SQLite unit tests).
+func seedTokenPlans(db *sql.DB) error {
+	if globals.SqliteEngine {
+		return nil
+	}
+	for _, p := range tokenPlanSeed {
+		var count int
+		row := globals.QueryRowDb(db,
+			`SELECT COUNT(*) FROM gtk_plan WHERE code = ?`, p.code)
+		if err := row.Scan(&count); err != nil {
+			return fmt.Errorf("count gtk_plan code=%q: %w", p.code, err)
+		}
+		if count > 0 {
+			continue
+		}
+		// SQLite branch lacks the auto-default columns the MySQL ENUMs
+		// provide via DEFAULT clauses on alter, so write all columns
+		// explicitly. is_active defaults TRUE on both.
+		if _, err := globals.ExecDb(db, `
+			INSERT INTO gtk_plan
+			  (code, name, type, product_type, billing_mode,
+			   price_cents, duration_days, quota_grant, quota_config, is_active)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+		`, p.code, p.name, p.planType, p.productType, p.billingMode,
+			p.priceCents, p.durationDays, p.quotaGrant, p.quotaConfig); err != nil {
+			return fmt.Errorf("insert gtk_plan code=%q: %w", p.code, err)
+		}
+	}
 	return nil
 }
 
