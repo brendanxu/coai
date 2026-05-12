@@ -30,8 +30,8 @@ set -euo pipefail
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VPS_HOST="greentokey"  # ssh alias (~/.ssh/config)
 VPS_PATH="/opt/greentokey/coai-source"
-PREV_TAG="v1.0.0-cache-billing-ux"
-NEW_TAG="v0.22.0-token-launch"
+PREV_TAG="v0.22.0-token-launch"
+NEW_TAG="v0.22.1-bl01-hotfix"
 COMPOSE_FILE="/opt/greentokey/docker-compose.yml"
 
 step="${1:-help}"
