@@ -1975,8 +1975,24 @@
         "4": "Light/Standard/Premium 分档:DeepSeek/Qwen 0.5×,Claude-haiku 1×,GPT-4o/Sonnet 3×",
         "5": "Dashboard 实时余额 · 用量明细 · 模型分布"
       },
-      "cta": "联系开通",
-      "disclaimer": "首批客户 1:1 陪跑 · 微信支付 / 支付宝 / 银行转账均可 · LemonSqueezy 信用卡支付即将上线"
+      "cta": {
+        "cny": "微信 / 支付宝 ¥99 立即开通",
+        "cny-loading": "正在打开微信/支付宝…",
+        "usd": "信用卡支付 · USD $14",
+        "usd-loading": "正在跳转 LemonSqueezy…",
+        "enterprise": "或联系销售 · 企业 / 团队 / 量大客户"
+      },
+      "disclaimer-v2": "境内 微信/支付宝 即时到账 · 境外卡 LemonSqueezy MoR 自动开通 · 5,000 credits/月",
+      "qr": {
+        "title": "扫码支付 ¥99",
+        "subtitle": "用手机微信 / 支付宝扫码,支付完成后会自动开通账户",
+        "fallback": "在新窗口打开支付链接",
+        "close": "关闭"
+      },
+      "error": {
+        "checkout-failed": "Checkout 创建失败,请重试或联系销售",
+        "network": "网络异常,请检查网络后重试"
+      }
     },
     "why": {
       "one": {

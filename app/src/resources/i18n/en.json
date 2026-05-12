@@ -1892,8 +1892,24 @@
         "4": "Light/Standard/Premium tiers: DeepSeek/Qwen 0.5×, Claude-haiku 1×, GPT-4o/Sonnet 3×",
         "5": "Dashboard with live balance · usage breakdown · model distribution"
       },
-      "cta": "Contact to activate",
-      "disclaimer": "Early customers get 1:1 onboarding · WeChat Pay / Alipay / Bank Transfer all accepted · LemonSqueezy card checkout coming soon"
+      "cta": {
+        "cny": "WeChat / Alipay ¥99 — Activate now",
+        "cny-loading": "Opening WeChat / Alipay…",
+        "usd": "Pay with Card · USD $14",
+        "usd-loading": "Opening LemonSqueezy…",
+        "enterprise": "Or contact sales · Enterprise / Team / Volume"
+      },
+      "disclaimer-v2": "Mainland WeChat / Alipay — instant · Overseas card via LemonSqueezy MoR · 5,000 credits/month",
+      "qr": {
+        "title": "Scan to pay ¥99",
+        "subtitle": "Scan with WeChat or Alipay on your phone — account activates automatically after payment",
+        "fallback": "Open payment link in new window",
+        "close": "Close"
+      },
+      "error": {
+        "checkout-failed": "Checkout creation failed — please retry or contact sales",
+        "network": "Network error — please check your connection and retry"
+      }
     },
     "why": {
       "one": {
