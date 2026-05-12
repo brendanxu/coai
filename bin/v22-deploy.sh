@@ -37,6 +37,134 @@ COMPOSE_FILE="/opt/greentokey/docker-compose.yml"
 step="${1:-help}"
 
 case "$step" in
+  preflight)
+    # Layer 1B (REVIEW.md follow-up 2026-05-13): defends against
+    # "introduce-and-forget" bug pattern (HI-01 + HI-02 root cause).
+    # If a recent commit introduces a new query-param / custom_data key
+    # / attach segment, mechanically grep for ≥1 consumer. Zero hits =
+    # likely forgot to wire upstream — block deploy.
+    #
+    # Run automatically as part of `preview-review`; can also be run
+    # standalone via `bin/v22-deploy.sh preflight`.
+    echo "==> Preflight: cross-grep recent protocol-field introductions"
+    fail=0
+
+    # Patterns added between $PREV_TAG and HEAD that introduce upstream
+    # contracts (query params, custom_data keys, attach segments).
+    # For each, the producer code MUST have ≥1 consumer in the repo.
+    declare -A patterns=(
+      ["?next="]="getQueryParam[[:space:]]*\\(\"next\""
+      ["custom_data\\[type\\]=plan"]="custom_data.*type.*==.*\"plan\"|planCodeFromCustomData"
+      ["attach=plan:"]="HasPrefix\\(attach, \"plan:\"\\)"
+      ["greentokey_session_id"]="sessionIDFromCustomData|greentokey_session_id"
+    )
+
+    for producer in "${!patterns[@]}"; do
+      consumer="${patterns[$producer]}"
+      # Producer exists somewhere in repo (grep -rl, exclude vendored)
+      producer_hit=$(grep -rln --include='*.go' --include='*.tsx' --include='*.ts' \
+        --exclude-dir='node_modules' --exclude-dir='dist' --exclude-dir='.git' \
+        -F "$producer" "$SRC_DIR" 2>/dev/null | head -3)
+
+      if [ -z "$producer_hit" ]; then
+        # Producer doesn't appear in repo → not introduced, skip
+        continue
+      fi
+
+      # Producer exists → consumer regex must also have ≥1 hit
+      consumer_hit=$(grep -rlE --include='*.go' --include='*.tsx' --include='*.ts' \
+        --exclude-dir='node_modules' --exclude-dir='dist' --exclude-dir='.git' \
+        "$consumer" "$SRC_DIR" 2>/dev/null | head -3)
+
+      if [ -z "$consumer_hit" ]; then
+        echo "❌ INTRODUCE-AND-FORGET: '$producer' produced but no consumer matching /$consumer/"
+        echo "   Producer found in:"
+        echo "$producer_hit" | sed 's/^/     /'
+        echo "   → Wire the consumer or remove the producer before deploy."
+        fail=1
+      fi
+    done
+
+    if [ $fail -eq 0 ]; then
+      echo "✅ Preflight clean — all introduced protocol fields have consumers"
+    else
+      echo ""
+      echo "Preflight FAILED. Fix the issues above or use --skip-preflight to override."
+      exit 1
+    fi
+    ;;
+
+  preview-review)
+    # Layer 1A (REVIEW.md follow-up 2026-05-13): physically prevents
+    # ship-then-review pattern that left BL-01 in v0.22.0 for 6 hours.
+    # Before any rsync, list changed Go/TS files since PREV_TAG and
+    # spawn gsd-code-reviewer agent. If BLOCKING findings, exit 1.
+    #
+    # This is the gate. The recommended pre-deploy flow becomes:
+    #   bin/v22-deploy.sh preflight        # cross-grep defender
+    #   bin/v22-deploy.sh preview-review   # auto-review on changed files
+    #   bin/v22-deploy.sh rsync            # only if first two pass
+    echo "==> Listing files changed since $PREV_TAG"
+    # Resolve PREV_TAG to a commit (it may not exist as a git tag yet;
+    # fall back to comparing against origin/main).
+    if git rev-parse --verify "$PREV_TAG" >/dev/null 2>&1; then
+      base="$PREV_TAG"
+    elif git rev-parse --verify origin/main >/dev/null 2>&1; then
+      base="origin/main"
+    else
+      echo "❌ No comparison base found ($PREV_TAG or origin/main)"
+      exit 1
+    fi
+
+    changed=$(git -C "$SRC_DIR" diff --name-only "$base"..HEAD \
+      -- '*.go' '*.tsx' '*.ts' 'go.mod' 'go.sum' 2>/dev/null \
+      | grep -v '_test\\.' | head -25)
+
+    if [ -z "$changed" ]; then
+      echo "ℹ No reviewable code changes since $base — skipping review"
+      exit 0
+    fi
+
+    echo ""
+    echo "Changed files (will be sent to gsd-code-reviewer):"
+    echo "$changed" | sed 's/^/  /'
+    echo ""
+    echo "==> Spawning gsd-code-reviewer (this takes 2-5 minutes)"
+    echo ""
+    echo "MANUAL STEP REQUIRED: Until we have an agent-cli adapter,"
+    echo "this step prints the briefing for you to paste into Claude/Codex."
+    echo ""
+    echo "─────────────────── BRIEFING ───────────────────"
+    cat <<BRIEF
+You are reviewing pre-deploy changes for v0.23+ on the greentokey CoAI
+fork. Working dir: $SRC_DIR
+
+Files changed since $base:
+$(echo "$changed" | sed 's/^/  /')
+
+Per docs/codex-reviews/18-token-sale-code-review.md standards:
+- BLOCKING = ship-blocker (money loss, security, panic, data corruption)
+- HIGH = fix before scale
+- MEDIUM/LOW = defer per founder protect-good-code rule
+
+Output severity-classified findings to STDOUT, NO file writes.
+If ANY BLOCKING found → exit 1 in your wrapper.
+
+Run review now. Return the verdict line as the final output:
+  VERDICT: GREEN  (0 blocking, deploy approved)
+  VERDICT: YELLOW (HIGH only, deploy at founder discretion)
+  VERDICT: RED    (BLOCKING present, abort deploy)
+BRIEF
+    echo "─────────────────── END BRIEFING ───────────────────"
+    echo ""
+    echo "After review returns, run:"
+    echo "  bin/v22-deploy.sh rsync  (if VERDICT: GREEN or YELLOW + founder GO)"
+    echo "  bin/v22-deploy.sh rollback  (if VERDICT: RED + already deployed)"
+    echo ""
+    echo "TODO: replace manual paste with claude-cli adapter once the orchestrator"
+    echo "      supports headless agent invocation from shell."
+    ;;
+
   rsync)
     echo "==> 1. Backup current VPS coai-source/ (rollback safety)"
     ssh "$VPS_HOST" "sudo cp -a $VPS_PATH ${VPS_PATH}.bak.v1.0.$(date +%H%M)" \
