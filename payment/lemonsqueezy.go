@@ -2,6 +2,7 @@ package payment
 
 import (
 	"chat/auth"
+	"chat/commerce"
 	"chat/globals"
 	"chat/utils"
 	"crypto/hmac"
@@ -404,11 +405,33 @@ func dispatch(db *sql.DB, p *webhookPayload) error {
 		if err != nil {
 			return fmt.Errorf("ls webhook: plan custom_data user_id: %w", err)
 		}
+		// BL-01 (REVIEW.md 2026-05-13): LS fires 2-3 events per first-month
+		// subscription purchase (order_created + subscription_created +
+		// subscription_payment_success), each with a different data.id. If
+		// we redeem on all three, RedeemPlanForOrder's order_id-keyed
+		// idempotency does NOT dedup → triple credit grant. We redeem on
+		// order_created only (which fires for every renewal cycle too, so
+		// month-N → new gtk_user_plan row semantics are preserved). The
+		// other two events ack with a log.
 		switch p.Meta.EventName {
-		case eventOrderCreated, eventCreated, eventSubPayment:
+		case eventOrderCreated:
 			if err := auth.RedeemPlanForOrder(db, userID, planCode, p.Data.ID); err != nil {
 				return fmt.Errorf("ls webhook: redeem plan: %w", err)
 			}
+			// HI-01 (REVIEW.md 2026-05-13): close the payment session row
+			// opened at checkout time so the commerce ledger matches the
+			// entitlement ledger. Best-effort — failure here is a
+			// reconciliation-drift warning, not a user-facing error.
+			if sessionID := sessionIDFromCustomData(p.Meta.CustomData); sessionID != "" {
+				if err := commerce.ClosePaymentSession(db, sessionID); err != nil {
+					logf(globals.Warn, "plan_session_close_failed",
+						"session_id", sessionID, "ls_id", p.Data.ID, "error", err)
+				}
+			}
+			return nil
+		case eventCreated, eventSubPayment:
+			logf(globals.Info, "plan_sibling_event_acked_without_redeem",
+				"event", p.Meta.EventName, "plan_code", planCode, "ls_id", p.Data.ID)
 			return nil
 		default:
 			logf(globals.Info, "plan_event_acked_without_redeem",

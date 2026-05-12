@@ -344,6 +344,82 @@ func TestHandleWebhook_PlanCustomDataRedeemsQuota(t *testing.T) {
 	}
 }
 
+// BL-01 (REVIEW.md 2026-05-13): LS fires 2-3 events per first-month
+// subscription purchase, all carrying the same custom_data. Before the fix,
+// the dispatcher accepted all three event names → 3 RedeemPlanForOrder calls
+// with 3 different data.id values → triple credit grant (15,000 instead of
+// 5,000). After the fix, only `order_created` redeems; sibling events ack
+// with a log and create no rows.
+//
+// These two tests pin that behavior. Together with the existing
+// TestHandleWebhook_PlanCustomDataRedeemsQuota (order_created → 1 row),
+// they cover all three plan-bearing event shapes LS produces.
+func TestHandleWebhook_PlanCustomData_SubscriptionCreatedDoesNotRedeem(t *testing.T) {
+	r, db := newTestEngine(t)
+	seedPlanRechargeTables(t, db)
+
+	secret := "test-webhook-secret"
+	viper.Set("lemonsqueezy.webhook_secret", secret)
+	t.Cleanup(func() { viper.Set("lemonsqueezy.webhook_secret", "") })
+
+	body := samplePlanPayload("subscription_created")
+	req := httptest.NewRequest("POST", "/webhook/lemonsqueezy", bytes.NewReader(body))
+	req.Header.Set("X-Signature", computeHMAC(body, secret))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != 200 {
+		t.Fatalf("got %d want 200 (sibling event must ack); body=%s", w.Code, w.Body.String())
+	}
+
+	// Critical assertion: NO gtk_user_plan row created — this event must NOT redeem.
+	var planRows int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM gtk_user_plan`).Scan(&planRows); err != nil {
+		t.Fatalf("count gtk_user_plan: %v", err)
+	}
+	if planRows != 0 {
+		t.Fatalf("subscription_created plan event must NOT create gtk_user_plan; got %d rows", planRows)
+	}
+
+	// And no quota mutation either.
+	var quotaRows int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM quota WHERE user_id = 42`).Scan(&quotaRows); err != nil {
+		t.Fatalf("count quota: %v", err)
+	}
+	if quotaRows != 0 {
+		t.Fatalf("subscription_created plan event must NOT touch quota; got %d rows", quotaRows)
+	}
+}
+
+func TestHandleWebhook_PlanCustomData_SubscriptionPaymentSuccessDoesNotRedeem(t *testing.T) {
+	r, db := newTestEngine(t)
+	seedPlanRechargeTables(t, db)
+
+	secret := "test-webhook-secret"
+	viper.Set("lemonsqueezy.webhook_secret", secret)
+	t.Cleanup(func() { viper.Set("lemonsqueezy.webhook_secret", "") })
+
+	body := samplePlanPayload("subscription_payment_success")
+	req := httptest.NewRequest("POST", "/webhook/lemonsqueezy", bytes.NewReader(body))
+	req.Header.Set("X-Signature", computeHMAC(body, secret))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != 200 {
+		t.Fatalf("got %d want 200 (sibling event must ack); body=%s", w.Code, w.Body.String())
+	}
+
+	var planRows int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM gtk_user_plan`).Scan(&planRows); err != nil {
+		t.Fatalf("count gtk_user_plan: %v", err)
+	}
+	if planRows != 0 {
+		t.Fatalf("subscription_payment_success plan event must NOT create gtk_user_plan; got %d rows", planRows)
+	}
+}
+
 func TestHandleWebhook_BadSignature_Returns401(t *testing.T) {
 	r, _ := newTestEngine(t)
 	viper.Set("lemonsqueezy.webhook_secret", "real-secret")
