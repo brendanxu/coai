@@ -186,9 +186,12 @@ func TestHandleTokenPlanEvent_RefundFull(t *testing.T) {
 	// Seed a gtk_user_plan row (active) for order_id="ls-tok-refund". The
 	// commerce.RevokeEntitlement(token) path reads this table and flips
 	// status='canceled' + cancellation_reason='refund_full'.
+	// Use id=999 to avoid colliding with seedTokenPlans (which auto-inserts
+	// 'token-99' at migration time and gets id=1). Test plan code stays
+	// 'starter' since RefundTokenPlan reads plan_id, not code.
 	if _, err := globals.ExecDb(db, `
 		INSERT INTO gtk_plan (id, code, name, type, price_cents, duration_days)
-		VALUES (1, 'starter', 'Starter', 'subscription', 1500, 30)
+		VALUES (999, 'starter', 'Starter', 'subscription', 1500, 30)
 	`); err != nil {
 		t.Fatalf("seed gtk_plan: %v", err)
 	}
@@ -196,7 +199,7 @@ func TestHandleTokenPlanEvent_RefundFull(t *testing.T) {
 		INSERT INTO gtk_user_plan
 		  (user_id, plan_id, product_type, status, cancellation_reason,
 		   expire_at, order_id)
-		VALUES (?, 1, 'token', 'active', NULL, ?, ?)
+		VALUES (?, 999, 'token', 'active', NULL, ?, ?)
 	`, 42, time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC), "ls-tok-refund"); err != nil {
 		t.Fatalf("seed gtk_user_plan: %v", err)
 	}
