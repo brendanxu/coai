@@ -1,0 +1,112 @@
+name: greentokey CI (test + lint)
+
+# Runs full test sweep + tsc + build on every push to feat/* and main.
+# Complements the existing app.yaml workflow which only builds artifacts —
+# this one enforces correctness gates.
+#
+# Designed to be PR-blocking: if go test / tsc fails, merge is blocked.
+# Configure branch protection rules in GitHub settings to enforce.
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'feat/**'
+      - 'fix/**'
+      - 'chore/**'
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+  go-test:
+    runs-on: ubuntu-latest
+    name: Go test + vet
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Install libwebp deps (transitive via image-decoder)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libwebp-dev
+
+      - name: go vet
+        run: go vet ./... 2>&1 | grep -v -E "warning|libwebp|note:" || true
+
+      - name: go test
+        run: |
+          go test ./... -count=1 -vet=off -timeout 5m 2>&1 \
+            | tee /tmp/test.out \
+            | grep -E "^FAIL|^ok |^--- FAIL" \
+            | head -50
+          # Fail the job if any package FAILed
+          if grep -q "^FAIL\b" /tmp/test.out; then
+            echo "❌ Test failures detected — see above"
+            exit 1
+          fi
+
+  frontend-check:
+    runs-on: ubuntu-latest
+    name: Frontend tsc + build + vitest (if present)
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store dir
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('app/pnpm-lock.yaml') }}
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: tsc --noEmit
+        run: pnpm exec tsc --noEmit
+
+      - name: vitest (if configured)
+        run: |
+          if [ -f vitest.config.ts ] || [ -f vitest.config.js ]; then
+            pnpm test --run --reporter=default
+          else
+            echo "vitest not configured yet; skipping"
+          fi
+
+      - name: build
+        run: pnpm run build
+
+  gitleaks-scan:
+    runs-on: ubuntu-latest
+    name: gitleaks (secret scan)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true   # Don't block — escalate via PR review
