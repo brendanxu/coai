@@ -16,6 +16,7 @@ package service
 
 import (
 	"chat/auth"
+	"chat/commerce"
 	"chat/connection"
 	"chat/globals"
 	"crypto/md5"
@@ -236,8 +237,14 @@ func HupijiaoCallbackAPI(c *gin.Context) {
 	}
 
 	if attach := params["attach"]; strings.HasPrefix(attach, "plan:") {
+		// Accept either of two formats:
+		//   plan:CODE:user:ID                  (4 parts — legacy / no-session)
+		//   plan:CODE:user:ID:session:SESSID   (6 parts — with payment session for HI-01 close)
+		// payment/hupijiao_checkout.go::buildHupijiaoCheckoutForPlan emits the
+		// 6-part form when commerce.OpenPaymentSession succeeded at checkout.
 		parts := strings.Split(attach, ":")
-		if len(parts) == 4 && parts[2] == "user" {
+		validShape := (len(parts) == 4 || len(parts) == 6) && parts[2] == "user"
+		if validShape {
 			planCode := parts[1]
 			userID, parseErr := strconv.ParseInt(parts[3], 10, 64)
 			hupijiaoTxID := params["transaction_id"]
@@ -249,6 +256,15 @@ func HupijiaoCallbackAPI(c *gin.Context) {
 					globals.Warn(fmt.Sprintf("service: hupijiao redeem failed: %v", err))
 					c.String(http.StatusInternalServerError, "fail")
 					return
+				}
+				// HI-01 (REVIEW.md 2026-05-13): close the payment session row
+				// opened at checkout time so commerce ledger stays in sync
+				// with the entitlement ledger. Best-effort — drift here only
+				// shows up as a false-positive in monitoring.
+				if len(parts) == 6 && parts[4] == "session" && parts[5] != "" {
+					if err := commerce.ClosePaymentSession(connection.DB, parts[5]); err != nil {
+						globals.Warn(fmt.Sprintf("service: hupijiao close session failed: %v", err))
+					}
 				}
 				c.String(http.StatusOK, "success")
 				return
