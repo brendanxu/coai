@@ -4,16 +4,16 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import {
   ArrowRight,
-  BadgeCheck,
   Check,
   Code2,
-  Gauge,
+  Copy,
   Key,
   Network,
-  RefreshCcw,
-  ShieldCheck,
+  Shield,
   Wallet,
+  Zap,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
 import Header from "@/components/Marketing/Header.tsx";
@@ -23,49 +23,41 @@ import ContactDialog from "@/components/Marketing/ContactDialog.tsx";
 /**
  * /token-plans — Token 套餐 dedicated product page.
  *
- * Distinct from /services (service marketplace tiles). Token 套餐 = the
- * raw-compute axis of greentokey: one OpenAI-compatible Key into a pool
- * of GPT/Claude/DeepSeek/Qwen, billed in credits.
+ * v0.23 (2026-05-13) section reorder + content additions per cross-AI
+ * review (tana 5-站对标 + Codex 4-agent 中文 reseller 研究, surfaced
+ * docs/codex-reviews/18-token-sale-code-review.md and the agents
+ * synthesis). Old order was hero → pricing → pool → code → tier →
+ * why → faq → trust. New order surfaces buy-decision info first
+ * (matches CN reseller cognitive priority: 价/迁移/对比/风险),
+ * defers brand narrative below the fold.
  *
- * v0.17 redesign rationale: previous version was a single ¥99 card and
- * read like one item from /services. Founder feedback (2026-05-09): need
- * a real product page with live pool + code sample + tier multiplier
- * breakdown so visitors immediately see this is infrastructure, not a
- * service offering.
+ * NEW order:
+ *   1. Hero (with 5-fact scan strip)
+ *   2. Pricing card (with small free-trial concierge link)
+ *   3. Quick Start (3-tab code: OpenAI SDK / Claude Code / curl)
+ *   4. vs DIY (6-row decision-clarification table)
+ *   5. Live pool snapshot (was 3 — moved below decision section)
+ *   6. Tier multiplier (was 5)
+ *   7. Why us 3 cards (was 6)
+ *   8. FAQ (was 7)
+ *   9. Trust 反驳 (was 8 — expanded from 4 items to 6)
  *
- * Sections:
- *   1. Hero — eyebrow + 2-line headline + sub
- *   2. Pricing card — ¥99 standard plan + features + CTA
- *   3. Live pool snapshot — /api/gtk/v1/pool (top 8 models + latency)
- *   4. Code sample — OpenAI SDK switching just the model field
- *   5. Tier multiplier strip — Light 0.5×, Standard 1×, Premium 3×
- *   6. Why 3 cards — one Key / credit abstraction / pool routing
- *   7. FAQ — billing / sub2API / privacy / cancellation
- *   8. Trust strip — concierge + transparent pricing + zero retention
+ * CHECKOUT FLOW unchanged from v0.22 — dual rail self-serve:
+ *   USD card → /api/payment/checkout?plan_code=token-99 (LemonSqueezy)
+ *   微信/支付宝 → /api/payment/hupijiao/checkout?plan_code=token-99
  *
- * Checkout flow (v0.22, 2026-05-12): self-serve dual rail.
- *   USD card → GET /api/payment/checkout?plan_code=token-99 (LemonSqueezy)
- *   微信/支付宝 → GET /api/payment/hupijiao/checkout?plan_code=token-99 (虎皮椒)
- * Both webhooks route to auth.RedeemPlanForOrder which atomically creates
- * gtk_user_plan + grants the 5,000 credits/month quota. ContactDialog
- * remains as a secondary "联系销售" link for enterprise / volume inquiries.
- * Supersedes memory/ls-variants-deferred.md (Token-product launch tonight).
+ * Both webhooks land in auth.RedeemPlanForOrder which atomically
+ * creates gtk_user_plan + grants 5,000 credits/month quota. v0.22.1
+ * BL-01 hotfix narrowed LS dispatch to order_created event only.
+ *
+ * STRICT NO-灰色文案 (per Codex agent 2 + L23 architecture review):
+ * never write 无限制 / 账号池 / 反代 / 封号兜底 / 官方同质 / 全网最低.
+ * Use 多线路 / 限速透明 / 失败重试 / 可用性监控 / OpenAI-compatible /
+ * 性价比优 instead.
  */
+
 const TOKEN_PLAN_CODE = "token-99";
 
-type HupijiaoCheckoutResp = {
-  status: boolean;
-  code_url?: string;
-  qr_png_url?: string;
-  trade_no?: string;
-  error?: string;
-};
-
-type LSCheckoutResp = {
-  status: boolean;
-  url?: string;
-  error?: string;
-};
 type PoolModel = {
   model: string;
   provider_label: string;
@@ -82,17 +74,34 @@ type PoolSnapshot = {
   models: PoolModel[];
 };
 
+type HupijiaoCheckoutResp = {
+  status: boolean;
+  code_url?: string;
+  qr_png_url?: string;
+  trade_no?: string;
+  error?: string;
+};
+
+type LSCheckoutResp = {
+  status: boolean;
+  url?: string;
+  error?: string;
+};
+
 type CheckoutState =
   | { kind: "idle" }
   | { kind: "loading"; provider: "ls" | "hupijiao" }
   | { kind: "qr"; codeURL?: string; qrPNGURL?: string; tradeNo?: string }
   | { kind: "error"; message: string };
 
+type QuickStartTab = "openai" | "claudecode" | "curl";
+
 function TokenPlans() {
   const { t } = useTranslation();
   const [contactOpen, setContactOpen] = useState(false);
   const [pool, setPool] = useState<PoolSnapshot | null>(null);
   const [checkout, setCheckout] = useState<CheckoutState>({ kind: "idle" });
+  const [activeTab, setActiveTab] = useState<QuickStartTab>("openai");
 
   useEffect(() => {
     let mounted = true;
@@ -110,7 +119,6 @@ function TokenPlans() {
   }, []);
 
   // Pay with USD (LemonSqueezy) — full-page redirect to LS hosted checkout.
-  // Auth-gated endpoint: 401 means not signed in → bounce to /login with return.
   const onPayUSD = async () => {
     setCheckout({ kind: "loading", provider: "ls" });
     try {
@@ -126,7 +134,6 @@ function TokenPlans() {
       }
       window.location.href = r.data.url;
     } catch (e: any) {
-      // 401 → not authenticated. Send to login with return-to /token-plans.
       if (e?.response?.status === 401) {
         window.location.href = `/login?next=${encodeURIComponent("/token-plans")}`;
         return;
@@ -139,7 +146,6 @@ function TokenPlans() {
   };
 
   // Pay with WeChat / Alipay (Hupijiao) — fetch QR + alipay deep-link.
-  // Mobile UA → window.location to alipay deep-link; desktop → modal with QR.
   const onPayCNY = async () => {
     setCheckout({ kind: "loading", provider: "hupijiao" });
     try {
@@ -181,29 +187,47 @@ function TokenPlans() {
   const isLoadingCNY =
     checkout.kind === "loading" && checkout.provider === "hupijiao";
 
+  // 5 hero scan-facts: surfaced ABOVE the fold so CN audience gets the
+  // 5 buy-decision answers before any narrative copy. Order matters —
+  // price first, then compatibility, payment, migration cost, refund.
+  const heroFacts = [
+    { icon: <Zap className="w-3 h-3" />, text: t("token.facts.cost", "¥99/月 单档") },
+    { icon: <Code2 className="w-3 h-3" />, text: t("token.facts.compat", "OpenAI 兼容") },
+    { icon: <Wallet className="w-3 h-3" />, text: t("token.facts.pay", "支付宝 / 微信") },
+    { icon: <ArrowRight className="w-3 h-3" />, text: t("token.facts.migrate", "改一行 base_url") },
+    { icon: <Shield className="w-3 h-3" />, text: t("token.facts.refund", "7 天无理由退款") },
+  ];
+
   return (
     <>
       <Header />
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto px-6 py-12 md:py-20">
-          {/* ─── 1. Hero ─────────────────────────────────────────────── */}
-          <header className="text-center mb-12 md:mb-16">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-3">
+          {/* ─── 1. Hero (with 5-fact strip) ────────────────────────── */}
+          <header className="text-center mb-14 md:mb-20">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-5">
               {t("token.eyebrow", "Token 套餐 · 模型池接入")}
             </p>
-            <h1 className="font-display text-4xl md:text-6xl tracking-tight mb-5 leading-[1.05]">
-              {t("token.heading.line1", "一个 Key,")}
-              <br />
-              <span style={{ color: "hsl(var(--primary))" }}>
+            <h1 className="font-display text-4xl md:text-6xl leading-[1.1] mb-6 tracking-tight">
+              <span className="block">
+                {t("token.heading.line1", "一个 Key,")}
+              </span>
+              <span className="block">
                 {t("token.heading.line2", "一池模型。")}
               </span>
             </h1>
-            <p className="text-base md:text-lg text-secondary-foreground/80 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base md:text-lg text-secondary-foreground/80 max-w-2xl mx-auto leading-relaxed mb-7">
               {t(
                 "token.sub",
-                "OpenAI 兼容 endpoint,Bearer 鉴权。GPT / Claude / DeepSeek / Qwen 之间切换只改 model 字段——不换账号、不换 Key。底层 NewAPI 路由,sub2API 桥接官方 API 进行中。",
+                "OpenAI 兼容 endpoint。GPT / Claude / DeepSeek / Qwen 一个 sk-xxx 全跑,只改 model 字段。底层智能路由,挑实时最便宜可用 channel。",
               )}
             </p>
+            {/* 5-fact scan strip — buy-decision answers above the fold */}
+            <div className="flex flex-wrap justify-center gap-2">
+              {heroFacts.map((f, i) => (
+                <HeroFactPill key={i} icon={f.icon} text={f.text} />
+              ))}
+            </div>
           </header>
 
           {/* ─── 2. Pricing card ─────────────────────────────────────── */}
@@ -262,13 +286,13 @@ function TokenPlans() {
                 <FeatureRow
                   text={t(
                     "token.plan.feat.3",
-                    "切模型只改 model 字段——路由 + 计费自动",
+                    "切模型只改 model 字段——智能路由 + 计费自动",
                   )}
                 />
                 <FeatureRow
                   text={t(
-                    "token.plan.feat.4",
-                    "Light / Standard / Premium 分档:DeepSeek/Qwen 0.5×、Claude-haiku 1×、GPT-4o/Sonnet 3×",
+                    "token.plan.feat.4-v2",
+                    "三档计费 (1 credit ≈ ¥0.02/标准调用):Light 0.5× = DeepSeek/Qwen,Standard 1× = Claude-haiku/GPT-4o-mini,Premium 3× = Claude-sonnet/GPT-4o。无隐藏加价。",
                   )}
                 />
                 <FeatureRow
@@ -279,9 +303,6 @@ function TokenPlans() {
                 />
               </ul>
 
-              {/* v0.22 dual-rail self-serve checkout. CNY first (mainland-
-                  primary GTM), USD secondary. Both buttons disable during
-                  the other's loading state to prevent double-tap races. */}
               <div className="space-y-2.5">
                 <Button
                   onClick={onPayCNY}
@@ -332,9 +353,19 @@ function TokenPlans() {
                 </button>
               </p>
 
-              {/* QR modal for desktop hupijiao path. Inline rather than
-                  a separate component because the only consumer is this
-                  CTA and it's <60 LOC of straightforward markup. */}
+              {/* CHANGE 6 OPTION A: free-trial concierge link (no Free
+                  tier code built — just a contact path for evaluators) */}
+              <p className="text-xs text-center text-muted-foreground mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => setContactOpen(true)}
+                  className="underline-offset-4 hover:underline"
+                >
+                  {t("token.plan.cta.trial", "想先免费试用 50 credits 体验? 加微信")}
+                </button>
+              </p>
+
+              {/* QR modal for desktop hupijiao path */}
               {checkout.kind === "qr" && (
                 <div
                   className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
@@ -386,7 +417,71 @@ function TokenPlans() {
             </div>
           </div>
 
-          {/* ─── 3. Live pool snapshot ───────────────────────────────── */}
+          {/* ─── 3. Quick Start (3-tab code) ─────────────────────────── */}
+          <section className="mb-16 md:mb-20">
+            <div className="text-center mb-8">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-2">
+                {t("token.quickstart.eyebrow", "30 秒接入 · 30-second integration")}
+              </p>
+              <h3 className="font-display text-2xl md:text-3xl mb-2">
+                {t("token.quickstart.heading", "改一行 base_url 就跑。")}
+              </h3>
+              <p className="text-sm text-secondary-foreground/80 max-w-xl mx-auto">
+                {t(
+                  "token.quickstart.sub",
+                  "OpenAI SDK / Claude Code / curl 全部支持,SDK 不变,仅替换 endpoint + key。",
+                )}
+              </p>
+            </div>
+
+            <QuickStartTabs activeTab={activeTab} onChange={setActiveTab} />
+
+            <p className="text-xs text-muted-foreground text-center mt-4">
+              {t(
+                "token.quickstart.hint",
+                "需要 Anthropic SDK / Vercel AI SDK / LangChain? 全兼容,文档查询 →",
+              )}{" "}
+              <Link to="/docs" className="underline hover:opacity-70">
+                /docs
+              </Link>
+            </p>
+          </section>
+
+          {/* ─── 4. vs DIY decision-clarification table ─────────────── */}
+          <section className="mb-16 md:mb-20">
+            <div className="text-center mb-8">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-2">
+                {t("token.vsdiy.eyebrow", "决策澄清")}
+              </p>
+              <h3 className="font-display text-2xl md:text-3xl mb-2">
+                {t("token.vsdiy.heading", "想清楚再买。")}
+              </h3>
+              <p className="text-sm text-secondary-foreground/80 max-w-xl mx-auto">
+                {t(
+                  "token.vsdiy.sub",
+                  "公平比较 greentokey 跟自己直接接 OpenAI + Anthropic + DeepSeek 三家 API,看哪个更适合你。",
+                )}
+              </p>
+            </div>
+
+            <VsDiyTable t={t} />
+
+            <p className="text-xs text-center text-muted-foreground mt-5">
+              {t(
+                "token.vsdiy.footer",
+                "都不太合适?",
+              )}{" "}
+              <button
+                type="button"
+                onClick={() => setContactOpen(true)}
+                className="underline underline-offset-4 hover:opacity-70"
+              >
+                {t("token.vsdiy.contact", "联系销售聊企业方案")}
+              </button>
+            </p>
+          </section>
+
+          {/* ─── 5. Live pool snapshot (was 3) ──────────────────────── */}
           <section
             className="rounded-3xl p-7 md:p-9 mb-16 md:mb-20"
             style={{
@@ -475,89 +570,7 @@ function TokenPlans() {
             </div>
           </section>
 
-          {/* ─── 4. Code sample ──────────────────────────────────────── */}
-          <section className="mb-16 md:mb-20">
-            <div className="text-center mb-8">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-2">
-                {t("token.code.eyebrow", "OpenAI SDK 即插即用")}
-              </p>
-              <h3 className="font-display text-2xl md:text-3xl">
-                {t("token.code.heading", "切模型 = 改一行字。")}
-              </h3>
-            </div>
-
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{
-                background: "hsl(var(--ink))",
-                border: "1px solid hsl(var(--border-soft))",
-              }}
-            >
-              <div
-                className="flex items-center gap-2 px-4 py-3 text-xs"
-                style={{
-                  borderBottom: "1px solid hsl(var(--ink-foreground) / 0.08)",
-                  color: "hsl(var(--ink-foreground) / 0.65)",
-                }}
-              >
-                <Code2 className="w-3.5 h-3.5" />
-                <span className="font-mono">node.js · OpenAI SDK</span>
-              </div>
-              <pre
-                className="p-5 md:p-6 text-xs md:text-sm font-mono leading-relaxed overflow-x-auto"
-                style={{ color: "hsl(var(--ink-foreground))" }}
-              >
-                <code>
-                  <span style={{ color: "hsl(var(--ink-accent))" }}>
-                    {"import"}
-                  </span>{" "}
-                  OpenAI{" "}
-                  <span style={{ color: "hsl(var(--ink-accent))" }}>from</span>{" "}
-                  <span style={{ opacity: 0.85 }}>{`"openai"`}</span>;
-                  {"\n\n"}
-                  <span style={{ color: "hsl(var(--ink-accent))" }}>
-                    {"const"}
-                  </span>{" "}
-                  client = <span style={{ color: "hsl(var(--ink-accent))" }}>new</span>{" "}
-                  OpenAI({"{\n"}
-                  {"  baseURL: "}
-                  <span style={{ opacity: 0.85 }}>
-                    {`"https://api.greentokey.com/v1"`}
-                  </span>
-                  ,{"\n"}
-                  {"  apiKey:  "}
-                  <span style={{ opacity: 0.85 }}>{`"sk-xxxxxx"`}</span>
-                  ,{"\n"}
-                  {"});\n\n"}
-                  <span style={{ color: "hsl(var(--ink-accent))" }}>{"// "}</span>
-                  <span style={{ color: "hsl(var(--ink-accent))" }}>
-                    {t(
-                      "token.code.comment",
-                      "切到 GPT-4o 只改 model 字段 — 计费自动按 Premium 档",
-                    )}
-                  </span>
-                  {"\n"}
-                  client.chat.completions.create({"{\n"}
-                  {"  model: "}
-                  <span style={{ opacity: 0.85 }}>
-                    {`"gpt-4o"`}
-                  </span>
-                  ,    {/* swap to "deepseek-v3" / "claude-sonnet-4" / ... */}
-                  {"\n"}
-                  {"  messages: [...],\n"}
-                  {"});"}
-                </code>
-              </pre>
-            </div>
-            <p className="text-xs text-muted-foreground text-center mt-4">
-              {t(
-                "token.code.hint",
-                "endpoint 100% OpenAI 兼容 · Stream / function-call / vision 全支持",
-              )}
-            </p>
-          </section>
-
-          {/* ─── 5. Tier multiplier strip ───────────────────────────── */}
+          {/* ─── 6. Tier multiplier strip (was 5) ───────────────────── */}
           <section className="mb-16 md:mb-20">
             <div className="text-center mb-8">
               <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-2">
@@ -612,7 +625,7 @@ function TokenPlans() {
             </p>
           </section>
 
-          {/* ─── 6. Why 3 cards ─────────────────────────────────────── */}
+          {/* ─── 7. Why 3 cards (was 6) ─────────────────────────────── */}
           <section className="mb-16 md:mb-20">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
               <Why
@@ -633,16 +646,16 @@ function TokenPlans() {
               />
               <Why
                 icon={<Network className="w-5 h-5" strokeWidth={1.6} />}
-                title={t("token.why.three.title", "Pool 自动调度")}
+                title={t("token.why.three.title", "Pool 智能路由")}
                 body={t(
                   "token.why.three.body",
-                  "底层 NewAPI 路由:对单次调用,自动选可用且最便宜的渠道。某家挂了你看不见。",
+                  "底层 NewAPI 路由:对单次调用,自动选可用且性价比优的渠道。某家挂了 fallback 到下一家,你看不见。",
                 )}
               />
             </div>
           </section>
 
-          {/* ─── 7. FAQ ──────────────────────────────────────────────── */}
+          {/* ─── 8. FAQ (was 7) ─────────────────────────────────────── */}
           <section className="max-w-3xl mx-auto mb-16 md:mb-20">
             <h2 className="font-display text-2xl md:text-3xl mb-8 text-center">
               {t("token.faq.heading", "常见问题")}
@@ -691,24 +704,29 @@ function TokenPlans() {
             </div>
           </section>
 
-          {/* ─── 8. Trust strip ─────────────────────────────────────── */}
-          <div className="text-center pt-12 border-t border-border">
-            <div className="flex flex-wrap justify-center gap-6 text-xs text-muted-foreground">
-              <TrustItem
-                icon={<BadgeCheck className="w-3.5 h-3.5" />}
-                text={t("token.trust.concierge", "首批客户 founder 一对一开通")}
+          {/* ─── 9. Trust 反驳 (was 8 — expanded) ───────────────────── */}
+          <div className="pt-12 border-t border-border">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground text-center mb-6">
+              {t("token.trust.eyebrow", "你可能担心的事")}
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 max-w-3xl mx-auto">
+              <TrustAssertion
+                text={t("token.trust.balance", "余额永久有效,不清零")}
               />
-              <TrustItem
-                icon={<Gauge className="w-3.5 h-3.5" />}
-                text={t("token.trust.transparent", "三档计费 0 隐藏成本")}
+              <TrustAssertion
+                text={t("token.trust.failure", "失败请求不扣费")}
               />
-              <TrustItem
-                icon={<ShieldCheck className="w-3.5 h-3.5" />}
-                text={t("token.trust.privacy", "调用内容 0 持久化")}
+              <TrustAssertion
+                text={t("token.trust.privacy", "不存储 prompt / 不读历史")}
               />
-              <TrustItem
-                icon={<RefreshCcw className="w-3.5 h-3.5" />}
-                text={t("token.trust.cancel", "随时取消 · 余额用完为止")}
+              <TrustAssertion
+                text={t("token.trust.refund", "7 天无理由全额退款")}
+              />
+              <TrustAssertion
+                text={t("token.trust.routing", "多线路 + 实时可用性监控")}
+              />
+              <TrustAssertion
+                text={t("token.trust.payment", "支付宝 / 微信 / 信用卡 任选")}
               />
             </div>
           </div>
@@ -745,6 +763,27 @@ function FeatureRow({ text }: { text: string }) {
   );
 }
 
+function HeroFactPill({
+  icon,
+  text,
+}: {
+  icon: React.ReactNode;
+  text: string;
+}) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+      style={{
+        background: "hsl(var(--accent-soft))",
+        color: "hsl(var(--primary-deep))",
+      }}
+    >
+      {icon}
+      {text}
+    </span>
+  );
+}
+
 function Why({
   icon,
   title,
@@ -755,24 +794,18 @@ function Why({
   body: string;
 }) {
   return (
-    <div
-      className="rounded-2xl p-6"
-      style={{
-        background: "hsl(var(--card))",
-        border: "1px solid hsl(var(--border-soft))",
-      }}
-    >
+    <div>
       <div
-        className="inline-flex items-center justify-center w-10 h-10 rounded-xl mb-4"
+        className="w-10 h-10 rounded-2xl flex items-center justify-center mb-4"
         style={{
           background: "hsl(var(--accent-soft))",
-          color: "hsl(var(--primary))",
+          color: "hsl(var(--primary-deep))",
         }}
       >
         {icon}
       </div>
-      <h4 className="font-display text-lg font-medium mb-2">{title}</h4>
-      <p className="text-sm leading-relaxed text-secondary-foreground/85">
+      <h4 className="font-display text-lg mb-2">{title}</h4>
+      <p className="text-sm text-secondary-foreground/80 leading-relaxed">
         {body}
       </p>
     </div>
@@ -794,49 +827,349 @@ function TierCard({
 }) {
   return (
     <div
-      className="rounded-2xl p-6 flex flex-col gap-3"
+      className="rounded-2xl p-5"
       style={{
-        background: highlight ? "hsl(var(--accent-soft))" : "hsl(var(--card))",
+        background: highlight
+          ? "hsl(var(--accent-soft))"
+          : "hsl(var(--card))",
         border: highlight
-          ? "1px solid hsl(var(--primary) / 0.35)"
+          ? "1px solid hsl(var(--primary) / 0.4)"
           : "1px solid hsl(var(--border-soft))",
-        boxShadow: highlight ? "var(--shadow-xs)" : "none",
       }}
     >
-      <span
-        className="text-[11px] uppercase tracking-[0.14em] font-medium"
-        style={{ color: "hsl(var(--primary-deep))" }}
+      <p
+        className="text-[11px] uppercase tracking-wider font-medium mb-2.5"
+        style={{
+          color: highlight
+            ? "hsl(var(--primary-deep))"
+            : "hsl(var(--muted-foreground))",
+        }}
       >
         {badge}
-      </span>
-      <p className="text-sm leading-relaxed text-secondary-foreground/85">
+      </p>
+      <p className="text-xs text-secondary-foreground/80 mb-3 leading-relaxed">
         {models}
       </p>
-      <div className="flex items-baseline gap-2 mt-auto pt-2">
-        <span className="font-display text-2xl font-semibold">{rate}</span>
-      </div>
+      <p className="font-display text-xl mb-0.5">{rate}</p>
       <p className="text-xs text-muted-foreground">{volume}</p>
     </div>
   );
 }
 
-function FaqItem({ question, answer }: { question: string; answer: string }) {
+function FaqItem({
+  question,
+  answer,
+}: {
+  question: string;
+  answer: string;
+}) {
   return (
-    <div className="space-y-2">
-      <h3 className="font-medium text-base">{question}</h3>
-      <p className="text-sm text-secondary-foreground/85 leading-relaxed">
+    <div>
+      <h3 className="font-display text-base md:text-lg mb-2">{question}</h3>
+      <p className="text-sm text-secondary-foreground/80 leading-relaxed">
         {answer}
       </p>
     </div>
   );
 }
 
-function TrustItem({ icon, text }: { icon: React.ReactNode; text: string }) {
+function TrustAssertion({ text }: { text: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      {icon}
-      {text}
-    </span>
+    <div className="flex items-start gap-2">
+      <Check
+        className="w-4 h-4 mt-0.5 flex-shrink-0"
+        style={{ color: "hsl(var(--primary))" }}
+      />
+      <span className="text-xs text-secondary-foreground/85 leading-relaxed">
+        {text}
+      </span>
+    </div>
+  );
+}
+
+// QuickStartTabs renders 3 tabs of integration code (OpenAI SDK / Claude
+// Code / curl). State-managed inline (no shadcn/Tabs dep needed for 3
+// content blocks). Copy button uses navigator.clipboard with toast.
+function QuickStartTabs({
+  activeTab,
+  onChange,
+}: {
+  activeTab: QuickStartTab;
+  onChange: (tab: QuickStartTab) => void;
+}) {
+  const { t } = useTranslation();
+
+  const snippets: Record<QuickStartTab, { label: string; code: string }> = {
+    openai: {
+      label: t("token.quickstart.tab.openai", "OpenAI SDK · node.js"),
+      code: `import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "https://api.greentokey.com/v1",
+  apiKey:  "sk-tnx-xxxxxx",
+});
+
+// 切到 GPT-4o 只改 model 字段 — 计费自动按 Premium 档
+client.chat.completions.create({
+  model: "gpt-4o",          // or "deepseek-v3" / "claude-sonnet-4"
+  messages: [...],
+});`,
+    },
+    claudecode: {
+      label: t("token.quickstart.tab.claudecode", "Claude Code CLI"),
+      code: `# 写入 ~/.zshrc 或 ~/.bashrc
+export ANTHROPIC_BASE_URL="https://api.greentokey.com/anthropic"
+export ANTHROPIC_API_KEY="sk-tnx-xxxxxx"
+
+# 重启 shell 或 source
+source ~/.zshrc
+
+# Claude Code 直接用,不需要 Anthropic 官方 key
+claude "解释这段代码"`,
+    },
+    curl: {
+      label: t("token.quickstart.tab.curl", "curl · raw HTTP"),
+      code: `curl https://api.greentokey.com/v1/chat/completions \\
+  -H "Authorization: Bearer sk-tnx-xxxxxx" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "model": "deepseek-v3",
+    "messages": [{"role":"user","content":"hi"}]
+  }'`,
+    },
+  };
+
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(snippets[activeTab].code);
+      toast.success(t("token.quickstart.copied", "已复制"));
+    } catch {
+      toast.error(t("token.quickstart.copy-failed", "复制失败,请手动选择"));
+    }
+  };
+
+  const tabKeys: QuickStartTab[] = ["openai", "claudecode", "curl"];
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{
+        background: "hsl(var(--ink))",
+        border: "1px solid hsl(var(--border-soft))",
+      }}
+    >
+      {/* Tab bar */}
+      <div
+        className="flex items-center justify-between border-b"
+        style={{ borderColor: "hsl(var(--ink-foreground) / 0.08)" }}
+      >
+        <div className="flex">
+          {tabKeys.map((k) => {
+            const isActive = activeTab === k;
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => onChange(k)}
+                className="px-4 py-3 text-xs font-mono border-b-2 transition-colors"
+                style={{
+                  color: isActive
+                    ? "hsl(var(--ink-foreground))"
+                    : "hsl(var(--ink-foreground) / 0.55)",
+                  borderColor: isActive
+                    ? "hsl(var(--ink-accent))"
+                    : "transparent",
+                }}
+              >
+                {snippets[k].label}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={onCopy}
+          className="mr-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-opacity hover:opacity-80"
+          style={{
+            background: "hsl(var(--ink-foreground) / 0.08)",
+            color: "hsl(var(--ink-foreground))",
+          }}
+          aria-label="copy code to clipboard"
+        >
+          <Copy className="w-3 h-3" />
+          {/* No label on mobile; full word desktop */}
+          <span className="hidden md:inline">Copy</span>
+        </button>
+      </div>
+
+      {/* Code block */}
+      <pre
+        className="p-5 md:p-6 text-xs md:text-sm font-mono leading-relaxed overflow-x-auto whitespace-pre"
+        style={{ color: "hsl(var(--ink-foreground))" }}
+      >
+        <code>{snippets[activeTab].code}</code>
+      </pre>
+    </div>
+  );
+}
+
+// VsDiyTable renders the 6-row decision-clarification table for buyers
+// weighing greentokey vs DIY-接 3 家. Layout: desktop = 4-col table
+// (你关心的事 / greentokey ¥99/月 / 自己接 3 家 / 为什么重要), mobile =
+// stacked cards per row. Color rules: greentokey 列 moss green,
+// DIY 列 neutral gray (NOT competitor red — decision clarification, not
+// attack). Per Codex agent 3 + tana review.
+function VsDiyTable({ t }: { t: ReturnType<typeof useTranslation>["t"] }) {
+  const rows = [
+    {
+      what: t("token.vsdiy.row.cost.what", "月度成本"),
+      us: t("token.vsdiy.row.cost.us", "固定 ¥99"),
+      diy: t("token.vsdiy.row.cost.diy", "多家充值,预算 ~$50-80"),
+      why: t("token.vsdiy.row.cost.why", "成本可预期"),
+    },
+    {
+      what: t("token.vsdiy.row.signup.what", "开通"),
+      us: t("token.vsdiy.row.signup.us", "一个账户一次注册"),
+      diy: t("token.vsdiy.row.signup.diy", "多平台注册 + Key + 支付方式"),
+      why: t("token.vsdiy.row.signup.why", "降低首次门槛"),
+    },
+    {
+      what: t("token.vsdiy.row.models.what", "模型覆盖"),
+      us: t("token.vsdiy.row.models.us", "聚合多模型一处"),
+      diy: t("token.vsdiy.row.models.diy", "自己维护各家 provider"),
+      why: t("token.vsdiy.row.models.why", "DIY 更自由但更费心"),
+    },
+    {
+      what: t("token.vsdiy.row.bill.what", "账单"),
+      us: t("token.vsdiy.row.bill.us", "一张账单一次对账"),
+      diy: t("token.vsdiy.row.bill.diy", "多处用量 + 汇率 + 充值"),
+      why: t("token.vsdiy.row.bill.why", "月底不用对账"),
+    },
+    {
+      what: t("token.vsdiy.row.fault.what", "故障 / 限额"),
+      us: t("token.vsdiy.row.fault.us", "平台侧路由切换"),
+      diy: t("token.vsdiy.row.fault.diy", "自己 fallback + 排查"),
+      why: t("token.vsdiy.row.fault.why", "高频用明显"),
+    },
+    {
+      what: t("token.vsdiy.row.who.what", "适合谁"),
+      us: t("token.vsdiy.row.who.us", "想稳定省心使用"),
+      diy: t("token.vsdiy.row.who.diy", "想深度控制路由 / 合规 / 日志"),
+      why: t("token.vsdiy.row.who.why", "公平承认取舍"),
+    },
+  ];
+
+  return (
+    <>
+      {/* Desktop: 4-col table */}
+      <div className="hidden md:block">
+        <table
+          className="w-full border-collapse"
+          style={{ borderColor: "hsl(var(--border-soft))" }}
+        >
+          <thead>
+            <tr
+              className="text-left text-xs font-medium"
+              style={{ borderBottom: "2px solid hsl(var(--border-soft))" }}
+            >
+              <th className="py-3 pr-4 text-muted-foreground font-medium">
+                {t("token.vsdiy.col.what", "你关心的事")}
+              </th>
+              <th
+                className="py-3 px-4 font-semibold"
+                style={{ color: "hsl(var(--primary-deep))" }}
+              >
+                {t("token.vsdiy.col.us", "greentokey ¥99/月")}
+              </th>
+              <th className="py-3 px-4 text-muted-foreground font-medium">
+                {t("token.vsdiy.col.diy", "自己接 3 家")}
+              </th>
+              <th className="py-3 pl-4 text-muted-foreground font-medium">
+                {t("token.vsdiy.col.why", "为什么重要")}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="text-sm">
+            {rows.map((r, i) => (
+              <tr
+                key={i}
+                style={{
+                  borderBottom: "1px solid hsl(var(--border-soft) / 0.6)",
+                }}
+              >
+                <td className="py-3.5 pr-4 font-medium">{r.what}</td>
+                <td className="py-3.5 px-4">
+                  <span className="inline-flex items-start gap-1.5">
+                    <Check
+                      className="w-3.5 h-3.5 mt-0.5 flex-shrink-0"
+                      style={{ color: "hsl(var(--primary))" }}
+                    />
+                    <span style={{ color: "hsl(var(--primary-deep))" }}>
+                      {r.us}
+                    </span>
+                  </span>
+                </td>
+                <td className="py-3.5 px-4 text-secondary-foreground/70">
+                  {r.diy}
+                </td>
+                <td className="py-3.5 pl-4 text-xs text-muted-foreground">
+                  {r.why}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile: stacked cards per row */}
+      <div className="md:hidden space-y-4">
+        {rows.map((r, i) => (
+          <div
+            key={i}
+            className="rounded-2xl p-4"
+            style={{
+              background: "hsl(var(--card))",
+              border: "1px solid hsl(var(--border-soft))",
+            }}
+          >
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2 font-medium">
+              {r.what}
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-start gap-2">
+                <Check
+                  className="w-3.5 h-3.5 mt-1 flex-shrink-0"
+                  style={{ color: "hsl(var(--primary))" }}
+                />
+                <div>
+                  <span
+                    className="text-[10px] uppercase tracking-wider mr-1.5"
+                    style={{ color: "hsl(var(--primary-deep))" }}
+                  >
+                    greentokey
+                  </span>
+                  <span style={{ color: "hsl(var(--primary-deep))" }}>
+                    {r.us}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 text-secondary-foreground/70">
+                <span className="w-3.5 mt-1 text-center text-[10px]">·</span>
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider mr-1.5 text-muted-foreground">
+                    DIY
+                  </span>
+                  <span>{r.diy}</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground pl-5.5">
+                {r.why}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
