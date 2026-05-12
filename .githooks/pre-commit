@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Pre-commit hook for greentokey CoAI fork. Catches issues at commit-time,
+# earlier than CI. Skip via `git commit --no-verify` for emergencies (but
+# don't make a habit of it).
+#
+# Install once per clone:
+#   bash bin/install-hooks.sh
+# That runs `git config core.hooksPath .githooks` so git picks up this dir.
+#
+# Stages (fail-fast, ordered cheapest → most expensive):
+#   1. gitleaks (secret scan on staged changes)
+#   2. go fmt (verify staged Go files formatted)
+#   3. go vet (cheap static analysis)
+#   4. pnpm exec tsc --noEmit (type-check)
+#   5. (optional, slow — disabled by default) go test ./...
+
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "==> pre-commit: checking staged changes"
+
+# Stage 1: gitleaks (already installed by PKG-C1, 2026-05-07).
+# Skip if gitleaks not in PATH (don't block commits for missing optional tool).
+if command -v gitleaks >/dev/null 2>&1; then
+  if ! gitleaks protect --staged --no-banner >/dev/null 2>&1; then
+    echo "❌ gitleaks: secret detected in staged changes"
+    echo "   Review staged diff before commit (git diff --cached)"
+    exit 1
+  fi
+fi
+
+# Stage 2: go fmt on staged Go files.
+staged_go=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.go$' || true)
+if [ -n "$staged_go" ]; then
+  unformatted=$(echo "$staged_go" | xargs gofmt -l 2>/dev/null || true)
+  if [ -n "$unformatted" ]; then
+    echo "❌ go fmt: unformatted Go files staged:"
+    echo "$unformatted" | sed 's/^/    /'
+    echo "   Run: gofmt -w $unformatted"
+    exit 1
+  fi
+fi
+
+# Stage 3: go vet (only if Go files changed).
+if [ -n "$staged_go" ]; then
+  echo "    go vet ./..."
+  if ! go vet ./... 2>&1 | grep -v -E "warning|libwebp|note:" | grep -E "vet:|^[a-z].*\.go:" >/dev/null 2>&1; then
+    : # No issues
+  else
+    # Re-run to surface output if there were real findings
+    output=$(go vet ./... 2>&1 | grep -v -E "warning|libwebp|note:" | grep -E "vet:|^[a-z].*\.go:" | head -10 || true)
+    if [ -n "$output" ]; then
+      echo "❌ go vet: issues found"
+      echo "$output" | sed 's/^/    /'
+      exit 1
+    fi
+  fi
+fi
+
+# Stage 4: pnpm exec tsc --noEmit on staged TS files.
+staged_ts=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx)$' | grep -v node_modules || true)
+if [ -n "$staged_ts" ]; then
+  if [ -d "app" ]; then
+    echo "    pnpm exec tsc --noEmit (in app/)"
+    if ! (cd app && pnpm exec tsc --noEmit) >/tmp/tsc-precommit.log 2>&1; then
+      echo "❌ tsc: TypeScript errors in staged changes:"
+      grep -E "error TS|^src/" /tmp/tsc-precommit.log | head -10 | sed 's/^/    /'
+      echo "   Full log: /tmp/tsc-precommit.log"
+      exit 1
+    fi
+  fi
+fi
+
+# Stage 5: full test run (disabled — too slow for pre-commit; CI handles).
+# Uncomment to enable:
+#
+# if [ -n "$staged_go" ]; then
+#   echo "    go test ./... -count=1 -vet=off (slow path; pre-commit)"
+#   if ! go test ./... -count=1 -vet=off -short >/tmp/test-precommit.log 2>&1; then
+#     echo "❌ go test: failures in staged changes"
+#     grep -E "^FAIL|^---" /tmp/test-precommit.log | head -10 | sed 's/^/    /'
+#     exit 1
+#   fi
+# fi
+
+echo "✅ pre-commit: all checks passed"
