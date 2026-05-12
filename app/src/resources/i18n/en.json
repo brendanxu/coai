@@ -1879,25 +1879,33 @@
       "line1": "One Key,",
       "line2": "the whole pool."
     },
-    "sub": "OpenAI-compatible endpoint, Bearer auth. Switch GPT/Claude/DeepSeek/Qwen by changing only the model field — no account swaps, no key swaps. Routed via NewAPI; sub2API bridge to official APIs is in progress.",
+    "sub": "OpenAI-compatible endpoint. GPT / Claude / DeepSeek / Qwen all run via one sk-xxx — change only the model field. Smart routing picks the cheapest available channel in real time.",
+    "facts": {
+      "cost": "¥99/mo single tier",
+      "compat": "OpenAI compatible",
+      "pay": "Alipay / WeChat",
+      "migrate": "1-line base_url swap",
+      "refund": "7-day refund"
+    },
     "plan": {
       "name": "Standard",
       "badge": "Single tier",
       "month": "month",
       "tagline": "5,000 credits · ~5,000 standard calls · all models in pool",
       "feat": {
-        "1": "One sk-xxx API key, OpenAI-compatible",
+        "1": "One sk-xxx API key, OpenAI-compatible endpoint",
         "2": "5,000 credits/mo, ¥0.02 per standard call (≈1k+1k tokens)",
-        "3": "Switch models by changing the model field — routing + billing automatic",
-        "4": "Light/Standard/Premium tiers: DeepSeek/Qwen 0.5×, Claude-haiku 1×, GPT-4o/Sonnet 3×",
-        "5": "Dashboard with live balance · usage breakdown · model distribution"
+        "3": "Switch models by changing the model field — smart routing + auto billing",
+        "5": "Dashboard with live balance · usage breakdown · model distribution",
+        "4-v2": "3-tier billing (1 credit ≈ ¥0.02/standard call): Light 0.5× = DeepSeek/Qwen, Standard 1× = Claude-haiku/GPT-4o-mini, Premium 3× = Claude-sonnet/GPT-4o. No hidden markup."
       },
       "cta": {
         "cny": "WeChat / Alipay ¥99 — Activate now",
         "cny-loading": "Opening WeChat / Alipay…",
         "usd": "Pay with Card · USD $14",
         "usd-loading": "Opening LemonSqueezy…",
-        "enterprise": "Or contact sales · Enterprise / Team / Volume"
+        "enterprise": "Or contact sales · Enterprise / Team / Volume",
+        "trial": "Want a free 50-credit trial first? Add WeChat"
       },
       "disclaimer-v2": "Mainland WeChat / Alipay — instant · Overseas card via LemonSqueezy MoR · 5,000 credits/month",
       "qr": {
@@ -1911,6 +1919,70 @@
         "network": "Network error — please check your connection and retry"
       }
     },
+    "quickstart": {
+      "eyebrow": "30-second integration",
+      "heading": "Swap one base_url and you're live.",
+      "sub": "OpenAI SDK / Claude Code / curl all supported. SDK unchanged — just replace endpoint + key.",
+      "hint": "Need Anthropic SDK / Vercel AI SDK / LangChain? All compatible. Docs →",
+      "copied": "Copied",
+      "copy-failed": "Copy failed — please select manually",
+      "tab": {
+        "openai": "OpenAI SDK · node.js",
+        "claudecode": "Claude Code CLI",
+        "curl": "curl · raw HTTP"
+      }
+    },
+    "vsdiy": {
+      "eyebrow": "Decision clarification",
+      "heading": "Decide before you buy.",
+      "sub": "Honest comparison: greentokey vs hooking up OpenAI + Anthropic + DeepSeek yourself — see which fits you better.",
+      "footer": "Neither fits perfectly?",
+      "contact": "Contact sales for an enterprise plan",
+      "col": {
+        "what": "What you care about",
+        "us": "greentokey ¥99/mo",
+        "diy": "DIY 3-vendor",
+        "why": "Why it matters"
+      },
+      "row": {
+        "cost": {
+          "what": "Monthly cost",
+          "us": "Fixed ¥99",
+          "diy": "Multiple top-ups, ~$50-80",
+          "why": "Predictable cost"
+        },
+        "signup": {
+          "what": "Onboarding",
+          "us": "One account, one signup",
+          "diy": "Multi-platform signup + Keys + payment methods",
+          "why": "Lower first-time friction"
+        },
+        "models": {
+          "what": "Model coverage",
+          "us": "Multi-model aggregated in one place",
+          "diy": "Maintain each provider yourself",
+          "why": "DIY is more flexible but more work"
+        },
+        "bill": {
+          "what": "Billing",
+          "us": "One bill, one reconciliation",
+          "diy": "Multiple usage logs + FX + top-ups",
+          "why": "No month-end reconciliation"
+        },
+        "fault": {
+          "what": "Failures / quotas",
+          "us": "Platform-side routing fallback",
+          "diy": "DIY fallback + debugging",
+          "why": "Matters at scale"
+        },
+        "who": {
+          "what": "Best for",
+          "us": "You want stable, hands-off use",
+          "diy": "You want deep control of routing / compliance / logs",
+          "why": "Honest trade-off"
+        }
+      }
+    },
     "why": {
       "one": {
         "title": "One Key, all models",
@@ -1921,9 +1993,18 @@
         "body": "We absorb the 75× cost spread between official APIs and sub2API. Light/standard/premium tiers are transparent; the spread isn't your problem."
       },
       "three": {
-        "title": "Pool auto-routing",
-        "body": "NewAPI underneath picks the cheapest available channel per call. If one provider is down, you don't see it."
+        "title": "Pool smart routing",
+        "body": "NewAPI underneath picks an available, cost-efficient channel per call. If one provider is down, fallback kicks in — you don't see it."
       }
+    },
+    "trust": {
+      "eyebrow": "Things you might worry about",
+      "balance": "Balance never expires",
+      "failure": "Failed requests aren't charged",
+      "privacy": "We don't store prompts / read history",
+      "refund": "7-day full refund, no questions",
+      "routing": "Multi-route + real-time availability monitoring",
+      "payment": "Alipay / WeChat / credit card, your choice"
     },
     "pool-link": "View full model pool"
   },

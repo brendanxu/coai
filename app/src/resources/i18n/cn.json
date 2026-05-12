@@ -1962,17 +1962,24 @@
       "line1": "一个 Key,",
       "line2": "一池模型。"
     },
-    "sub": "OpenAI 兼容端点，Bearer 鉴权。GPT/Claude/DeepSeek/Qwen 之间切换只改 model 字段——不换账号、不换 Key。底层 NewAPI 路由，sub2API 桥接官方 API 进行中。",
+    "sub": "OpenAI 兼容 endpoint。GPT / Claude / DeepSeek / Qwen 一个 sk-xxx 全跑,只改 model 字段。底层智能路由,挑实时最便宜可用 channel。",
+    "facts": {
+      "cost": "¥99/月 单档",
+      "compat": "OpenAI 兼容",
+      "pay": "支付宝 / 微信",
+      "migrate": "改一行 base_url",
+      "refund": "7 天无理由退款"
+    },
     "plan": {
       "name": "标准版",
       "badge": "唯一档位",
       "month": "月",
       "tagline": "5,000 credits · 约 5,000 次标准调用 · 池内全模型",
       "feat": {
-        "1": "一个 sk-xxx API Key,OpenAI 兼容",
+        "1": "一个 sk-xxx API Key,OpenAI 兼容 endpoint",
         "2": "5,000 credits/月,标准调用 ¥0.02/次(≈1k+1k tokens)",
-        "3": "切模型只改 model 字段——路由 + 计费自动",
-        "4": "Light/Standard/Premium 分档:DeepSeek/Qwen 0.5×,Claude-haiku 1×,GPT-4o/Sonnet 3×",
+        "3": "切模型只改 model 字段——智能路由 + 计费自动",
+        "4-v2": "三档计费 (1 credit ≈ ¥0.02/标准调用):Light 0.5× = DeepSeek/Qwen,Standard 1× = Claude-haiku/GPT-4o-mini,Premium 3× = Claude-sonnet/GPT-4o。无隐藏加价。",
         "5": "Dashboard 实时余额 · 用量明细 · 模型分布"
       },
       "cta": {
@@ -1980,7 +1987,8 @@
         "cny-loading": "正在打开微信/支付宝…",
         "usd": "信用卡支付 · USD $14",
         "usd-loading": "正在跳转 LemonSqueezy…",
-        "enterprise": "或联系销售 · 企业 / 团队 / 量大客户"
+        "enterprise": "或联系销售 · 企业 / 团队 / 量大客户",
+        "trial": "想先免费试用 50 credits 体验? 加微信"
       },
       "disclaimer-v2": "境内 微信/支付宝 即时到账 · 境外卡 LemonSqueezy MoR 自动开通 · 5,000 credits/月",
       "qr": {
@@ -1994,6 +2002,70 @@
         "network": "网络异常,请检查网络后重试"
       }
     },
+    "quickstart": {
+      "eyebrow": "30 秒接入 · 30-second integration",
+      "heading": "改一行 base_url 就跑。",
+      "sub": "OpenAI SDK / Claude Code / curl 全部支持,SDK 不变,仅替换 endpoint + key。",
+      "hint": "需要 Anthropic SDK / Vercel AI SDK / LangChain? 全兼容,文档查询 →",
+      "copied": "已复制",
+      "copy-failed": "复制失败,请手动选择",
+      "tab": {
+        "openai": "OpenAI SDK · node.js",
+        "claudecode": "Claude Code CLI",
+        "curl": "curl · raw HTTP"
+      }
+    },
+    "vsdiy": {
+      "eyebrow": "决策澄清",
+      "heading": "想清楚再买。",
+      "sub": "公平比较 greentokey 跟自己直接接 OpenAI + Anthropic + DeepSeek 三家 API,看哪个更适合你。",
+      "footer": "都不太合适?",
+      "contact": "联系销售聊企业方案",
+      "col": {
+        "what": "你关心的事",
+        "us": "greentokey ¥99/月",
+        "diy": "自己接 3 家",
+        "why": "为什么重要"
+      },
+      "row": {
+        "cost": {
+          "what": "月度成本",
+          "us": "固定 ¥99",
+          "diy": "多家充值,预算 ~$50-80",
+          "why": "成本可预期"
+        },
+        "signup": {
+          "what": "开通",
+          "us": "一个账户一次注册",
+          "diy": "多平台注册 + Key + 支付方式",
+          "why": "降低首次门槛"
+        },
+        "models": {
+          "what": "模型覆盖",
+          "us": "聚合多模型一处",
+          "diy": "自己维护各家 provider",
+          "why": "DIY 更自由但更费心"
+        },
+        "bill": {
+          "what": "账单",
+          "us": "一张账单一次对账",
+          "diy": "多处用量 + 汇率 + 充值",
+          "why": "月底不用对账"
+        },
+        "fault": {
+          "what": "故障 / 限额",
+          "us": "平台侧路由切换",
+          "diy": "自己 fallback + 排查",
+          "why": "高频用明显"
+        },
+        "who": {
+          "what": "适合谁",
+          "us": "想稳定省心使用",
+          "diy": "想深度控制路由 / 合规 / 日志",
+          "why": "公平承认取舍"
+        }
+      }
+    },
     "why": {
       "one": {
         "title": "一 Key 通模型",
@@ -2004,9 +2076,18 @@
         "body": "我们吸收官方 API 和 sub2API 之间 75× 成本差。Light/Standard/Premium 分档透明,差价不归你管。"
       },
       "three": {
-        "title": "Pool 自动调度",
-        "body": "底层 NewAPI 自动选每次最便宜可用渠道。某家供应商挂了,你看不见。"
+        "title": "Pool 智能路由",
+        "body": "底层 NewAPI 路由:对单次调用,自动选可用且性价比优的渠道。某家挂了 fallback 到下一家,你看不见。"
       }
+    },
+    "trust": {
+      "eyebrow": "你可能担心的事",
+      "balance": "余额永久有效,不清零",
+      "failure": "失败请求不扣费",
+      "privacy": "不存储 prompt / 不读历史",
+      "refund": "7 天无理由全额退款",
+      "routing": "多线路 + 实时可用性监控",
+      "payment": "支付宝 / 微信 / 信用卡 任选"
     },
     "pool-link": "查看完整模型池"
   },
