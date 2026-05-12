@@ -7,6 +7,26 @@ import { useDispatch } from "react-redux";
 import router from "@/router.tsx";
 import { useTranslation } from "react-i18next";
 import { getQueryParam } from "@/utils/path.ts";
+
+// HI-02 (REVIEW.md 2026-05-13): after successful login, return to the page
+// the user was trying to reach (e.g. /token-plans for a checkout-after-login
+// flow). The `next` query param is set by upstream callers like
+// TokenPlans.tsx on 401. We accept ONLY same-origin relative paths to defend
+// against open-redirect attacks — anything else falls back to "/".
+//
+// Rejected patterns:
+//   //evil.com/...           — scheme-relative, treated as cross-origin
+//   http://evil.com/...      — absolute URL
+//   javascript:alert(1)      — pseudo-scheme injection
+//   <anything with spaces>   — pre-encoded leak / malformed
+//   empty / missing          — default to "/"
+const SAFE_NEXT_PATH = /^\/(?!\/)[^\s<>"]*$/;
+
+function nextPathFromQuery(): string {
+  const next = (getQueryParam("next") || "").trim();
+  if (!next || !SAFE_NEXT_PATH.test(next)) return "/";
+  return next;
+}
 import { setMemory } from "@/utils/memory.ts";
 import { appLogo, appName, useDeeptrain } from "@/conf/env.ts";
 import { Card, CardContent } from "@/components/ui/card.tsx";
@@ -58,7 +78,7 @@ function DeepAuth() {
               description: t("login-success-prompt"),
             });
 
-            await router.navigate("/");
+            await router.navigate(nextPathFromQuery());
           });
       })
       .catch((err) => {
@@ -120,7 +140,7 @@ function Login() {
       }
 
       validateToken(globalDispatch, resp.token);
-      await router.navigate("/");
+      await router.navigate(nextPathFromQuery());
     } catch (err) {
       console.debug(err);
       toast.error(t("server-error"), {
