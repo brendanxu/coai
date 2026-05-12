@@ -188,14 +188,14 @@ func TestBuildCheckoutURL_RejectsMalformedSlug(t *testing.T) {
 	}
 	for _, s := range bad {
 		viper.Set("lemonsqueezy.store_slug", s)
-		if _, err := buildCheckoutURL(42, ""); err == nil {
+		if _, err := buildCheckoutURL(42, "", ""); err == nil {
 			t.Errorf("buildCheckoutURL accepted bad slug %q", s)
 		}
 	}
 
 	// Sanity: a well-formed slug still works.
 	viper.Set("lemonsqueezy.store_slug", "greentokey")
-	if _, err := buildCheckoutURL(42, ""); err != nil {
+	if _, err := buildCheckoutURL(42, "", ""); err != nil {
 		t.Errorf("good slug rejected: %v", err)
 	}
 }
@@ -214,7 +214,7 @@ func TestBuildCheckoutURL_RejectsMalformedVariantID(t *testing.T) {
 	}
 	for _, v := range bad {
 		viper.Set("lemonsqueezy.variant_id", v)
-		if _, err := buildCheckoutURL(42, ""); err == nil {
+		if _, err := buildCheckoutURL(42, "", ""); err == nil {
 			t.Errorf("buildCheckoutURL accepted bad variant_id %q", v)
 		}
 	}

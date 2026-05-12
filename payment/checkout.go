@@ -4,11 +4,13 @@ import (
 	"chat/auth"
 	"chat/commerce"
 	"chat/globals"
+	"chat/plans"
 	"chat/utils"
 	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -28,14 +30,19 @@ var (
 )
 
 // CheckoutAPI returns a LemonSqueezy Checkout URL pre-bound to the
-// authenticated user via custom_data[user_id]. The frontend can either
-// open this URL directly (redirect) or pass it to lemon.js for an overlay.
+// authenticated user via custom_data[user_id]. Optionally accepts
+// ?plan_code=<code> to also embed custom_data[type]=plan +
+// custom_data[plan_code]=<code> so the LS webhook (lemonsqueezy.go
+// planCodeFromCustomData) routes the paid event to
+// auth.RedeemPlanForOrder per the L23 token-product path.
 //
-// GET /api/payment/checkout
+// GET /api/payment/checkout                      → legacy starter (level subscribe)
+// GET /api/payment/checkout?plan_code=token-99   → L2 plan redeem path
 //
 // Response shapes (matches CoAI convention: status flag + payload):
 //
-//	200 {"status": true,  "url": "https://<slug>.lemonsqueezy.com/buy/<variant>?...&checkout%5Bcustom%5D%5Buser_id%5D=42"}
+//	200 {"status": true,  "url": "https://<slug>.lemonsqueezy.com/buy/<variant>?...&checkout%5Bcustom%5D%5Buser_id%5D=42&checkout%5Bcustom%5D%5Bplan_code%5D=token-99"}
+//	400 {"status": false, "error": "plan_code unknown: <code>"}
 //	500 {"status": false, "error": "LEMONSQUEEZY_STORE_SLUG not configured"}
 //	(unauthenticated path is handled by auth.GetUserByCtx, which writes a 200+error envelope)
 //
@@ -52,30 +59,35 @@ func CheckoutAPI(c *gin.Context) {
 	db := utils.GetDBFromContext(c)
 	userID := user.GetID(db)
 
+	planCode := strings.TrimSpace(c.Query("plan_code"))
+
+	// When plan_code is supplied, look up gtk_plan to derive the audit
+	// amount for gtk_payment_session. The LS webhook is still authoritative
+	// on actual paid amount; this is just the row's expected_amount column.
+	amountCents := int64(1500) // legacy ¥99 ≈ $15 placeholder
+	if planCode != "" {
+		plan, err := plans.LookupActivePlan(db, planCode)
+		if err != nil {
+			c.JSON(400, gin.H{"status": false,
+				"error": fmt.Sprintf("plan_code unknown: %s", planCode)})
+			return
+		}
+		if plan.PriceCents > 0 {
+			amountCents = plan.PriceCents
+		}
+	}
+
 	// PKG-2 Wave 4 D2: open a payment session BEFORE building the URL so
 	// we can embed session_id in LS custom_data. Webhook dispatch
 	// (dispatch_token.go via Wave 3 C1 + commerce.ClosePaymentSession in
 	// Wave 2 B1) matches inbound by session_id (CR7) — this is the only
 	// key both ends control at checkout time, since the LS subscription_id
 	// only exists post-payment.
-	//
-	// Synthetic order_no for token plans: gtk_user_plan doesn't have a row
-	// yet (the webhook creates it). Per Wave 4 D2 spec, we mint a placeholder
-	// "ls_pending_<user>_<ts>" so the session row is internally consistent;
-	// reconciliation happens on session_id, not order_no.
 	syntheticOrderNo := fmt.Sprintf("ls_pending_%d_%d", userID, time.Now().Unix())
-
-	// Token-plan checkout amount: derive from the configured variant price.
-	// At v0 we don't have per-checkout amount in viper; use the
-	// quotaUnitsForLevel × creditsForLevel-derived USD price implied by
-	// levelStarter (¥99 ≈ $15) as the documented placeholder. Actual
-	// authority for amount remains the LS webhook payload — this is purely
-	// the audit field on gtk_payment_session.
-	const placeholderAmountCents int64 = 1500 // $15.00 starter
 
 	session, sessErr := commerce.OpenPaymentSession(
 		db, syntheticOrderNo, commerce.ProductToken,
-		"lemonsqueezy", placeholderAmountCents, userID,
+		"lemonsqueezy", amountCents, userID,
 	)
 	if sessErr != nil {
 		// Don't break the user's checkout flow on a session-row insert
@@ -91,7 +103,7 @@ func CheckoutAPI(c *gin.Context) {
 		sessionID = session.SessionID
 	}
 
-	checkoutURL, err := buildCheckoutURL(userID, sessionID)
+	checkoutURL, err := buildCheckoutURL(userID, sessionID, planCode)
 	if err != nil {
 		c.JSON(500, gin.H{"status": false, "error": err.Error()})
 		return
@@ -112,7 +124,13 @@ func CheckoutAPI(c *gin.Context) {
 // the inbound webhook can call commerce.ClosePaymentSession. Empty
 // sessionID is tolerated — the webhook layer logs + skips the close
 // (pre-Wave-4 contract).
-func buildCheckoutURL(userID int64, sessionID string) (string, error) {
+//
+// PKG-M1 (v0.22, 2026-05-12): when planCode is non-empty, also embeds
+// `checkout[custom][type]=plan` + `checkout[custom][plan_code]=<code>`.
+// LS webhook lemonsqueezy.go::planCodeFromCustomData detects the
+// plan_code presence and routes to auth.RedeemPlanForOrder (atomic
+// gtk_user_plan + quota recharge per L23 token-product path).
+func buildCheckoutURL(userID int64, sessionID, planCode string) (string, error) {
 	slug := viper.GetString("lemonsqueezy.store_slug")
 	variantID := viper.GetString("lemonsqueezy.variant_id")
 	if slug == "" {
@@ -132,6 +150,10 @@ func buildCheckoutURL(userID int64, sessionID string) (string, error) {
 	params.Set("checkout[custom][user_id]", fmt.Sprintf("%d", userID))
 	if sessionID != "" {
 		params.Set("checkout[custom][greentokey_session_id]", sessionID)
+	}
+	if planCode != "" {
+		params.Set("checkout[custom][type]", "plan")
+		params.Set("checkout[custom][plan_code]", planCode)
 	}
 
 	return fmt.Sprintf("https://%s.lemonsqueezy.com/buy/%s?%s",

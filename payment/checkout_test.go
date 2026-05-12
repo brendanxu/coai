@@ -15,7 +15,7 @@ func TestBuildCheckoutURL_Valid(t *testing.T) {
 		viper.Set("lemonsqueezy.variant_id", "")
 	})
 
-	got, err := buildCheckoutURL(42, "")
+	got, err := buildCheckoutURL(42, "", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestBuildCheckoutURL_MissingSlug(t *testing.T) {
 		viper.Set("lemonsqueezy.variant_id", "")
 	})
 
-	if _, err := buildCheckoutURL(42, ""); err == nil {
+	if _, err := buildCheckoutURL(42, "", ""); err == nil {
 		t.Fatal("missing store_slug should error")
 	}
 }
@@ -51,7 +51,7 @@ func TestBuildCheckoutURL_MissingVariant(t *testing.T) {
 		viper.Set("lemonsqueezy.store_slug", "")
 	})
 
-	if _, err := buildCheckoutURL(42, ""); err == nil {
+	if _, err := buildCheckoutURL(42, "", ""); err == nil {
 		t.Fatal("missing variant_id should error")
 	}
 }
@@ -64,8 +64,8 @@ func TestBuildCheckoutURL_DifferentUsersGetDifferentURLs(t *testing.T) {
 		viper.Set("lemonsqueezy.variant_id", "")
 	})
 
-	url1, _ := buildCheckoutURL(1, "")
-	url2, _ := buildCheckoutURL(2, "")
+	url1, _ := buildCheckoutURL(1, "", "")
+	url2, _ := buildCheckoutURL(2, "", "")
 	if url1 == url2 {
 		t.Fatal("URLs for different users must differ on user_id")
 	}
@@ -82,7 +82,7 @@ func TestBuildCheckoutURL_EmbedsSessionID(t *testing.T) {
 		viper.Set("lemonsqueezy.variant_id", "")
 	})
 
-	got, err := buildCheckoutURL(42, "sess-abc-123")
+	got, err := buildCheckoutURL(42, "sess-abc-123", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -103,8 +103,53 @@ func TestBuildCheckoutURL_EmptySessionIDOmitsKey(t *testing.T) {
 		viper.Set("lemonsqueezy.variant_id", "")
 	})
 
-	got, _ := buildCheckoutURL(42, "")
+	got, _ := buildCheckoutURL(42, "", "")
 	if strings.Contains(got, "greentokey_session_id") {
 		t.Errorf("empty sessionID must omit the key entirely: %q", got)
+	}
+}
+
+// PKG-M1 (v0.22): plan_code path — when non-empty, must inject both
+// custom_data.type=plan and custom_data.plan_code so the LS webhook
+// (lemonsqueezy.go::planCodeFromCustomData) routes the paid event to
+// auth.RedeemPlanForOrder.
+func TestBuildCheckoutURL_PlanCodeInjectsCustomData(t *testing.T) {
+	viper.Set("lemonsqueezy.store_slug", "greentokey")
+	viper.Set("lemonsqueezy.variant_id", "999999")
+	t.Cleanup(func() {
+		viper.Set("lemonsqueezy.store_slug", "")
+		viper.Set("lemonsqueezy.variant_id", "")
+	})
+
+	got, err := buildCheckoutURL(42, "sess-x", "token-99")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, "checkout%5Bcustom%5D%5Btype%5D=plan") {
+		t.Errorf("type=plan custom_data missing: %q", got)
+	}
+	if !strings.Contains(got, "checkout%5Bcustom%5D%5Bplan_code%5D=token-99") {
+		t.Errorf("plan_code=token-99 custom_data missing: %q", got)
+	}
+}
+
+// Empty plan_code must NOT inject type or plan_code keys (legacy
+// starter-subscription path uses level-based logic in
+// dispatch_token.go::handleSubscriptionEvent and would mis-route if it
+// saw a stray type=plan).
+func TestBuildCheckoutURL_EmptyPlanCodeOmitsKeys(t *testing.T) {
+	viper.Set("lemonsqueezy.store_slug", "greentokey")
+	viper.Set("lemonsqueezy.variant_id", "999999")
+	t.Cleanup(func() {
+		viper.Set("lemonsqueezy.store_slug", "")
+		viper.Set("lemonsqueezy.variant_id", "")
+	})
+
+	got, _ := buildCheckoutURL(42, "", "")
+	if strings.Contains(got, "%5Btype%5D") {
+		t.Errorf("empty plan_code must omit type key: %q", got)
+	}
+	if strings.Contains(got, "%5Bplan_code%5D") {
+		t.Errorf("empty plan_code must omit plan_code key: %q", got)
 	}
 }
