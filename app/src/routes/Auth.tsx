@@ -20,9 +20,9 @@ import { getQueryParam } from "@/utils/path.ts";
 //   javascript:alert(1)      — pseudo-scheme injection
 //   <anything with spaces>   — pre-encoded leak / malformed
 //   empty / missing          — default to "/"
-const SAFE_NEXT_PATH = /^\/(?!\/)[^\s<>"]*$/;
+export const SAFE_NEXT_PATH = /^\/(?!\/)[^\s<>"]*$/;
 
-function nextPathFromQuery(): string {
+export function nextPathFromQuery(): string {
   const next = (getQueryParam("next") || "").trim();
   if (!next || !SAFE_NEXT_PATH.test(next)) return "/";
   return next;
