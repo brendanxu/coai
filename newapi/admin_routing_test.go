@@ -475,19 +475,17 @@ func TestListChannelsAPI_DegradedWhenUnconfigured(t *testing.T) {
 	}
 }
 
-func TestUpdateChannelGroupsAPI_StubReturns501(t *testing.T) {
+func TestUpdateChannelAPI_NotConfiguredReturns503(t *testing.T) {
 	db := adminTestDB(t)
 	withConnDB(t, db)
 
-	body := []byte(`{"groups":["default","friend-pool"]}`)
+	// Without a configured NewAPI admin token, the handler must return 503.
+	body := []byte(`{"type":1,"name":"test","key":"sk-test"}`)
 	w, c := adminGinCtx("PUT", "/api/gtk/v1/admin/channels/1", body, db)
 	c.Params = gin.Params{{Key: "channel_id", Value: "1"}}
-	UpdateChannelGroupsAPI(c)
+	UpdateChannelAPI(c)
 
-	if w.Code != http.StatusNotImplemented {
-		t.Fatalf("status = %d, want 501; body=%s", w.Code, w.Body.String())
-	}
-	if !strings.Contains(w.Body.String(), "not yet implemented") {
-		t.Errorf("expected stub message; body=%s", w.Body.String())
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503; body=%s", w.Code, w.Body.String())
 	}
 }

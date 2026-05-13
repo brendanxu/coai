@@ -35,6 +35,13 @@ import (
 func Register(app *gin.RouterGroup) {
 	app.GET("/gtk/v1/pool", PoolAPI)
 	app.GET("/gtk/v1/binding", BindingAPI)
+
+	// Usage aggregation — auth-gated, user-scoped.
+	app.GET("/gtk/v1/usage/summary", UsageSummaryAPI)
+	app.GET("/gtk/v1/usage/timeseries", UsageTimeseriesAPI)
+	app.GET("/gtk/v1/usage/by-model", UsageByModelAPI)
+	app.GET("/gtk/v1/usage/recent", UsageRecentAPI)
+
 	RegisterAdminRoutes(app)
 }
 

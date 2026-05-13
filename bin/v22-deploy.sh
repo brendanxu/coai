@@ -220,7 +220,10 @@ BRIEF
 
   build)
     echo "==> docker build greentokey-coai:$NEW_TAG (Dockerfile.split, Go-only compile)"
-    ssh "$VPS_HOST" "cd $VPS_PATH && sudo docker build -f Dockerfile.split -t greentokey-coai:$NEW_TAG . 2>&1 | tail -20" \
+    # -o ServerAliveInterval=30: send keepalive every 30s so long Go builds
+    # (2-5 min on 2GB VPS) don't drop the SSH connection mid-way.
+    ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=20 "$VPS_HOST" \
+      "cd $VPS_PATH && sudo docker build -f Dockerfile.split -t greentokey-coai:$NEW_TAG . 2>&1 | tail -30" \
       || { echo "❌ docker build failed"; exit 1; }
     echo ""
     echo "==> Verify image exists"

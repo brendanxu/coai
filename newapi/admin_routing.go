@@ -75,7 +75,11 @@ func RegisterAdminRoutes(app *gin.RouterGroup) {
 	app.GET("/gtk/v1/admin/user-routing/:user_id", GetUserRoutingAPI)
 	app.PUT("/gtk/v1/admin/user-routing/:user_id", UpdateUserRoutingAPI)
 	app.GET("/gtk/v1/admin/channels", ListChannelsAPI)
-	app.PUT("/gtk/v1/admin/channels/:channel_id", UpdateChannelGroupsAPI)
+	app.POST("/gtk/v1/admin/channels", CreateChannelAPI)
+	app.GET("/gtk/v1/admin/channels/:channel_id", GetChannelAPI)
+	app.PUT("/gtk/v1/admin/channels/:channel_id", UpdateChannelAPI)
+	app.DELETE("/gtk/v1/admin/channels/:channel_id", DeleteChannelAPI)
+	app.POST("/gtk/v1/admin/channels/:channel_id/test", TestChannelAPI)
 }
 
 // UserRoutingRow is the JSON shape returned by the list + detail endpoints.
@@ -291,36 +295,28 @@ func ListChannelsAPI(c *gin.Context) {
 	})
 }
 
-// UpdateChannelGroupsRequest is the JSON body for PUT /admin/channels/:channel_id.
-//
-// v0 accepts the field but the handler is a stub (501). Documented here
-// so the frontend can be wired against the request shape it'll eventually
-// hit when the NewAPI channel-update plumbing lands in v0.20.
-type UpdateChannelGroupsRequest struct {
-	Groups []string `json:"groups" binding:"required"`
+// parseChannelIDParam pulls :channel_id and writes a 400 on failure. Returns
+// (id, true) on success and (0, false) when the handler should bail.
+func parseChannelIDParam(c *gin.Context) (int64, bool) {
+	raw := c.Param("channel_id")
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "invalid channel_id: " + raw,
+		})
+		return 0, false
+	}
+	return id, true
 }
 
-// UpdateChannelGroupsAPI handles PUT /api/gtk/v1/admin/channels/:channel_id.
-//
-// v0 STUB: returns 501 Not Implemented + logs the intended change. Founder
-// edits channel groups via the raw NewAPI admin dashboard for now (see
-// admin_routing.go header).
-//
-// When implementing for real, the body needs to round-trip far more than
-// just the groups list — NewAPI's PUT /api/channel/ expects the full
-// channel object. The implementer should: (a) GET the channel by id, (b)
-// patch the .group field with comma-joined Groups, (c) PUT the entire
-// payload back. ListChannels already returns ChannelInfo with all the
-// fields needed; the missing piece is the raw `models` string +
-// model_mapping + base_url + key fields which ChannelInfo currently
-// strips. Either expand ChannelInfo or fetch raw per-id at write time.
-func UpdateChannelGroupsAPI(c *gin.Context) {
-	admin := auth.RequireAdmin(c)
-	if admin == nil {
+// CreateChannelAPI handles POST /api/gtk/v1/admin/channels.
+// Creates a new channel in NewAPI and returns the created ChannelInfo (201).
+func CreateChannelAPI(c *gin.Context) {
+	if a := auth.RequireAdmin(c); a == nil {
 		return
 	}
-	channelID := c.Param("channel_id")
-	var req UpdateChannelGroupsRequest
+	var req ChannelWriteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -328,20 +324,159 @@ func UpdateChannelGroupsAPI(c *gin.Context) {
 		})
 		return
 	}
+	cli, err := Default()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"success": false,
+			"message": "newapi not configured: " + err.Error(),
+		})
+		return
+	}
+	ch, err := cli.CreateChannel(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"message": "create channel failed: " + err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"data":    ch,
+	})
+}
 
-	adminID := admin.GetID(connection.DB)
-	globals.Warn(fmt.Sprintf(
-		"newapi: admin=%d requested channel_id=%s groups → %v (NOT APPLIED — endpoint stubbed; edit via NewAPI dashboard)",
-		adminID, channelID, req.Groups))
+// GetChannelAPI handles GET /api/gtk/v1/admin/channels/:channel_id.
+// Returns the ChannelInfo for a single channel.
+func GetChannelAPI(c *gin.Context) {
+	if a := auth.RequireAdmin(c); a == nil {
+		return
+	}
+	id, ok := parseChannelIDParam(c)
+	if !ok {
+		return
+	}
+	cli, err := Default()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"success": false,
+			"message": "newapi not configured: " + err.Error(),
+		})
+		return
+	}
+	ch, err := cli.GetChannel(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"message": "get channel failed: " + err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    ch,
+	})
+}
 
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"success": false,
-		"message": "channel group update not yet implemented in greentokey admin — " +
-			"edit via NewAPI dashboard (http://newapi:3000) for now",
-		"requested": gin.H{
-			"channel_id": channelID,
-			"groups":     req.Groups,
-		},
+// UpdateChannelAPI handles PUT /api/gtk/v1/admin/channels/:channel_id.
+// Replaces the v0 stub (UpdateChannelGroupsAPI). Accepts a full
+// ChannelWriteRequest body and forwards it to NewAPI.
+func UpdateChannelAPI(c *gin.Context) {
+	if a := auth.RequireAdmin(c); a == nil {
+		return
+	}
+	id, ok := parseChannelIDParam(c)
+	if !ok {
+		return
+	}
+	var req ChannelWriteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "invalid request: " + err.Error(),
+		})
+		return
+	}
+	req.ID = id
+	cli, err := Default()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"success": false,
+			"message": "newapi not configured: " + err.Error(),
+		})
+		return
+	}
+	ch, err := cli.UpdateChannel(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"message": "update channel failed: " + err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    ch,
+	})
+}
+
+// DeleteChannelAPI handles DELETE /api/gtk/v1/admin/channels/:channel_id.
+// Deletes the channel from NewAPI and returns {"success":true}.
+func DeleteChannelAPI(c *gin.Context) {
+	if a := auth.RequireAdmin(c); a == nil {
+		return
+	}
+	id, ok := parseChannelIDParam(c)
+	if !ok {
+		return
+	}
+	cli, err := Default()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"success": false,
+			"message": "newapi not configured: " + err.Error(),
+		})
+		return
+	}
+	if err := cli.DeleteChannel(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"message": "delete channel failed: " + err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// TestChannelAPI handles POST /api/gtk/v1/admin/channels/:channel_id/test.
+// Triggers a test ping on the channel via NewAPI and returns the result.
+func TestChannelAPI(c *gin.Context) {
+	if a := auth.RequireAdmin(c); a == nil {
+		return
+	}
+	id, ok := parseChannelIDParam(c)
+	if !ok {
+		return
+	}
+	cli, err := Default()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"success": false,
+			"message": "newapi not configured: " + err.Error(),
+		})
+		return
+	}
+	result, err := cli.TestChannel(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"message": "test channel failed: " + err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
 	})
 }
 

@@ -25,6 +25,33 @@ import (
 	"strings"
 )
 
+// ChannelWriteRequest is the body for POST (create) and PUT (update) channel
+// operations. For PUT, ID must be non-zero. For POST, ID is ignored.
+//
+// NewAPI v0.13.x honors partial PUT bodies for most fields; we send the full
+// shape on every write to avoid field-reset surprises.
+type ChannelWriteRequest struct {
+	ID           int64  `json:"id,omitempty"`
+	Type         int    `json:"type" binding:"required"`
+	Name         string `json:"name" binding:"required"`
+	Key          string `json:"key" binding:"required"` // API key for the upstream
+	BaseURL      string `json:"base_url"`
+	Models       string `json:"models"`        // comma-separated
+	Group        string `json:"group"`
+	ModelMapping string `json:"model_mapping"` // JSON object string, "" = no mapping
+	ModelRatio   string `json:"model_ratio"`   // JSON object string
+	Priority     int    `json:"priority"`
+	Weight       int    `json:"weight"`
+	Status       int    `json:"status"` // 1=enabled, 2=disabled; 0 → default 1
+}
+
+// ChannelTestResult is returned by TestChannel.
+type ChannelTestResult struct {
+	Success      bool   `json:"success"`
+	ResponseTime int    `json:"response_time_ms"`
+	Message      string `json:"message"`
+}
+
 // ProviderInfo describes how greentokey labels a NewAPI channel type.
 type ProviderInfo struct {
 	// Type is NewAPI's internal channel type id.
@@ -264,6 +291,132 @@ func (c *Client) ListChannels(ctx context.Context) ([]ChannelInfo, error) {
 		return out[i].Name < out[j].Name
 	})
 	return out, nil
+}
+
+// rawToChannelInfo converts a channelRaw to ChannelInfo with provider labels.
+func rawToChannelInfo(raw channelRaw) ChannelInfo {
+	info := classifyChannel(raw.Type, raw.Name)
+	return ChannelInfo{
+		ID:            raw.ID,
+		Type:          raw.Type,
+		Provider:      info.Provider,
+		ProviderLabel: info.Label,
+		Name:          raw.Name,
+		Status:        raw.Status,
+		Models:        splitCSV(raw.Models),
+		ResponseTime:  raw.ResponseTime,
+		Weight:        raw.Weight,
+		Priority:      raw.Priority,
+		Group:         raw.Group,
+		IsSub2API:     info.IsSub2API,
+	}
+}
+
+// GetChannel fetches a single channel by id from NewAPI and returns it as
+// ChannelInfo. Returns a wrapped error if NewAPI returns success=false.
+func (c *Client) GetChannel(ctx context.Context, id int64) (*ChannelInfo, error) {
+	var env envelope[channelRaw]
+	path := fmt.Sprintf("/api/channel/%d", id)
+	if err := c.do(ctx, "GET", path, nil, 0, &env); err != nil {
+		return nil, fmt.Errorf("get newapi channel %d: %w", id, err)
+	}
+	if !env.Success {
+		return nil, fmt.Errorf("newapi: get channel %d: %s", id, env.Message)
+	}
+	ch := rawToChannelInfo(env.Data)
+	return &ch, nil
+}
+
+// CreateChannel creates a new channel in NewAPI. After the create call (which
+// returns a null data payload), it fetches the channel by searching the list
+// for the name to get the assigned id, then returns the full ChannelInfo.
+//
+// Because NewAPI's POST /api/channel/ returns {"success":true,"data":null},
+// we fall back to re-listing and matching by name to retrieve the new id.
+func (c *Client) CreateChannel(ctx context.Context, req ChannelWriteRequest) (*ChannelInfo, error) {
+	var env envelope[any]
+	if err := c.do(ctx, "POST", "/api/channel/", req, 0, &env); err != nil {
+		return nil, fmt.Errorf("create newapi channel: %w", err)
+	}
+	if !env.Success {
+		return nil, fmt.Errorf("newapi: create channel: %s", env.Message)
+	}
+	// NewAPI returns null data on create — re-list to find the new channel.
+	channels, err := c.ListChannels(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("create channel: re-list after create: %w", err)
+	}
+	// Match by name (most-recently created wins if duplicates exist).
+	var matched *ChannelInfo
+	for i := range channels {
+		if channels[i].Name == req.Name {
+			ch := channels[i]
+			matched = &ch
+		}
+	}
+	if matched == nil {
+		return nil, fmt.Errorf("newapi: create channel: channel %q not found after create", req.Name)
+	}
+	return matched, nil
+}
+
+// UpdateChannel updates an existing channel in NewAPI. req.ID must be non-zero.
+// After the update (which returns null data), it fetches the channel by id to
+// return the fresh ChannelInfo.
+func (c *Client) UpdateChannel(ctx context.Context, req ChannelWriteRequest) (*ChannelInfo, error) {
+	if req.ID == 0 {
+		return nil, fmt.Errorf("newapi: update channel: ID must be non-zero")
+	}
+	var env envelope[any]
+	if err := c.do(ctx, "PUT", "/api/channel/", req, 0, &env); err != nil {
+		return nil, fmt.Errorf("update newapi channel %d: %w", req.ID, err)
+	}
+	if !env.Success {
+		return nil, fmt.Errorf("newapi: update channel %d: %s", req.ID, env.Message)
+	}
+	return c.GetChannel(ctx, req.ID)
+}
+
+// DeleteChannel deletes a channel by id via NewAPI's DELETE /api/channel/?ids={id}.
+func (c *Client) DeleteChannel(ctx context.Context, id int64) error {
+	path := fmt.Sprintf("/api/channel/?ids=%d", id)
+	var env envelope[any]
+	if err := c.do(ctx, "DELETE", path, nil, 0, &env); err != nil {
+		return fmt.Errorf("delete newapi channel %d: %w", id, err)
+	}
+	if !env.Success {
+		return fmt.Errorf("newapi: delete channel %d: %s", id, env.Message)
+	}
+	return nil
+}
+
+// testChannelRaw mirrors the data payload from NewAPI's POST /api/channel/test.
+type testChannelRaw struct {
+	Time     int    `json:"time"`
+	Response string `json:"response"`
+}
+
+// TestChannel sends a test ping to a channel via NewAPI and returns the result.
+func (c *Client) TestChannel(ctx context.Context, id int64) (*ChannelTestResult, error) {
+	path := fmt.Sprintf("/api/channel/test?id=%d", id)
+	var env envelope[testChannelRaw]
+	if err := c.do(ctx, "POST", path, nil, 0, &env); err != nil {
+		return &ChannelTestResult{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+	if !env.Success {
+		return &ChannelTestResult{
+			Success: false,
+			Message: env.Message,
+		}, nil
+	}
+	return &ChannelTestResult{
+		Success:      true,
+		ResponseTime: env.Data.Time,
+		Message:      env.Data.Response,
+	}, nil
 }
 
 func splitCSV(s string) []string {
