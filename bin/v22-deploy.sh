@@ -52,36 +52,60 @@ case "$step" in
     # Patterns added between $PREV_TAG and HEAD that introduce upstream
     # contracts (query params, custom_data keys, attach segments).
     # For each, the producer code MUST have ≥1 consumer in the repo.
-    declare -A patterns=(
-      ["?next="]="getQueryParam[[:space:]]*\\(\"next\""
-      ["custom_data\\[type\\]=plan"]="custom_data.*type.*==.*\"plan\"|planCodeFromCustomData"
-      ["attach=plan:"]="HasPrefix\\(attach, \"plan:\"\\)"
-      ["greentokey_session_id"]="sessionIDFromCustomData|greentokey_session_id"
+    #
+    # Structure: parallel arrays (producer_patterns + consumer_patterns +
+    # labels). Was originally a bash associative array but `?` and `=` in
+    # the keys triggered glob/assignment parsing — caught by our own
+    # dogfood smoke 2026-05-13.
+    labels=(
+      "next_query_param"
+      "ls_plan_custom_data"
+      "hupijiao_attach_plan"
+      "greentokey_session_id"
+    )
+    producer_patterns=(
+      'getQueryParam.*next'        # "?next=" in URL → producer in TokenPlans.tsx etc.
+      'checkout..custom...type'    # custom_data[type]=plan emitted at checkout
+      'attach=plan:'               # attach=plan:CODE:user:ID in hupijiao request
+      'greentokey_session_id'      # session id segment in LS custom_data + hupijiao attach
+    )
+    consumer_patterns=(
+      'getQueryParam[[:space:]]*\("next'                   # Auth.tsx::nextPathFromQuery
+      'planCodeFromCustomData|custom\[.type.\].*plan'      # dispatch reads type=plan
+      'HasPrefix\(attach, "plan:"\)'                       # service/webhook_handler.go parser
+      'sessionIDFromCustomData|parts\[4\].*"session"'      # session_id consumers
     )
 
-    for producer in "${!patterns[@]}"; do
-      consumer="${patterns[$producer]}"
-      # Producer exists somewhere in repo (grep -rl, exclude vendored)
-      producer_hit=$(grep -rln --include='*.go' --include='*.tsx' --include='*.ts' \
+    # set -e is enabled at file top; grep returns 1 on no-match which
+    # would kill the script. Wrap each grep | head in `|| true` so the
+    # "no producer found, skip" path doesn't trigger an early exit.
+    for i in "${!labels[@]}"; do
+      label="${labels[$i]}"
+      producer="${producer_patterns[$i]}"
+      consumer="${consumer_patterns[$i]}"
+
+      # Producer exists somewhere in repo (regex form, exclude vendored)
+      producer_hit=$(grep -rlE --include='*.go' --include='*.tsx' --include='*.ts' \
         --exclude-dir='node_modules' --exclude-dir='dist' --exclude-dir='.git' \
-        -F "$producer" "$SRC_DIR" 2>/dev/null | head -3)
+        "$producer" "$SRC_DIR" 2>/dev/null | head -3 || true)
 
       if [ -z "$producer_hit" ]; then
-        # Producer doesn't appear in repo → not introduced, skip
-        continue
+        continue   # producer not present — pattern doesn't apply
       fi
 
       # Producer exists → consumer regex must also have ≥1 hit
       consumer_hit=$(grep -rlE --include='*.go' --include='*.tsx' --include='*.ts' \
         --exclude-dir='node_modules' --exclude-dir='dist' --exclude-dir='.git' \
-        "$consumer" "$SRC_DIR" 2>/dev/null | head -3)
+        "$consumer" "$SRC_DIR" 2>/dev/null | head -3 || true)
 
       if [ -z "$consumer_hit" ]; then
-        echo "❌ INTRODUCE-AND-FORGET: '$producer' produced but no consumer matching /$consumer/"
+        echo "❌ INTRODUCE-AND-FORGET [$label]: producer present, no consumer matching /$consumer/"
         echo "   Producer found in:"
         echo "$producer_hit" | sed 's/^/     /'
         echo "   → Wire the consumer or remove the producer before deploy."
         fail=1
+      else
+        echo "  ✓ $label: producer + consumer both present"
       fi
     done
 
