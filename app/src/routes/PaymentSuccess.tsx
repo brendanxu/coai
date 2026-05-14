@@ -78,7 +78,12 @@ function CopyField({ label, value, warning }: { label: string; value: string; wa
 function PaymentSuccess() {
   const { t } = useTranslation();
   const [params] = useSearchParams();
-  const orderNo = params.get("order_no") ?? "";
+  // Accept ?order_no= (internal links) OR ?subscription_id= (LS redirect).
+  // Token plans use the LS subscription_id as the local order_no.
+  const orderNo =
+    params.get("order_no") ??
+    params.get("subscription_id") ??
+    "";
 
   const authenticated = useSelector(selectAuthenticated);
 

@@ -156,6 +156,15 @@ func buildCheckoutURL(userID int64, sessionID, planCode string) (string, error) 
 		params.Set("checkout[custom][plan_code]", planCode)
 	}
 
+	// Redirect back to our success page after payment. LS appends
+	// ?subscription_id=<id> which PaymentSuccess.tsx uses as order_no
+	// (token plans use LS subscription_id as their local order_no).
+	successBase := viper.GetString("payment.success_url")
+	if successBase == "" {
+		successBase = "https://api.greentokey.com/payment/success"
+	}
+	params.Set("checkout[redirect_url]", successBase+"?provider=ls")
+
 	return fmt.Sprintf("https://%s.lemonsqueezy.com/buy/%s?%s",
 		slug, variantID, params.Encode()), nil
 }
