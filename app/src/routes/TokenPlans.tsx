@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   ArrowRight,
@@ -74,33 +74,13 @@ type PoolSnapshot = {
   models: PoolModel[];
 };
 
-type HupijiaoCheckoutResp = {
-  status: boolean;
-  code_url?: string;
-  qr_png_url?: string;
-  trade_no?: string;
-  error?: string;
-};
-
-type LSCheckoutResp = {
-  status: boolean;
-  url?: string;
-  error?: string;
-};
-
-type CheckoutState =
-  | { kind: "idle" }
-  | { kind: "loading"; provider: "ls" | "hupijiao" }
-  | { kind: "qr"; codeURL?: string; qrPNGURL?: string; tradeNo?: string }
-  | { kind: "error"; message: string };
-
 type QuickStartTab = "openai" | "claudecode" | "curl";
 
 function TokenPlans() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [contactOpen, setContactOpen] = useState(false);
   const [pool, setPool] = useState<PoolSnapshot | null>(null);
-  const [checkout, setCheckout] = useState<CheckoutState>({ kind: "idle" });
   const [activeTab, setActiveTab] = useState<QuickStartTab>("openai");
 
   useEffect(() => {
@@ -118,74 +98,12 @@ function TokenPlans() {
     };
   }, []);
 
-  // Pay with USD (LemonSqueezy) — full-page redirect to LS hosted checkout.
-  const onPayUSD = async () => {
-    setCheckout({ kind: "loading", provider: "ls" });
-    try {
-      const r = await axios.get<LSCheckoutResp>(
-        `/payment/checkout?plan_code=${TOKEN_PLAN_CODE}`,
-      );
-      if (!r.data?.status || !r.data?.url) {
-        setCheckout({
-          kind: "error",
-          message: r.data?.error || t("token.plan.error.checkout-failed", "Checkout 创建失败"),
-        });
-        return;
-      }
-      window.location.href = r.data.url;
-    } catch (e: any) {
-      if (e?.response?.status === 401) {
-        window.location.href = `/login?next=${encodeURIComponent("/token-plans")}`;
-        return;
-      }
-      setCheckout({
-        kind: "error",
-        message: e?.response?.data?.error || t("token.plan.error.network", "网络异常,请重试"),
-      });
-    }
+  // Both CTA buttons lead to /checkout for payment-method selection +
+  // agreement confirmation before hitting the payment provider.
+  const onCheckout = () => {
+    navigate(`/checkout?plan_code=${TOKEN_PLAN_CODE}`);
   };
 
-  // Pay with WeChat / Alipay (Hupijiao) — fetch QR + alipay deep-link.
-  const onPayCNY = async () => {
-    setCheckout({ kind: "loading", provider: "hupijiao" });
-    try {
-      const r = await axios.get<HupijiaoCheckoutResp>(
-        `/payment/hupijiao/checkout?plan_code=${TOKEN_PLAN_CODE}`,
-      );
-      if (!r.data?.status) {
-        setCheckout({
-          kind: "error",
-          message: r.data?.error || t("token.plan.error.checkout-failed", "Checkout 创建失败"),
-        });
-        return;
-      }
-      const isMobile = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
-      if (isMobile && r.data.code_url) {
-        window.location.href = r.data.code_url;
-        return;
-      }
-      setCheckout({
-        kind: "qr",
-        codeURL: r.data.code_url,
-        qrPNGURL: r.data.qr_png_url,
-        tradeNo: r.data.trade_no,
-      });
-    } catch (e: any) {
-      if (e?.response?.status === 401) {
-        window.location.href = `/login?next=${encodeURIComponent("/token-plans")}`;
-        return;
-      }
-      setCheckout({
-        kind: "error",
-        message: e?.response?.data?.error || t("token.plan.error.network", "网络异常,请重试"),
-      });
-    }
-  };
-
-  const isLoadingLS =
-    checkout.kind === "loading" && checkout.provider === "ls";
-  const isLoadingCNY =
-    checkout.kind === "loading" && checkout.provider === "hupijiao";
 
   // 5 hero scan-facts: surfaced ABOVE the fold so CN audience gets the
   // 5 buy-decision answers before any narrative copy. Order matters —
@@ -305,36 +223,22 @@ function TokenPlans() {
 
               <div className="space-y-2.5">
                 <Button
-                  onClick={onPayCNY}
-                  disabled={
-                    checkout.kind === "loading" || checkout.kind === "qr"
-                  }
+                  onClick={onCheckout}
                   size="lg"
                   className="w-full rounded-full"
                 >
-                  {isLoadingCNY
-                    ? t("token.plan.cta.cny-loading", "正在打开微信/支付宝…")
-                    : t("token.plan.cta.cny", "微信 / 支付宝 ¥99 立即开通")}
+                  {t("token.plan.cta.cny", "微信 / 支付宝 ¥99 立即开通")}
                   <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
                 <Button
-                  onClick={onPayUSD}
-                  disabled={checkout.kind === "loading"}
+                  onClick={onCheckout}
                   size="lg"
                   variant="outline"
                   className="w-full rounded-full"
                 >
-                  {isLoadingLS
-                    ? t("token.plan.cta.usd-loading", "Opening LemonSqueezy…")
-                    : t("token.plan.cta.usd", "Pay with Card · USD $14")}
+                  {t("token.plan.cta.usd", "Pay with Card · USD $14")}
                 </Button>
               </div>
-
-              {checkout.kind === "error" && (
-                <p className="text-xs text-center text-destructive mt-3">
-                  {checkout.message}
-                </p>
-              )}
 
               <p className="text-xs text-center text-muted-foreground mt-3">
                 {t(
@@ -365,55 +269,7 @@ function TokenPlans() {
                 </button>
               </p>
 
-              {/* QR modal for desktop hupijiao path */}
-              {checkout.kind === "qr" && (
-                <div
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-                  onClick={() => setCheckout({ kind: "idle" })}
-                >
-                  <div
-                    className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <h3 className="text-lg font-semibold mb-2 text-center">
-                      {t("token.plan.qr.title", "扫码支付 ¥99")}
-                    </h3>
-                    <p className="text-xs text-center text-muted-foreground mb-4">
-                      {t(
-                        "token.plan.qr.subtitle",
-                        "用手机微信 / 支付宝扫码,支付完成后会自动开通",
-                      )}
-                    </p>
-                    {checkout.qrPNGURL && (
-                      <img
-                        src={checkout.qrPNGURL}
-                        alt="payment QR"
-                        className="w-full max-w-[240px] mx-auto rounded-lg border"
-                      />
-                    )}
-                    {!checkout.qrPNGURL && checkout.codeURL && (
-                      <a
-                        href={checkout.codeURL}
-                        className="block text-center text-sm underline mt-2"
-                      >
-                        {t("token.plan.qr.fallback", "在新窗口打开支付链接")}
-                      </a>
-                    )}
-                    {checkout.tradeNo && (
-                      <p className="text-[10px] text-muted-foreground text-center mt-3">
-                        订单号:{checkout.tradeNo}
-                      </p>
-                    )}
-                    <Button
-                      onClick={() => setCheckout({ kind: "idle" })}
-                      variant="outline"
-                      className="w-full mt-4 rounded-full"
-                    >
-                      {t("token.plan.qr.close", "关闭")}
-                    </Button>
-                  </div>
-                </div>
-              )}
+
             </div>
           </div>
 
