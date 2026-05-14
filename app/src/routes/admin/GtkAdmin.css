@@ -3,6 +3,10 @@
 /* greentokey · /admin/gtk 统一后台 */
 .gtk-admin { font-family: "Manrope", "PingFang SC", system-ui, sans-serif; }
 .gtk-admin *, .gtk-admin *::before, .gtk-admin *::after { box-sizing: border-box; }
+/* Baseline icon size — Icon* SVGs ship without width/height and rely on
+   context CSS; this stops a bare <Icon/> from stretching to fill flex space.
+   Specific rules (.gtk-sb-item svg, .stat .ic svg, …) override via specificity. */
+.gtk-admin svg { width: 16px; height: 16px; }
 
 :root {
   --bg:          #F4EFE5;

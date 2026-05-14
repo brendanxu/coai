@@ -748,7 +748,7 @@ function UsersTab() {
         </div>
 
         <div style={{ padding: "8px 18px", background: "var(--accent-soft-2)", borderBottom: "1px solid var(--line)", fontSize: 12, color: "var(--fg-2)", display: "flex", alignItems: "center", gap: 8 }}>
-          <IconInfo />
+          <span style={{ display: "inline-flex", flexShrink: 0, width: 14, height: 14 }}><IconInfo /></span>
           <span>配额换算：<strong>1 credit = 500 quota</strong>。点击配额数字可内联编辑。</span>
         </div>
 
