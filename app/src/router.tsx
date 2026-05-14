@@ -77,6 +77,11 @@ const AdminChannelsRouting = lazyFactor(
 // PKG-N1 — admin order management (/admin/orders). Closes the
 // "founder uses curl to mark concierge orders paid" gap from the audit.
 const AdminOrders = lazyFactor(() => import("@/routes/admin/AdminOrders.tsx"));
+// Unified GTK admin panel (users + model-ratios + settings + sub2api hub).
+const GtkAdmin = lazyFactor(() => import("@/routes/admin/GtkAdmin.tsx"));
+const GtkUsers = lazyFactor(() => import("@/routes/admin/GtkUsers.tsx"));
+const GtkModelRatios = lazyFactor(() => import("@/routes/admin/GtkModelRatios.tsx"));
+const GtkSettings = lazyFactor(() => import("@/routes/admin/GtkSettings.tsx"));
 
 // Phase 3+4 — checkout / payment-success / usage / live
 const Checkout = lazyFactor(() => import("@/routes/Checkout.tsx"));
@@ -516,6 +521,51 @@ const router = createBrowserRouter([
               <Suspense>
                 <AdminOrders />
               </Suspense>
+            ),
+          },
+          // Unified GTK admin panel — hub + users + model-ratios + settings.
+          {
+            id: "admin-gtk",
+            path: "gtk",
+            element: (
+              <AdminRequired>
+                <Suspense>
+                  <GtkAdmin />
+                </Suspense>
+              </AdminRequired>
+            ),
+          },
+          {
+            id: "admin-gtk-users",
+            path: "gtk-users",
+            element: (
+              <AdminRequired>
+                <Suspense>
+                  <GtkUsers />
+                </Suspense>
+              </AdminRequired>
+            ),
+          },
+          {
+            id: "admin-gtk-model-ratios",
+            path: "gtk-model-ratios",
+            element: (
+              <AdminRequired>
+                <Suspense>
+                  <GtkModelRatios />
+                </Suspense>
+              </AdminRequired>
+            ),
+          },
+          {
+            id: "admin-gtk-settings",
+            path: "gtk-settings",
+            element: (
+              <AdminRequired>
+                <Suspense>
+                  <GtkSettings />
+                </Suspense>
+              </AdminRequired>
             ),
           },
         ],

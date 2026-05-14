@@ -80,6 +80,16 @@ func RegisterAdminRoutes(app *gin.RouterGroup) {
 	app.PUT("/gtk/v1/admin/channels/:channel_id", UpdateChannelAPI)
 	app.DELETE("/gtk/v1/admin/channels/:channel_id", DeleteChannelAPI)
 	app.POST("/gtk/v1/admin/channels/:channel_id/test", TestChannelAPI)
+	// User management (admin_users.go)
+	app.GET("/gtk/v1/admin/users", ListUsersAPI)
+	app.GET("/gtk/v1/admin/users/:user_id", GetUserAPI)
+	app.PUT("/gtk/v1/admin/users/:user_id/quota", UpdateUserQuotaAPI)
+	app.PUT("/gtk/v1/admin/users/:user_id/status", UpdateUserStatusAPI)
+	// System options + model ratios (admin_options.go)
+	app.GET("/gtk/v1/admin/model-ratios", GetModelRatiosAPI)
+	app.PUT("/gtk/v1/admin/model-ratios", UpdateModelRatiosAPI)
+	app.GET("/gtk/v1/admin/system-options", GetSystemOptionsAPI)
+	app.PUT("/gtk/v1/admin/system-options", UpdateSystemOptionAPI)
 }
 
 // UserRoutingRow is the JSON shape returned by the list + detail endpoints.

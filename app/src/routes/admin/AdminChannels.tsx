@@ -41,9 +41,10 @@ interface Channel {
 const CHANNEL_TYPES: { value: number; label: string }[] = [
   { value: 1, label: "OpenAI (1)" },
   { value: 14, label: "Anthropic (14)" },
+  { value: 24, label: "Gemini (24)" },
   { value: 36, label: "SunoAPI (36)" },
   { value: 43, label: "DeepSeek (43)" },
-  { value: 45, label: "Gemini (45)" },
+  { value: 45, label: "Sub2API (45)" },
 ];
 
 interface ChannelFormState {
@@ -230,41 +231,82 @@ function ChannelModal({
           />
         </div>
 
-        <div>
-          <Label htmlFor="ch-key" style={{ display: "block", marginBottom: 4 }}>
-            API Key
-          </Label>
-          <div style={{ display: "flex", gap: 8 }}>
-            <Input
-              id="ch-key"
-              type={showKey ? "text" : "password"}
-              value={form.key}
-              onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))}
-              placeholder="sk-..."
-              style={{ flex: 1 }}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowKey((s) => !s)}
-              style={{ flexShrink: 0 }}
-            >
-              {showKey ? "隐藏" : "显示"}
-            </Button>
+        {form.type !== 45 && (
+          <div>
+            <Label htmlFor="ch-key" style={{ display: "block", marginBottom: 4 }}>
+              API Key
+            </Label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Input
+                id="ch-key"
+                type={showKey ? "text" : "password"}
+                value={form.key}
+                onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))}
+                placeholder="sk-..."
+                style={{ flex: 1 }}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowKey((s) => !s)}
+                style={{ flexShrink: 0 }}
+              >
+                {showKey ? "隐藏" : "显示"}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <Label htmlFor="ch-base-url" style={{ display: "block", marginBottom: 4 }}>
-            Base URL (可选)
-          </Label>
-          <Input
-            id="ch-base-url"
-            value={form.base_url}
-            onChange={(e) => setForm((f) => ({ ...f, base_url: e.target.value }))}
-            placeholder="https://api.example.com"
-          />
-        </div>
+        {form.type === 45 ? (
+          <>
+            <div>
+              <Label htmlFor="ch-base-url" style={{ display: "block", marginBottom: 4 }}>
+                Sub2API Base URL
+              </Label>
+              <Input
+                id="ch-base-url"
+                value={form.base_url}
+                onChange={(e) => setForm((f) => ({ ...f, base_url: e.target.value }))}
+                placeholder="https://api.sub2api.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="ch-key-sub2api" style={{ display: "block", marginBottom: 4 }}>
+                Sub2API Token
+              </Label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Input
+                  id="ch-key-sub2api"
+                  type={showKey ? "text" : "password"}
+                  value={form.key}
+                  onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))}
+                  placeholder="Sub2API token"
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowKey((s) => !s)}
+                  style={{ flexShrink: 0 }}
+                >
+                  {showKey ? "隐藏" : "显示"}
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div>
+            <Label htmlFor="ch-base-url" style={{ display: "block", marginBottom: 4 }}>
+              Base URL (可选)
+            </Label>
+            <Input
+              id="ch-base-url"
+              value={form.base_url}
+              onChange={(e) => setForm((f) => ({ ...f, base_url: e.target.value }))}
+              placeholder="https://api.example.com"
+            />
+          </div>
+        )}
 
         <div>
           <Label htmlFor="ch-models" style={{ display: "block", marginBottom: 4 }}>
