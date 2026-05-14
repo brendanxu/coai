@@ -1155,8 +1155,15 @@ function SettingsTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get<{ success: boolean; data?: Record<string, string> }>("/gtk/v1/admin/system-options")
-      .then(r => { if (r.data.success && r.data.data) setOpts(r.data.data); })
+    axios.get<{ success: boolean; data?: Record<string, unknown> }>("/gtk/v1/admin/system-options")
+      .then(r => {
+        if (r.data.success && r.data.data) {
+          const normalized = Object.fromEntries(
+            Object.entries(r.data.data).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)])
+          );
+          setOpts(normalized);
+        }
+      })
       .catch(() => toast.error("加载配置失败"))
       .finally(() => setLoading(false));
   }, []);
