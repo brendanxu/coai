@@ -29,7 +29,7 @@ export function nextPathFromQuery(): string {
 }
 import { setMemory } from "@/utils/memory.ts";
 import { appLogo, appName, useDeeptrain } from "@/conf/env.ts";
-import { Card, CardContent } from "@/components/ui/card.tsx";
+
 import { goAuth } from "@/utils/app.ts";
 import { Label } from "@/components/ui/label.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -109,6 +109,10 @@ function Login() {
     password: sessionStorage.getItem("password") || "",
   });
 
+  // Detect ?next= param for checkout-after-login context copy
+  const nextPath = nextPathFromQuery();
+  const isCheckoutNext = nextPath.startsWith("/token-plans") || nextPath.startsWith("/checkout");
+
   const onSubmit = async () => {
     if (
       !isTextInRange(form.username, 1, 255) ||
@@ -160,76 +164,205 @@ function Login() {
   }, []);
 
   return (
-    <ScrollArea className={`w-full h-full grid place-items-center`}>
-      <div className={`auth-container`}>
-        <img className={`logo`} src={appLogo} alt="" />
-        <div className={`title`}>
-          {t("login")} {appName}
-        </div>
-        <Card className={`auth-card`}>
-          <CardContent className={`pb-0`}>
-            <div className={`auth-wrapper`}>
-              <Label>
-                <Require />
-                {t("auth.username-or-email")}
-                <LengthRangeRequired
-                  content={form.username}
-                  min={1}
-                  max={255}
-                  hideOnEmpty={true}
-                />
-              </Label>
-              <Input
-                placeholder={t("auth.username-or-email-placeholder")}
-                value={form.username}
-                onChange={(e) =>
-                  dispatch({ type: "update:username", payload: e.target.value })
-                }
-              />
+    <ScrollArea className="w-full h-full">
+      <div className="min-h-screen grid md:grid-cols-[1fr_1fr] lg:grid-cols-[1.1fr_1fr]">
+        {/* ── Left panel — brand (hidden on small screens) ─────────── */}
+        <div
+          className="hidden md:flex flex-col justify-between p-10 lg:p-14"
+          style={{
+            background: "hsl(var(--accent))",
+            color: "#fff",
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <img
+              className="w-8 h-8 rounded-lg"
+              src={appLogo}
+              alt={appName}
+            />
+            <span className="font-display text-lg font-semibold tracking-tight">
+              {appName}
+            </span>
+          </div>
 
-              <Label>
-                <Require />
-                {t("auth.password")}
-                <LengthRangeRequired
-                  content={form.password}
-                  min={6}
-                  max={36}
-                  hideOnEmpty={true}
+          <div className="space-y-6">
+            <p
+              className="text-xs uppercase tracking-[0.18em] font-medium"
+              style={{ color: "rgba(255,255,255,0.65)" }}
+            >
+              {t("auth.split.eyebrow", "登录")}
+            </p>
+            <h2
+              className="font-display text-3xl lg:text-4xl leading-[1.15] tracking-tight"
+              style={{ color: "#fff" }}
+            >
+              {t("auth.split.heading", "欢迎回来,")}
+              <br />
+              {t("auth.split.heading2", "从你停下的")}
+              <em
+                className="not-italic"
+                style={{ color: "rgba(255,255,255,0.75)", fontStyle: "italic" }}
+              >
+                {" "}{t("auth.split.heading3", "地方继续。")}
+              </em>
+            </h2>
+            <p
+              className="text-sm leading-relaxed max-w-xs"
+              style={{ color: "rgba(255,255,255,0.75)" }}
+            >
+              {isCheckoutNext
+                ? t(
+                    "auth.split.sub_checkout",
+                    "登录后会自动回到你刚才看的 Token 套餐页，几秒内完成支付。",
+                  )
+                : t(
+                    "auth.split.sub",
+                    "一个账号，调用全部模型。支付宝 / 微信 / 卡都可以付。",
+                  )}
+            </p>
+
+            {isCheckoutNext && (
+              <div
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs"
+                style={{
+                  background: "rgba(255,255,255,0.12)",
+                  color: "rgba(255,255,255,0.85)",
+                }}
+              >
+                <svg
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <path d="M9 14 4 9l5-5" />
+                  <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11" />
+                </svg>
+                {t("auth.split.returnto", "登录后将跳回")} <strong>/token-plans</strong>
+              </div>
+            )}
+          </div>
+
+          {/* Stats chips at bottom */}
+          <div className="flex flex-wrap gap-3">
+            {[
+              t("auth.split.stat1", "1.2k+ 注册用户"),
+              t("auth.split.stat2", "14 款现货模型"),
+              t("auth.split.stat3", "99.9% 可用率"),
+            ].map((stat) => (
+              <span
+                key={stat}
+                className="text-xs px-3 py-1.5 rounded-full font-medium"
+                style={{
+                  background: "rgba(255,255,255,0.15)",
+                  color: "rgba(255,255,255,0.9)",
+                }}
+              >
+                {stat}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Right panel — login form ──────────────────────────────── */}
+        <div className="flex flex-col items-center justify-center px-6 py-10 md:px-10">
+          {/* Mobile-only logo */}
+          <div className="flex items-center gap-2 mb-8 md:hidden">
+            <img className="w-8 h-8 rounded-lg" src={appLogo} alt={appName} />
+            <span className="font-display text-lg font-semibold">
+              {appName}
+            </span>
+          </div>
+
+          <div className="w-full max-w-sm">
+            <div className="mb-6">
+              <h1 className="font-display text-2xl tracking-tight mb-1">
+                {t("login")}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {isCheckoutNext
+                  ? t("auth.split.form_sub_checkout", "登录并继续完成支付")
+                  : t("auth.split.form_sub", "登录你的 greentokey 账号")}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>
+                  <Require />
+                  {t("auth.username-or-email")}
+                  <LengthRangeRequired
+                    content={form.username}
+                    min={1}
+                    max={255}
+                    hideOnEmpty={true}
+                  />
+                </Label>
+                <Input
+                  placeholder={t("auth.username-or-email-placeholder")}
+                  value={form.username}
+                  onChange={(e) =>
+                    dispatch({ type: "update:username", payload: e.target.value })
+                  }
                 />
-              </Label>
-              <Input
-                placeholder={t("auth.password-placeholder")}
-                value={form.password}
-                type={"password"}
-                onChange={(e) =>
-                  dispatch({ type: "update:password", payload: e.target.value })
-                }
-              />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>
+                  <Require />
+                  {t("auth.password")}
+                  <LengthRangeRequired
+                    content={form.password}
+                    min={6}
+                    max={36}
+                    hideOnEmpty={true}
+                  />
+                </Label>
+                <Input
+                  placeholder={t("auth.password-placeholder")}
+                  value={form.password}
+                  type="password"
+                  onChange={(e) =>
+                    dispatch({ type: "update:password", payload: e.target.value })
+                  }
+                />
+              </div>
 
               <Button
                 tapScale={0.975}
-                classNameWrapper={`mt-2`}
+                classNameWrapper="mt-2"
                 onClick={onSubmit}
-                className={`w-full`}
+                className="w-full"
                 loading={true}
               >
-                {t("login")}
+                {isCheckoutNext
+                  ? t("auth.split.cta_checkout", "登录并继续支付 →")
+                  : t("login")}
               </Button>
             </div>
-          </CardContent>
-        </Card>
-        <div className={`auth-card addition-wrapper`}>
-          <div className={`row`}>
-            {t("auth.no-account")}
-            <a className={`link`} onClick={() => router.navigate("/register")}>
-              {t("auth.register")}
-            </a>
-          </div>
-          <div className={`row`}>
-            {t("auth.forgot-password")}
-            <a className={`link`} onClick={() => router.navigate("/forgot")}>
-              {t("auth.reset-password")}
-            </a>
+
+            <div className="mt-6 space-y-2 text-sm text-center text-muted-foreground">
+              <div>
+                {t("auth.no-account")}
+                <a
+                  className="ml-1 underline underline-offset-4 cursor-pointer hover:text-foreground"
+                  onClick={() => router.navigate("/register")}
+                >
+                  {t("auth.register")}
+                </a>
+              </div>
+              <div>
+                {t("auth.forgot-password")}
+                <a
+                  className="ml-1 underline underline-offset-4 cursor-pointer hover:text-foreground"
+                  onClick={() => router.navigate("/forgot")}
+                >
+                  {t("auth.reset-password")}
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>

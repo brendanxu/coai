@@ -1,67 +1,22 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
-import axios from "axios";
 import { ArrowRight } from "lucide-react";
 
 import Header from "@/components/Marketing/Header.tsx";
 import Footer from "@/components/Marketing/Footer.tsx";
+import ContactDialog from "@/components/Marketing/ContactDialog.tsx";
 
 /**
- * /services — service marketplace listing.
+ * /services — service marketplace.
  *
- * Pulls from /api/gtk/v1/services (gtk_service catalog). Currently
- * surfaces 3 seeded services from service/seed.go:
- *   - xhs-single-post (¥19, diy_agent)
- *   - xhs-monthly-pack (¥299, content_pack)
- *   - mansu-managed-ops (¥1,980/month, managed_ops) — links to
- *     /services/mansu (= the legacy /pricing page) for full detail.
+ * Per mockup §4.1: graceful empty/placeholder state.
+ * "内测中 · 5月底开放" — do NOT build a full service marketplace.
+ * Two placeholder cards: 民宿小红书 SaaS + token-bundle.
+ * CTAs wire to ContactDialog.
  */
-type PublicService = {
-  slug: string;
-  name: string;
-  description?: string;
-  category: string;
-  price_cny_cents: number;
-  price_display_cny: string;
-  included_credits: number;
-  billing_type: string;
-  display_order: number;
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  diy_agent: "DIY 智能体",
-  content_pack: "资料制作包",
-  managed_ops: "代运营",
-};
-
-const BILLING_LABELS: Record<string, string> = {
-  one_time: "一次性",
-  monthly: "按月",
-  per_use: "按次",
-};
-
 export default function Services() {
   const { t } = useTranslation();
-  const [items, setItems] = useState<PublicService[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    axios
-      .get("/gtk/v1/services")
-      .then((r) => {
-        if (mounted && r.data?.success) {
-          setItems(r.data.data?.services || []);
-        } else if (mounted) {
-          setError("加载失败");
-        }
-      })
-      .catch(() => mounted && setError("网络异常"));
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const [contactOpen, setContactOpen] = useState(false);
 
   return (
     <>
@@ -71,60 +26,98 @@ export default function Services() {
           className="mx-auto px-6 py-16 md:py-24"
           style={{ maxWidth: "var(--max-content)" }}
         >
-          <header className="text-center mb-14 md:mb-20">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-3">
-              {t("services.eyebrow", "服务市场")}
-            </p>
+          {/* Header */}
+          <header className="text-center mb-14 md:mb-16">
+            <span
+              className="inline-block text-[11px] uppercase tracking-[0.18em] px-3 py-1 rounded-full font-medium mb-5"
+              style={{
+                background: "hsl(var(--accent-soft))",
+                color: "hsl(var(--primary-deep))",
+              }}
+            >
+              {t("services.placeholder.eyebrow", "内测中 · 5月底开放")}
+            </span>
             <h1 className="font-display text-4xl md:text-5xl tracking-tight mb-5">
-              {t("services.heading", "AI 服务，按结果买。")}
+              {t("services.placeholder.heading", "服务市场")}
             </h1>
-            <p className="text-base md:text-lg text-secondary-foreground/80 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base text-secondary-foreground/80 max-w-xl mx-auto leading-relaxed">
               {t(
-                "services.sub",
-                "服务 = 我们调好的 Prompt + Token 包。底层仍是算力，但你看到的是「单图小红书内容 ¥19」「月度 30 篇 ¥299」「全闭环代运营 ¥1980/月」这种可定价的结果。",
+                "services.placeholder.sub",
+                "我们正在为你准备专属的 AI 服务，敬请期待。",
               )}
             </p>
           </header>
 
-          {error && (
-            <div className="rounded-2xl bg-destructive/10 text-destructive p-6 text-center">
-              {error}
-            </div>
-          )}
+          {/* 2 placeholder service cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-16">
+            <PlaceholderCard
+              badge={t("services.placeholder.card1.badge", "代运营 · 按月")}
+              title={t("services.placeholder.card1.title", "民宿小红书 SaaS")}
+              price={t("services.placeholder.card1.price", "¥1980/月")}
+              body={t(
+                "services.placeholder.card1.body",
+                "AI 帮你写文案、出图、自动发布、应对评论私信。每月全托管，比本地 MCN 更稳更便宜。",
+              )}
+              onContact={() => setContactOpen(true)}
+              t={t}
+            />
+            <PlaceholderCard
+              badge={t("services.placeholder.card2.badge", "算力包 · 按次")}
+              title={t("services.placeholder.card2.title", "Token 增量包")}
+              price={t("services.placeholder.card2.price", "即将上线")}
+              body={t(
+                "services.placeholder.card2.body",
+                "按需补充 credits，不想订月套餐时按次购买——接入同一 API Key，扣同一个钱包。",
+              )}
+              onContact={() => setContactOpen(true)}
+              t={t}
+            />
+          </div>
 
-          {!items && !error && (
-            <div className="text-center text-muted-foreground py-16">
-              {t("services.loading", "加载中…")}
-            </div>
-          )}
-
-          {items && items.length === 0 && (
-            <div className="text-center text-muted-foreground py-16">
-              {t("services.empty", "敬请期待——首批服务即将上架")}
-            </div>
-          )}
-
-          {items && items.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {items.map((s) => (
-                <ServiceTile key={s.slug} svc={s} />
-              ))}
-            </div>
-          )}
+          {/* Footer note */}
+          <p className="text-center text-sm text-muted-foreground">
+            {t(
+              "services.placeholder.footer",
+              "想提前体验？",
+            )}{" "}
+            <button
+              type="button"
+              onClick={() => setContactOpen(true)}
+              className="underline underline-offset-4 hover:opacity-70 transition-opacity"
+              style={{ color: "hsl(var(--primary))" }}
+            >
+              {t("services.placeholder.footer_cta", "联系我们加入内测")}
+            </button>
+          </p>
         </div>
         <Footer />
       </main>
+
+      <ContactDialog
+        open={contactOpen}
+        onOpenChange={setContactOpen}
+        source="services"
+        contextLabel={t("services.placeholder.contact_label", "服务市场内测")}
+      />
     </>
   );
 }
 
-function ServiceTile({ svc }: { svc: PublicService }) {
-  const { t } = useTranslation();
-  // mansu-managed-ops gets a deep-link to its dedicated detail page;
-  // others currently route to /contact for concierge follow-up.
-  const detailHref =
-    svc.slug === "mansu-managed-ops" ? "/services/mansu" : "/contact";
-
+function PlaceholderCard({
+  badge,
+  title,
+  price,
+  body,
+  onContact,
+  t,
+}: {
+  badge: string;
+  title: string;
+  price: string;
+  body: string;
+  onContact: () => void;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
   return (
     <article
       className="rounded-3xl p-7 md:p-8 flex flex-col"
@@ -134,46 +127,46 @@ function ServiceTile({ svc }: { svc: PublicService }) {
         boxShadow: "var(--shadow-xs)",
       }}
     >
-      <div className="flex items-baseline justify-between mb-4">
-        <span
-          className="text-[10px] uppercase tracking-[0.14em] px-2 py-0.5 rounded-full font-medium"
-          style={{
-            background: "hsl(var(--accent-soft))",
-            color: "hsl(var(--primary-deep))",
-          }}
-        >
-          {CATEGORY_LABELS[svc.category] || svc.category}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {BILLING_LABELS[svc.billing_type] || svc.billing_type}
-        </span>
-      </div>
+      <span
+        className="text-[10px] uppercase tracking-[0.14em] px-2 py-0.5 rounded-full font-medium mb-4 w-fit"
+        style={{
+          background: "hsl(var(--accent-soft))",
+          color: "hsl(var(--primary-deep))",
+        }}
+      >
+        {badge}
+      </span>
 
-      <h3 className="font-display text-xl mb-3 leading-tight">{svc.name}</h3>
+      <h3 className="font-display text-xl mb-2 leading-tight">{title}</h3>
 
-      {svc.description && (
-        <p className="text-sm leading-relaxed text-secondary-foreground/85 mb-6 flex-1">
-          {svc.description}
-        </p>
-      )}
-
-      <div className="flex items-baseline gap-2 mb-5">
-        <span className="font-display text-3xl font-semibold">
-          {svc.price_display_cny}
-        </span>
-        {svc.billing_type === "monthly" && (
-          <span className="text-sm text-muted-foreground">/ 月</span>
-        )}
-      </div>
-
-      <Link
-        to={detailHref}
-        className="inline-flex items-center gap-1.5 text-sm font-medium hover:gap-2 active:gap-2 active:opacity-70 transition-all"
+      <p className="font-display text-2xl font-semibold mb-3"
         style={{ color: "hsl(var(--primary))" }}
       >
-        {t("services.tile.cta", "了解详情")}
-        <ArrowRight className="w-3.5 h-3.5" />
-      </Link>
+        {price}
+      </p>
+
+      <p className="text-sm leading-relaxed text-secondary-foreground/85 mb-6 flex-1">
+        {body}
+      </p>
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onContact}
+          className="inline-flex items-center gap-1.5 text-sm font-medium hover:opacity-70 transition-opacity"
+          style={{ color: "hsl(var(--primary))" }}
+        >
+          {t("services.placeholder.cta_detail", "了解详情")}
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={onContact}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {t("services.placeholder.cta_contact", "联系我们")}
+        </button>
+      </div>
     </article>
   );
 }

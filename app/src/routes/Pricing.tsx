@@ -1,314 +1,360 @@
 /**
- * /pricing — public pricing page. v0.8 民宿 wedge.
+ * /pricing — Token rate reference table. Phase 2 rewrite.
  *
- * 单档 ¥1980/月含全闭环（生成 + 自动发布 + 互动 + ROI 归因）。
+ * Per mockup §1.3: "所有花费都从一个钱包扣"
+ * This page is the pricing reference table — NOT a sales page.
+ * TokenPlans (/token-plans) is the sales page. CTAs here link back there.
  *
- * Layout:
- *   1. Hero — headline + sub
- *   2. Pricing card — features list + 联系预约 demo CTA (NOT direct subscribe)
- *   3. Three value props (替代 MCN / 民宿垂直 / 老板自己掌控)
- *   4. FAQ (4 questions about 民宿 SaaS)
- *   5. Trust strip — concierge mode + 退款承诺
+ * Sections:
+ *   1. Header + sub-copy
+ *   2. Facts strip: 4 pills
+ *   3. Per-model rate table (hardcoded from mockup — backend extension deferred)
+ *   4. Footer: CSV download stub + "回到 Token Plans" link
  *
- * 为啥不是 LemonSqueezy 直接 checkout: Concierge-first delivery (v4 brief).
- * 首批 5 客户走"加微信预约 demo → founder 当面陪跑 → 老板付 ¥1980/月" 流程，
- * 不是匿名注册扣款。直到 Quality Gate (Week 10-12) 验证产品能 retain 客户，
- * 才上自助 checkout。这是 PG 说的 "do things that don't scale"。
+ * i18n: pricing.* namespace replaced with pricing_table.* keys.
+ * Old pricing-page.* (民宿) keys untouched in cn/en.json — they are still
+ * used by the 民宿 SaaS service detail page (deferred).
  */
 
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ArrowRight,
-  BadgeCheck,
-  Check,
-  HandCoins,
-  RefreshCcw,
-  Smartphone,
-  Trees,
-} from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Download } from "lucide-react";
 
-import { Button } from "@/components/ui/button.tsx";
-import ContactDialog from "@/components/Marketing/ContactDialog.tsx";
 import Header from "@/components/Marketing/Header.tsx";
 import Footer from "@/components/Marketing/Footer.tsx";
+import { Button } from "@/components/ui/button.tsx";
+
+type ModelRow = {
+  model: string;
+  vendor: string;
+  context: string;
+  priceIn: string;
+  priceOut: string;
+  creditsPerMOut: string;
+  cache: boolean | "cache_control";
+};
+
+const MODEL_ROWS: ModelRow[] = [
+  {
+    model: "GPT-4o",
+    vendor: "openai",
+    context: "128k",
+    priceIn: "18.20",
+    priceOut: "72.80",
+    creditsPerMOut: "3640",
+    cache: true,
+  },
+  {
+    model: "GPT-4o mini",
+    vendor: "openai",
+    context: "128k",
+    priceIn: "1.10",
+    priceOut: "4.40",
+    creditsPerMOut: "220",
+    cache: true,
+  },
+  {
+    model: "Claude 3.5 Sonnet",
+    vendor: "anthropic",
+    context: "200k",
+    priceIn: "21.60",
+    priceOut: "108.00",
+    creditsPerMOut: "5400",
+    cache: "cache_control",
+  },
+  {
+    model: "DeepSeek V3",
+    vendor: "deepseek",
+    context: "64k",
+    priceIn: "1.00",
+    priceOut: "4.00",
+    creditsPerMOut: "200",
+    cache: true,
+  },
+  {
+    model: "DeepSeek R1",
+    vendor: "deepseek",
+    context: "64k",
+    priceIn: "4.00",
+    priceOut: "16.00",
+    creditsPerMOut: "800",
+    cache: true,
+  },
+  {
+    model: "Qwen2.5-Max",
+    vendor: "阿里",
+    context: "32k",
+    priceIn: "8.00",
+    priceOut: "24.00",
+    creditsPerMOut: "1200",
+    cache: true,
+  },
+  {
+    model: "Gemini 2.0 Flash",
+    vendor: "google",
+    context: "1M",
+    priceIn: "0.72",
+    priceOut: "2.88",
+    creditsPerMOut: "144",
+    cache: true,
+  },
+  {
+    model: "Kimi K2",
+    vendor: "moonshot",
+    context: "200k",
+    priceIn: "12.00",
+    priceOut: "12.00",
+    creditsPerMOut: "600",
+    cache: true,
+  },
+];
 
 function Pricing() {
   const { t } = useTranslation();
-  const [contactOpen, setContactOpen] = useState(false);
 
-  const openContactDemo = () => setContactOpen(true);
+  const facts = [
+    {
+      label: t("pricing_table.fact.sub.label", "订阅"),
+      value: t("pricing_table.fact.sub.value", "¥99/月 · 5000 credits"),
+    },
+    {
+      label: t("pricing_table.fact.overage.label", "超额"),
+      value: t("pricing_table.fact.overage.value", "¥0.020/credit · 自动充值"),
+    },
+    {
+      label: t("pricing_table.fact.refund.label", "退款"),
+      value: t("pricing_table.fact.refund.value", "7 天未消费可退"),
+    },
+    {
+      label: t("pricing_table.fact.invoice.label", "发票"),
+      value: t("pricing_table.fact.invoice.value", "支持电子普票"),
+    },
+  ];
 
   return (
     <div className="flex-1 overflow-y-auto">
       <Header />
       <div className="max-w-5xl mx-auto px-6 py-12 md:py-20">
-        {/* ---- Hero ---- */}
-        <div className="text-center space-y-6 mb-12">
-          <p className="text-sm tracking-widest uppercase text-muted-foreground">
-            {t("pricing-page.tagline", "民宿 · 小红书运营 · 全托管")}
-          </p>
-          <h1 className="text-4xl md:text-6xl leading-tight font-display">
-            {t("pricing-page.headline-1", "¥1980 一价全包，")}
-            <br />
-            <span style={{ color: "hsl(var(--primary))" }}>
-              {t("pricing-page.headline-2", "替你的本地 MCN。")}
-            </span>
-          </h1>
-          <p className="text-lg text-secondary max-w-2xl mx-auto leading-relaxed">
-            {t(
-              "pricing-page.subheadline",
-              "AI 帮你写 + 帮你发 + 帮你回 + 帮你看效果。每月 ¥1980 不分级、不打折、首批客户高接触陪跑。30 天若入住率没看到提升，无理由退 50%。",
-            )}
-          </p>
-        </div>
 
-        {/* ---- Pricing card ---- */}
-        <div className="max-w-md mx-auto rounded-xl border border-border bg-card p-8 space-y-6 mb-20 shadow-sm">
-          <div className="space-y-1">
-            <p className="text-sm tracking-wide uppercase text-muted-foreground">
-              {t("pricing-page.starter", "民宿全托管")}
+        {/* ── Header ────────────────────────────────────────────────── */}
+        <div className="grid md:grid-cols-[1.4fr_1fr] gap-8 mb-10">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-3">
+              {t("pricing_table.eyebrow", "定价")}
             </p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-display">¥1980</span>
-              <span className="text-muted-foreground">
-                /{t("pricing-page.month", "月")}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="font-display text-3xl md:text-4xl tracking-tight mb-4 leading-tight">
+              {t("pricing_table.heading1", "所有花费都")}
+              <em
+                className="not-italic"
+                style={{ fontStyle: "italic", color: "hsl(var(--primary))" }}
+              >
+                {t("pricing_table.heading2", "从一个钱包扣")}
+              </em>
+              {t("pricing_table.heading3", "。")}
+            </h1>
+            <p className="text-sm text-secondary-foreground/80 leading-relaxed max-w-lg">
               {t(
-                "pricing-page.starter-tagline",
-                "单档全功能，没有进阶/旗舰/企业等让你纠结的版本。",
+                "pricing_table.sub",
+                "主线只有一个 Token 套餐档。其余按使用量扣 credits，服务市场上线后按次计费，共用同一余额。",
               )}
             </p>
           </div>
+          <div
+            className="self-end rounded-xl p-4 text-sm"
+            style={{
+              background: "hsl(var(--card))",
+              border: "1px solid hsl(var(--border-soft))",
+            }}
+          >
+            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground mb-2">
+              {t("pricing_table.note.label", "主页提醒")}
+            </p>
+            <p className="text-xs text-secondary-foreground/80 leading-relaxed">
+              {t(
+                "pricing_table.note.body",
+                "本页与 /token-plans 文案不冲突——TokenPlans 是销售页，Pricing 是参照表。点击 CTA 都会跳到 TokenPlans 完成购买。",
+              )}
+            </p>
+          </div>
+        </div>
 
-          <ul className="space-y-3 text-sm">
-            <FeatureRow
-              text={t(
-                "pricing-page.feature-content",
-                "每月 20+ 篇可发布小红书内容（文案 + 优化封面 + hashtag）",
-              )}
-            />
-            <FeatureRow
-              text={t(
-                "pricing-page.feature-style",
-                "AI 学你已有爆款的风格 — 上传 5+ 篇当 few-shot 例子",
-              )}
-            />
-            <FeatureRow
-              text={t(
-                "pricing-page.feature-publish",
-                "自动发布：内容自动到你手机草稿箱，一键确认即发",
-              )}
-            />
-            <FeatureRow
-              text={t(
-                "pricing-page.feature-engage",
-                "评论 / 私信 AI 草稿，你审一键发，订房咨询直接打到你",
-              )}
-            />
-            <FeatureRow
-              text={t(
-                "pricing-page.feature-roi",
-                "每日 ROI dashboard：本周 X 间订单从小红书来",
-              )}
-            />
-            <FeatureRow
-              text={t(
-                "pricing-page.feature-concierge",
-                "首批 5 客户高接触陪跑（founder 当面教 + 调 prompt）",
-              )}
-            />
-            <FeatureRow
-              text={t(
-                "pricing-page.feature-refund",
-                "30 天若入住率没看到提升，无理由退 50%",
-              )}
-            />
-          </ul>
-
-          <div className="pt-2">
-            <Button
-              size="lg"
-              onClick={openContactDemo}
-              className="w-full px-8 py-6 text-base"
+        {/* ── Facts strip ───────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+          {facts.map((f) => (
+            <div
+              key={f.label}
+              className="rounded-xl p-4"
+              style={{
+                background: "hsl(var(--card))",
+                border: "1px solid hsl(var(--border-soft))",
+              }}
             >
-              {t("pricing-page.cta-demo", "加微信预约 demo")}
-              <ArrowRight className="ml-2 w-4 h-4" />
+              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground mb-1.5">
+                {f.label}
+              </p>
+              <p className="font-display text-lg leading-tight">{f.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Rate table ────────────────────────────────────────────── */}
+        <div
+          className="rounded-2xl overflow-hidden mb-8"
+          style={{
+            border: "1px solid hsl(var(--border-soft))",
+          }}
+        >
+          {/* Desktop */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr
+                  className="text-left"
+                  style={{
+                    background: "hsl(var(--muted) / 0.5)",
+                    borderBottom: "1px solid hsl(var(--border-soft))",
+                  }}
+                >
+                  <th className="px-5 py-3 font-medium text-xs text-muted-foreground">
+                    {t("pricing_table.col.model", "模型")}
+                  </th>
+                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground">
+                    {t("pricing_table.col.vendor", "厂商")}
+                  </th>
+                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground">
+                    {t("pricing_table.col.context", "上下文")}
+                  </th>
+                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground text-right">
+                    {t("pricing_table.col.price_in", "¥ / 1M in")}
+                  </th>
+                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground text-right">
+                    {t("pricing_table.col.price_out", "¥ / 1M out")}
+                  </th>
+                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground text-right">
+                    {t("pricing_table.col.credits", "credits / 1M out")}
+                  </th>
+                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground">
+                    {t("pricing_table.col.cache", "cache")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {MODEL_ROWS.map((row, i) => (
+                  <tr
+                    key={row.model}
+                    className="hover:bg-muted/20 transition-colors"
+                    style={
+                      i < MODEL_ROWS.length - 1
+                        ? { borderBottom: "1px solid hsl(var(--border-soft) / 0.6)" }
+                        : undefined
+                    }
+                  >
+                    <td className="px-5 py-3.5 font-medium">{row.model}</td>
+                    <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                      {row.vendor}
+                    </td>
+                    <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                      {row.context}
+                    </td>
+                    <td className="px-4 py-3.5 font-mono text-xs text-right tabular-nums">
+                      {row.priceIn}
+                    </td>
+                    <td className="px-4 py-3.5 font-mono text-xs text-right tabular-nums">
+                      {row.priceOut}
+                    </td>
+                    <td className="px-4 py-3.5 font-mono text-xs text-right tabular-nums">
+                      {row.creditsPerMOut}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {row.cache === "cache_control" ? (
+                        <span
+                          className="inline-block text-[10px] px-2 py-0.5 rounded-full font-medium"
+                          style={{
+                            background: "hsl(var(--accent-soft))",
+                            color: "hsl(var(--primary-deep))",
+                          }}
+                        >
+                          cache_control
+                        </span>
+                      ) : row.cache ? (
+                        <span
+                          className="inline-block text-[10px] px-2 py-0.5 rounded-full font-medium"
+                          style={{
+                            background: "hsl(var(--accent-soft))",
+                            color: "hsl(var(--primary-deep))",
+                          }}
+                        >
+                          {t("pricing_table.cache.yes", "支持")}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile stacked cards */}
+          <div className="md:hidden divide-y divide-border">
+            {MODEL_ROWS.map((row) => (
+              <div key={row.model} className="px-5 py-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div>
+                    <p className="font-medium text-sm">{row.model}</p>
+                    <p className="font-mono text-xs text-muted-foreground mt-0.5">
+                      {row.vendor} · {row.context}
+                    </p>
+                  </div>
+                  {row.cache && (
+                    <span
+                      className="text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                      style={{
+                        background: "hsl(var(--accent-soft))",
+                        color: "hsl(var(--primary-deep))",
+                      }}
+                    >
+                      {row.cache === "cache_control" ? "cache_control" : t("pricing_table.cache.yes", "支持")}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs font-mono tabular-nums text-right">
+                  <div>
+                    <p className="text-muted-foreground mb-0.5 text-[10px] text-left">¥/1M in</p>
+                    <p>{row.priceIn}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-0.5 text-[10px] text-left">¥/1M out</p>
+                    <p>{row.priceOut}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-0.5 text-[10px] text-left">credits/1M</p>
+                    <p>{row.creditsPerMOut}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Footer actions ────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <Button variant="ghost" size="sm" disabled className="gap-1.5">
+            <Download className="w-3.5 h-3.5" />
+            {t("pricing_table.csv_download", "下载完整价表 .csv")}
+          </Button>
+          <Link to="/token-plans">
+            <Button size="sm" className="gap-1.5 rounded-full">
+              {t("pricing_table.back_to_plans", "回到 Token Plans 开通")}
+              <ArrowRight className="w-3.5 h-3.5" />
             </Button>
-          </div>
-
-          <p className="text-xs text-muted-foreground text-center">
-            {t(
-              "pricing-page.disclaimer",
-              "首批不开放自助下单 · founder 一对一沟通后开通 · 微信支付 / 支付宝 / 银行转账皆可",
-            )}
-          </p>
-        </div>
-
-        {/* ---- 3 value props ---- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
-          <ValueProp
-            icon={<BadgeCheck className="w-5 h-5" />}
-            title={t("pricing-page.value-replace-title", "替代 MCN")}
-            body={t(
-              "pricing-page.value-replace-body",
-              "你给本地工作室付 ¥2-5K/月、3 个月退订是常态。我们用 AI 把那套活儿做实，更稳更便宜，还有 30 天 50% 退款保障。",
-            )}
-          />
-          <ValueProp
-            icon={<Trees className="w-5 h-5" />}
-            title={t("pricing-page.value-vertical-title", "民宿垂直")}
-            body={t(
-              "pricing-page.value-vertical-body",
-              "AI 学过的不是通用语料，是大理民宿爆款数据：洱海、苍山、旅拍、蜜月、亲子、季节性玩法。先做大理一个区域，做透了再扩。",
-            )}
-          />
-          <ValueProp
-            icon={<Smartphone className="w-5 h-5" />}
-            title={t("pricing-page.value-control-title", "你掌控账号")}
-            body={t(
-              "pricing-page.value-control-body",
-              "我们不接管你的小红书账号。内容生成后推到你手机草稿箱，你一键确认即发。封号风险低，账号永远是你的。",
-            )}
-          />
-        </div>
-
-        {/* ---- FAQ ---- */}
-        <div className="max-w-2xl mx-auto mb-16 space-y-6">
-          <h2 className="text-2xl font-display text-center">
-            {t("pricing-page.faq-title", "常见问题")}
-          </h2>
-          <FaqItem
-            question={t(
-              "pricing-page.faq-vs-mcn-q",
-              "你们和我现在用的 MCN 工作室有什么区别？",
-            )}
-            answer={t(
-              "pricing-page.faq-vs-mcn-a",
-              "MCN 是人工写，受限于一个写手的小红书理解。我们用 AI + 民宿垂直语料 + 老板自己的爆款 few-shot，输出更稳。价格 ¥1980/月通常比本地工作室便宜，还有 30 天退款保障。最大的差别是『你掌控账号』 — 我们不要你的密码。",
-            )}
-          />
-          <FaqItem
-            question={t(
-              "pricing-page.faq-account-q",
-              "我自己已经有小红书账号怎么办？要给你们密码吗？",
-            )}
-            answer={t(
-              "pricing-page.faq-account-a",
-              "不需要。我们生成的内容会自动出现在你账号草稿箱，你打开手机一键确认即可发布。整个过程账号 100% 在你手里，零封号风险。",
-            )}
-          />
-          <FaqItem
-            question={t(
-              "pricing-page.faq-cancel-q",
-              "可以随时取消吗？",
-            )}
-            answer={t(
-              "pricing-page.faq-cancel-a",
-              "随时。提前 1 天微信告诉我们就行。当月已付费用持续到月底，下月不再扣费。30 天内若入住率没改善，无理由退 50%。",
-            )}
-          />
-          <FaqItem
-            question={t(
-              "pricing-page.faq-data-q",
-              "你们会留我的什么数据？",
-            )}
-            answer={t(
-              "pricing-page.faq-data-a",
-              "你上传的房源照片 + 历史爆款用于 AI 学习风格，不外传。AI 生成的内容版权归你。你的小红书账号、订房系统数据、客人信息我们 0 接触。",
-            )}
-          />
-        </div>
-
-        {/* ---- Trust strip ---- */}
-        <div className="text-center pt-12 border-t border-border">
-          <div className="flex flex-wrap justify-center gap-6 text-xs text-muted-foreground">
-            <TrustItem
-              icon={<HandCoins className="w-3.5 h-3.5" />}
-              text={t("pricing-page.trust-concierge", "首批 5 客户高接触陪跑")}
-            />
-            <TrustItem
-              icon={<RefreshCcw className="w-3.5 h-3.5" />}
-              text={t("pricing-page.trust-refund", "30 天 50% 退款承诺")}
-            />
-            <TrustItem
-              icon={<Smartphone className="w-3.5 h-3.5" />}
-              text={t("pricing-page.trust-account", "账号永远在你手里")}
-            />
-          </div>
+          </Link>
         </div>
       </div>
 
       <Footer />
-
-      <ContactDialog
-        open={contactOpen}
-        onOpenChange={setContactOpen}
-        source="pricing"
-      />
     </div>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// Sub-components
-// ----------------------------------------------------------------------------
-
-function FeatureRow({ text }: { text: string }) {
-  return (
-    <li className="flex items-start gap-3">
-      <Check
-        className="w-4 h-4 mt-0.5 flex-shrink-0"
-        style={{ color: "hsl(var(--primary))" }}
-      />
-      <span className="text-secondary leading-relaxed">{text}</span>
-    </li>
-  );
-}
-
-type ValuePropProps = {
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-};
-
-function ValueProp({ icon, title, body }: ValuePropProps) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-6 space-y-3">
-      <div className="flex items-center gap-3">
-        <div
-          className="flex items-center justify-center w-9 h-9 rounded-md"
-          style={{
-            background: "hsl(var(--accent))",
-            color: "hsl(var(--accent-foreground))",
-          }}
-        >
-          {icon}
-        </div>
-        <div className="font-display text-lg font-medium">{title}</div>
-      </div>
-      <p className="text-sm leading-relaxed text-secondary">{body}</p>
-    </div>
-  );
-}
-
-function FaqItem({ question, answer }: { question: string; answer: string }) {
-  return (
-    <div className="space-y-2">
-      <h3 className="font-medium text-base">{question}</h3>
-      <p className="text-sm text-secondary leading-relaxed">{answer}</p>
-    </div>
-  );
-}
-
-function TrustItem({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      {icon}
-      {text}
-    </span>
   );
 }
 

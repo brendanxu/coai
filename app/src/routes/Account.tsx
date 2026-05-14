@@ -1,7 +1,8 @@
 import "@/assets/pages/package.less";
 import { ScrollArea } from "@/components/ui/scroll-area.tsx";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 import { cn } from "@/components/ui/lib/utils.ts";
 import Avatar from "@/components/Avatar.tsx";
 import { useDispatch, useSelector } from "react-redux";
@@ -191,6 +192,283 @@ function ShareContent({ data }: ShareContentProps) {
   );
 }
 
+// ─── CredentialsHero ─────────────────────────────────────────────────
+// Phase 2 §3.2 — credentials hero card injected at the TOP of Account page.
+// Fetches /gtk/v1/binding for the API key. If 404 (no plan), shows
+// "购买 Token 套餐后自动生成" placeholder.
+
+type BindingData = {
+  api_key?: string;
+};
+
+type QuickStartTab = "openai" | "claudecode";
+
+function CredentialsHero() {
+  const { t } = useTranslation();
+  const [apiKey, setApiKey] = useState<string | null | "loading">("loading");
+  const [activeTab, setActiveTab] = useState<QuickStartTab>("openai");
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const BASE_URL = "https://api.greentokey.com/v1";
+
+  useEffect(() => {
+    let mounted = true;
+    axios
+      .get<{ success: boolean; data?: BindingData }>("/gtk/v1/binding")
+      .then((r) => {
+        if (!mounted) return;
+        setApiKey(r.data?.data?.api_key ?? null);
+      })
+      .catch(() => {
+        if (mounted) setApiKey(null);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const copyText = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 1500);
+      toast.success(t("api.copied", "已复制"));
+    } catch {
+      toast.error(t("token.quickstart.copy-failed", "复制失败，请手动选择"));
+    }
+  };
+
+  const displayKey =
+    apiKey && apiKey !== "loading"
+      ? `${apiKey.slice(0, 8)}${"•".repeat(8)}${apiKey.slice(-4)}`
+      : null;
+
+  const snippets: Record<QuickStartTab, { label: string; code: string }> = {
+    openai: {
+      label: t("token.quickstart.tab.openai", "OpenAI SDK · node.js"),
+      code: `import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "${BASE_URL}",
+  apiKey:  "${apiKey && apiKey !== "loading" ? displayKey : "sk-tnx-xxxxxx"}",
+});
+
+client.chat.completions.create({
+  model: "gpt-4o",
+  messages: [...],
+});`,
+    },
+    claudecode: {
+      label: t("token.quickstart.tab.claudecode", "Claude Code CLI"),
+      code: `export ANTHROPIC_BASE_URL="https://api.greentokey.com/anthropic"
+export ANTHROPIC_API_KEY="${apiKey && apiKey !== "loading" ? displayKey : "sk-tnx-xxxxxx"}"
+
+# 重启 shell 后 Claude Code 直接用
+claude "解释这段代码"`,
+    },
+  };
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden mb-4"
+      style={{
+        background: "hsl(var(--ink))",
+        border: "1px solid hsl(var(--ink))",
+        boxShadow: "var(--shadow-ink)",
+      }}
+    >
+      {/* Header */}
+      <div className="px-6 pt-6 pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p
+              className="text-[10px] uppercase tracking-[0.16em] mb-1"
+              style={{ color: "rgba(255,252,247,0.55)" }}
+            >
+              {t("account.credentials.eyebrow", "主线 · 接入")}
+            </p>
+            <h2
+              className="font-display text-xl"
+              style={{ color: "hsl(var(--ink-foreground))" }}
+            >
+              {t("account.credentials.title", "你的 greentokey 凭据")}
+            </h2>
+          </div>
+        </div>
+
+        {/* Base URL field */}
+        <div className="space-y-3">
+          <CredField
+            label="Base URL"
+            value={BASE_URL}
+            displayValue={BASE_URL}
+            onCopy={() => copyText(BASE_URL, "url")}
+            copied={copiedField === "url"}
+            hint={t("account.credentials.url_hint", "改这一行就能跑")}
+          />
+
+          {/* API Key field */}
+          {apiKey === "loading" ? (
+            <div
+              className="h-14 rounded-xl animate-pulse"
+              style={{ background: "rgba(255,252,247,0.06)" }}
+            />
+          ) : apiKey ? (
+            <CredField
+              label="API Key"
+              value={apiKey}
+              displayValue={displayKey ?? ""}
+              onCopy={() => copyText(apiKey, "key")}
+              copied={copiedField === "key"}
+              hint={t("account.credentials.key_hint", "首次显示，请保存")}
+              accent
+            />
+          ) : (
+            <div
+              className="rounded-xl px-4 py-3 text-sm"
+              style={{
+                background: "rgba(255,252,247,0.06)",
+                border: "1px solid rgba(255,252,247,0.10)",
+                color: "rgba(255,252,247,0.55)",
+              }}
+            >
+              {t(
+                "account.credentials.no_key",
+                "购买 Token 套餐后自动生成 API Key",
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick start code tabs */}
+      <div
+        style={{ borderTop: "1px solid rgba(255,252,247,0.08)" }}
+      >
+        {/* Tab bar */}
+        <div
+          className="flex items-center border-b"
+          style={{ borderColor: "rgba(255,252,247,0.08)" }}
+        >
+          {(["openai", "claudecode"] as QuickStartTab[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setActiveTab(k)}
+              className="px-4 py-3 text-xs font-mono border-b-2 transition-colors"
+              style={{
+                color:
+                  activeTab === k
+                    ? "hsl(var(--ink-foreground))"
+                    : "rgba(255,252,247,0.45)",
+                borderColor:
+                  activeTab === k ? "hsl(var(--ink-accent))" : "transparent",
+              }}
+            >
+              {snippets[k].label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => copyText(snippets[activeTab].code, "snippet")}
+            className="ml-auto mr-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-opacity hover:opacity-80"
+            style={{
+              background: "rgba(255,252,247,0.08)",
+              color: "rgba(255,252,247,0.8)",
+            }}
+          >
+            <Copy className="w-3 h-3" />
+            <span className="hidden md:inline">
+              {copiedField === "snippet"
+                ? t("token.quickstart.copied", "已复制")
+                : "Copy"}
+            </span>
+          </button>
+        </div>
+
+        {/* Code block */}
+        <pre
+          className="px-5 py-4 text-xs font-mono leading-relaxed overflow-x-auto whitespace-pre"
+          style={{ color: "hsl(var(--ink-foreground))" }}
+        >
+          <code>{snippets[activeTab].code}</code>
+        </pre>
+      </div>
+    </div>
+  );
+}
+
+function CredField({
+  label,
+  displayValue,
+  onCopy,
+  copied,
+  hint,
+  accent,
+}: {
+  label: string;
+  displayValue: string;
+  value: string; // consumed by caller's onCopy closure; not read inside component
+  onCopy: () => void;
+  copied: boolean;
+  hint?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className="flex items-center gap-3 rounded-xl px-4 py-3"
+      style={{
+        background: "rgba(255,252,247,0.06)",
+        border: "1px solid rgba(255,252,247,0.10)",
+      }}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span
+            className="text-[10px] uppercase tracking-[0.12em]"
+            style={{ color: "rgba(255,252,247,0.45)" }}
+          >
+            {label}
+          </span>
+          {hint && (
+            <span
+              className="text-[10px]"
+              style={{ color: "rgba(255,252,247,0.35)" }}
+            >
+              · {hint}
+            </span>
+          )}
+        </div>
+        <p
+          className="font-mono text-xs mt-0.5 truncate"
+          style={{
+            color: accent
+              ? "hsl(var(--ink-accent))"
+              : "hsl(var(--ink-foreground))",
+          }}
+        >
+          {displayValue}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onCopy}
+        className="shrink-0 p-1.5 rounded-lg transition-colors"
+        style={{
+          background: "rgba(255,252,247,0.06)",
+          border: "1px solid rgba(255,252,247,0.10)",
+          color: copied ? "hsl(var(--ink-accent))" : "rgba(255,252,247,0.55)",
+        }}
+        aria-label={`Copy ${label}`}
+      >
+        <Copy className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Account ────────────────────────────────────────────────────────────
+
 function Account() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
@@ -271,6 +549,9 @@ function Account() {
       <div
         className={`px-4 py-6 md:py-12 lg:py-16 h-full flex flex-col w-full max-w-3xl mx-auto space-y-4`}
       >
+        {/* Phase 2 §3.2 — credentials hero card injected at top */}
+        <CredentialsHero />
+
         <AccountCard
           icon={<UserRoundIcon />}
           title={"account.my-account"}

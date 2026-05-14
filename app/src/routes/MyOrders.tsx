@@ -22,11 +22,9 @@ import {
   type CustomerOrderSummary,
   type OrderStatus,
 } from "@/api/orders.ts";
-import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
   AlertTriangle,
-  ChevronRight,
   Loader2,
   MessageCircle,
   PackageOpen,
@@ -49,26 +47,6 @@ const FILTERS: { value: FilterValue; i18n: string }[] = [
 // Map status → badge variant + i18n label key. The "refunded_post_delivery"
 // and "canceled_mid_flight" enum values land here too because we render
 // every order, not just the filterable subset.
-function statusBadgeVariant(
-  s: OrderStatus,
-): "default" | "secondary" | "destructive" | "outline" {
-  switch (s) {
-    case "paid":
-    case "completed":
-      return "default";
-    case "pending_payment":
-    case "running":
-      return "secondary";
-    case "refunded":
-    case "refunded_post_delivery":
-    case "canceled_mid_flight":
-      return "outline";
-    case "failed":
-      return "destructive";
-    default:
-      return "secondary";
-  }
-}
 
 function statusI18nKey(s: OrderStatus): string {
   return `my_orders.status.${s}`;
@@ -143,7 +121,7 @@ export default function MyOrders() {
   );
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12">
+    <div className="max-w-5xl mx-auto px-6 py-12">
       <header className="flex items-end justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl md:text-4xl font-display tracking-tight">
@@ -165,24 +143,18 @@ export default function MyOrders() {
         </Button>
       </header>
 
-      <div className="flex flex-wrap gap-2 mb-8">{filterChips}</div>
+      <div className="flex flex-wrap gap-2 mb-6">{filterChips}</div>
 
       {loading && orders.length === 0 ? (
         <div className="flex justify-center py-16">
           <Loader2 size={20} className="animate-spin text-muted-foreground" />
         </div>
       ) : loadError && total === 0 ? (
-        // PKG-N5 — distinguish "fetch failed" from "no orders". Empty state
-        // gets the contact CTA; this gets a retry button.
         <ErrorState onRetry={() => refetch()} loading={loading} />
       ) : total === 0 ? (
         <EmptyState filter={filter} />
       ) : (
-        <ul className="space-y-3">
-          {orders.map((o) => (
-            <OrderCard key={o.order_no} order={o} />
-          ))}
-        </ul>
+        <OrderTable orders={orders} t={t} />
       )}
     </div>
   );
@@ -192,67 +164,170 @@ export default function MyOrders() {
 // Subcomponents
 // ──────────────────────────────────────────────────────────────────────
 
-function OrderCard({ order }: { order: CustomerOrderSummary }) {
-  const { t } = useTranslation();
-  const variant = statusBadgeVariant(order.status);
-  const statusLabel = t(statusI18nKey(order.status));
+// Status pill color tokens from mockup §3.4:
+//   paid / completed  → green
+//   pending / running → amber
+//   refunded / canceled → gray
+//   failed            → red
+function StatusPill({ status, label }: { status: OrderStatus; label: string }) {
+  const style: React.CSSProperties = (() => {
+    switch (status) {
+      case "paid":
+      case "completed":
+        return {
+          background: "hsl(142 76% 94%)",
+          color: "hsl(142 72% 29%)",
+        };
+      case "pending_payment":
+      case "running":
+        return {
+          background: "hsl(38 92% 92%)",
+          color: "hsl(32 95% 35%)",
+        };
+      case "refunded":
+      case "refunded_post_delivery":
+      case "canceled_mid_flight":
+        return {
+          background: "hsl(var(--muted))",
+          color: "hsl(var(--muted-foreground))",
+        };
+      case "failed":
+        return {
+          background: "hsl(0 86% 94%)",
+          color: "hsl(0 72% 40%)",
+        };
+      default:
+        return {
+          background: "hsl(var(--muted))",
+          color: "hsl(var(--muted-foreground))",
+        };
+    }
+  })();
 
-  // PKG-N2: whole card is a link to the detail page.
   return (
-    <li>
-      <Link
-        to={`/orders/${encodeURIComponent(order.order_no)}`}
-        className="block border border-border rounded-lg p-5 hover:border-foreground/30 hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label={`${order.service_name} ${order.order_no}`}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-base font-medium truncate">
-                {order.service_name}
-              </span>
-              <Badge variant={variant}>{statusLabel}</Badge>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1 font-mono">
-              {order.order_no}
-            </div>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="text-right">
-              <div className="text-lg font-medium tabular-nums">
-                {order.price_display_cny}
-              </div>
-              {order.credits_granted > 0 && (
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {t("my_orders.credits", { count: order.credits_granted })}
-                </div>
-              )}
-            </div>
-            <ChevronRight
-              size={16}
-              className="text-muted-foreground/60 shrink-0"
-              aria-hidden="true"
-            />
-          </div>
-        </div>
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
+      style={style}
+    >
+      <span
+        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+        style={{ background: style.color }}
+      />
+      {label}
+    </span>
+  );
+}
 
-        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
-          <span>
-            {t("my_orders.created_at")}: {fmtDate(order.created_at)}
-          </span>
-          {order.paid_at && (
-            <span>
-              {t("my_orders.paid_at")}: {fmtDate(order.paid_at)}
-            </span>
-          )}
-          {order.completed_at && (
-            <span>
-              {t("my_orders.completed_at")}: {fmtDate(order.completed_at)}
-            </span>
-          )}
-        </div>
-      </Link>
-    </li>
+// OrderTable — desktop table + mobile stacked cards per mockup §3.4
+function OrderTable({
+  orders,
+  t,
+}: {
+  orders: CustomerOrderSummary[];
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  return (
+    <>
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr
+              className="text-left text-xs font-medium text-muted-foreground"
+              style={{ borderBottom: "1px solid hsl(var(--border))" }}
+            >
+              <th className="px-4 py-3">{t("my_orders.col.order_no", "订单号")}</th>
+              <th className="px-4 py-3">{t("my_orders.col.plan", "套餐")}</th>
+              <th className="px-4 py-3 text-right">{t("my_orders.col.amount", "金额")}</th>
+              <th className="px-4 py-3">{t("my_orders.col.status", "状态")}</th>
+              <th className="px-4 py-3">{t("my_orders.col.time", "时间")}</th>
+              <th className="px-4 py-3 text-right">{t("my_orders.col.action", "操作")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((o, i) => {
+              const statusLabel = t(statusI18nKey(o.status));
+              const isLast = i === orders.length - 1;
+              return (
+                <tr
+                  key={o.order_no}
+                  className="hover:bg-muted/30 transition-colors"
+                  style={
+                    isLast
+                      ? undefined
+                      : { borderBottom: "1px solid hsl(var(--border) / 0.5)" }
+                  }
+                >
+                  <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                    {o.order_no}
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="font-medium">{o.service_name}</span>
+                    {o.credits_granted > 0 && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {t("my_orders.credits", { count: o.credits_granted })}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3.5 text-right tabular-nums font-medium">
+                    {o.price_display_cny}
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <StatusPill status={o.status} label={statusLabel} />
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-muted-foreground">
+                    {fmtDate(o.created_at)}
+                  </td>
+                  <td className="px-4 py-3.5 text-right">
+                    <Link
+                      to={`/orders/${encodeURIComponent(o.order_no)}`}
+                      className="text-xs font-medium hover:opacity-70 transition-opacity"
+                      style={{ color: "hsl(var(--primary))" }}
+                    >
+                      {t("my_orders.col.detail", "查看详情")} →
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile stacked cards */}
+      <ul className="md:hidden space-y-3">
+        {orders.map((o) => {
+          const statusLabel = t(statusI18nKey(o.status));
+          return (
+            <li key={o.order_no}>
+              <Link
+                to={`/orders/${encodeURIComponent(o.order_no)}`}
+                className="block border border-border rounded-xl p-4 hover:border-foreground/30 hover:bg-muted/30 transition-colors"
+                aria-label={`${o.service_name} ${o.order_no}`}
+              >
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="min-w-0">
+                    <span className="font-medium">{o.service_name}</span>
+                    <div className="text-xs text-muted-foreground font-mono mt-0.5 truncate">
+                      {o.order_no}
+                    </div>
+                  </div>
+                  <StatusPill status={o.status} label={statusLabel} />
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="tabular-nums font-medium">
+                    {o.price_display_cny}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {fmtDate(o.created_at)}
+                  </span>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 

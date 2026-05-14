@@ -28,7 +28,7 @@
 //   the backend response. Customers can still see "this order
 //   completed at <timestamp>" and act on it (reorder / refund).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -259,99 +259,73 @@ export default function OrderDetail() {
       {/* Breadcrumb */}
       <Link
         to="/orders"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
       >
         <ArrowLeft size={14} />
         {t("order_detail.back")}
       </Link>
 
-      {/* Header */}
-      <header className="mb-8">
-        <div className="flex items-center gap-3 flex-wrap mb-2">
-          <h1 className="text-2xl md:text-3xl font-display tracking-tight">
-            {order.service_name}
-          </h1>
-          <Badge variant={variant}>{statusLabel}</Badge>
-          {POLLING_STATUSES.includes(order.status) && (
-            <span
-              className="text-xs text-muted-foreground inline-flex items-center gap-1"
-              aria-live="polite"
-            >
-              <Loader2 size={12} className="animate-spin" />
-              {t("order_detail.polling")}
+      {/* Header card: status pill + order_no + amount + created_at */}
+      <header
+        className="rounded-2xl p-6 md:p-8 mb-8 flex flex-col md:flex-row md:items-start md:justify-between gap-4"
+        style={{
+          background: "hsl(var(--card))",
+          border: "1px solid hsl(var(--border-soft, var(--border)))",
+          boxShadow: "var(--shadow-xs, none)",
+        }}
+      >
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant={variant}>{statusLabel}</Badge>
+            {POLLING_STATUSES.includes(order.status) && (
+              <span
+                className="text-xs text-muted-foreground inline-flex items-center gap-1"
+                aria-live="polite"
+              >
+                <Loader2 size={12} className="animate-spin" />
+                {t("order_detail.polling")}
+              </span>
+            )}
+            <span className="text-xs text-muted-foreground font-mono">
+              {fmtDate(order.created_at)}
             </span>
-          )}
+          </div>
+          <h1 className="font-display text-2xl md:text-3xl tracking-tight">
+            {t("order_detail.header.title", "订单")}{" "}
+            <em
+              className="not-italic"
+              style={{ color: "hsl(var(--primary))", fontStyle: "italic" }}
+            >
+              {order.order_no}
+            </em>
+          </h1>
+          <p className="text-sm text-muted-foreground">{order.service_name}</p>
         </div>
-        <div className="text-xs text-muted-foreground font-mono">
-          {order.order_no}
+        <div className="text-right shrink-0">
+          <p className="text-xs text-muted-foreground mb-1">
+            {t("order_detail.metadata.amount")}
+          </p>
+          <div className="font-display text-3xl md:text-4xl font-semibold tabular-nums tracking-tight">
+            {order.price_display_cny}
+          </div>
+          {order.credits_granted > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              +{order.credits_granted} credits
+            </p>
+          )}
         </div>
       </header>
 
-      {/* Status-specific banner */}
-      <StatusBanner order={order} />
-
-      {/* Metadata grid */}
-      <section className="border border-border rounded-lg p-5 mb-8">
-        <h2 className="text-sm font-medium text-muted-foreground mb-3">
-          {t("order_detail.metadata.title")}
-        </h2>
-        <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 text-sm">
-          <MetaItem
-            label={t("order_detail.metadata.amount")}
-            value={
-              <span className="font-medium tabular-nums">
-                {order.price_display_cny}
-              </span>
-            }
-          />
-          {order.credits_granted > 0 && (
-            <MetaItem
-              label={t("order_detail.metadata.credits")}
-              value={
-                <span className="tabular-nums">{order.credits_granted}</span>
-              }
-            />
-          )}
-          <MetaItem
-            label={t("order_detail.metadata.payment_provider")}
-            value={t(
-              `order_detail.payment_provider.${order.payment_provider}`,
-              { defaultValue: order.payment_provider },
-            )}
-          />
-          <MetaItem
-            label={t("order_detail.metadata.created_at")}
-            value={fmtDate(order.created_at)}
-          />
-          {order.paid_at && (
-            <MetaItem
-              label={t("order_detail.metadata.paid_at")}
-              value={fmtDate(order.paid_at)}
-            />
-          )}
-          {order.completed_at && (
-            <MetaItem
-              label={t("order_detail.metadata.completed_at")}
-              value={fmtDate(order.completed_at)}
-            />
-          )}
-        </dl>
-      </section>
-
-      {/* Refund note (if any) */}
-      {order.refund_reason && (
-        <section className="border border-border rounded-lg p-5 mb-8 bg-muted/30">
-          <h2 className="text-sm font-medium text-muted-foreground mb-2">
-            {t("order_detail.refund_log.title")}
-          </h2>
-          <pre className="text-xs whitespace-pre-wrap font-mono leading-relaxed">
-            {order.refund_reason}
-          </pre>
-        </section>
-      )}
+      {/* Tabs: 时间线 / 输出详情 / 退款申请 */}
+      <OrderTabs
+        order={order}
+        canRefund={canRefund}
+        onRefundOpen={() => setRefundOpen(true)}
+        t={t}
+      />
 
       {/* Action row */}
-      <div className="flex flex-wrap gap-3 items-center justify-between border-t border-border pt-6">
+      <div className="flex flex-wrap gap-3 items-center justify-between border-t border-border pt-6 mt-6">
         <Button
           variant="ghost"
           size="sm"
@@ -450,64 +424,180 @@ function MetaItem({
   );
 }
 
-// StatusBanner renders a contextual message above the metadata grid for
-// the in-flight / waiting / terminal states. We keep it visually simple
-// (one short paragraph) to avoid stealing focus from the data below.
-function StatusBanner({ order }: { order: CustomerOrderDetail }) {
-  const { t } = useTranslation();
-  const variants = useMemo(() => {
-    switch (order.status) {
-      case "pending_payment":
-        return {
-          tone: "amber" as const,
-          message: t("order_detail.status.pending_payment.message"),
-        };
-      case "running":
-        return {
-          tone: "blue" as const,
-          message: t("order_detail.status.running.message"),
-        };
-      case "completed":
-        return {
-          tone: "green" as const,
-          message: t("order_detail.status.completed.message"),
-        };
-      case "refunded":
-      case "refunded_post_delivery":
-        return {
-          tone: "neutral" as const,
-          message: t("order_detail.status.refunded.message"),
-        };
-      case "canceled_mid_flight":
-        return {
-          tone: "neutral" as const,
-          message: t("order_detail.status.canceled.message"),
-        };
-      case "failed":
-        return {
-          tone: "red" as const,
-          message: t("order_detail.status.failed.message"),
-        };
-      default:
-        return null;
-    }
-  }, [order.status, t]);
+// OrderTabs — 时间线 / 输出详情 / 退款申请 per mockup §3.5
+type OrderTabId = "timeline" | "output" | "refund";
 
-  if (!variants) return null;
+function OrderTabs({
+  order,
+  canRefund,
+  onRefundOpen,
+  t,
+}: {
+  order: CustomerOrderDetail;
+  canRefund: boolean;
+  onRefundOpen: () => void;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  const [activeTab, setActiveTab] = useState<OrderTabId>("timeline");
 
-  const toneClass = {
-    amber:
-      "border-amber-300/40 bg-amber-50/40 text-amber-900 dark:bg-amber-900/10 dark:text-amber-200",
-    blue: "border-blue-300/40 bg-blue-50/40 text-blue-900 dark:bg-blue-900/10 dark:text-blue-200",
-    green:
-      "border-emerald-300/40 bg-emerald-50/40 text-emerald-900 dark:bg-emerald-900/10 dark:text-emerald-200",
-    red: "border-red-300/40 bg-red-50/40 text-red-900 dark:bg-red-900/10 dark:text-red-200",
-    neutral: "border-border bg-muted/30 text-muted-foreground",
-  }[variants.tone];
+  const tabs: { id: OrderTabId; label: string; show: boolean }[] = [
+    { id: "timeline", label: t("order_detail.tab.timeline", "时间线"), show: true },
+    { id: "output", label: t("order_detail.tab.output", "输出详情"), show: true },
+    { id: "refund", label: t("order_detail.tab.refund", "退款申请"), show: canRefund },
+  ];
 
   return (
-    <div className={`border rounded-lg p-4 mb-6 text-sm ${toneClass}`}>
-      {variants.message}
+    <div>
+      {/* Tab bar */}
+      <div
+        className="flex gap-0 mb-6 border-b border-border"
+      >
+        {tabs.filter((tab) => tab.show).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px"
+            style={{
+              borderColor: activeTab === tab.id ? "hsl(var(--primary))" : "transparent",
+              color: activeTab === tab.id
+                ? "hsl(var(--foreground))"
+                : "hsl(var(--muted-foreground))",
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab: 时间线 */}
+      {activeTab === "timeline" && (
+        <div className="space-y-0">
+          {/* Created */}
+          <TimelineRow
+            label={t("order_detail.timeline.created", "订单创建")}
+            time={order.created_at}
+            active
+          />
+          {/* Paid */}
+          {order.paid_at && (
+            <TimelineRow
+              label={t("order_detail.timeline.paid", "支付成功 · webhook order_created")}
+              sublabel={order.credits_granted > 0
+                ? `+${order.credits_granted} credits ${t("order_detail.timeline.credited", "已到账")}`
+                : undefined}
+              time={order.paid_at}
+              active
+            />
+          )}
+          {/* Completed */}
+          {order.completed_at && (
+            <TimelineRow
+              label={t("order_detail.timeline.completed", "已完成")}
+              sublabel={t("order_detail.timeline.completed_sub", "entitlement granted · cost_ledger written")}
+              time={order.completed_at}
+              active
+            />
+          )}
+          {/* Payment provider */}
+          <div className="mt-4 pt-4 border-t border-border">
+            <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 text-sm">
+              <MetaItem
+                label={t("order_detail.metadata.payment_provider")}
+                value={t(
+                  `order_detail.payment_provider.${order.payment_provider}`,
+                  { defaultValue: order.payment_provider },
+                )}
+              />
+              <MetaItem
+                label={t("order_detail.metadata.created_at")}
+                value={fmtDate(order.created_at)}
+              />
+            </dl>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: 输出详情 */}
+      {activeTab === "output" && (
+        <div className="text-sm text-muted-foreground py-4 space-y-3">
+          {order.credits_granted > 0 ? (
+            <p>
+              {t("order_detail.output.credits_granted", "已授予")} <strong>{order.credits_granted}</strong> credits。
+              {t("order_detail.output.credits_note", "余额在 Dashboard 实时可查。")}
+            </p>
+          ) : (
+            <p>{t("order_detail.output.no_output", "此订单暂无结构化输出详情。")}</p>
+          )}
+        </div>
+      )}
+
+      {/* Tab: 退款申请 (only if canRefund) */}
+      {activeTab === "refund" && canRefund && (
+        <div className="py-4 space-y-4">
+          {order.refund_reason ? (
+            <div className="rounded-lg border border-border p-4 bg-muted/30">
+              <p className="text-sm font-medium mb-2">
+                {t("order_detail.refund_log.title")}
+              </p>
+              <pre className="text-xs whitespace-pre-wrap font-mono leading-relaxed text-muted-foreground">
+                {order.refund_reason}
+              </pre>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {t("order_detail.refund_log.empty", "尚未提交退款申请。")}
+              </p>
+              <button
+                type="button"
+                onClick={onRefundOpen}
+                className="text-sm font-medium underline underline-offset-4 hover:opacity-70 transition-opacity"
+                style={{ color: "hsl(var(--primary))" }}
+              >
+                {t("order_detail.action.refund")} →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TimelineRow({
+  label,
+  sublabel,
+  time,
+  active,
+}: {
+  label: string;
+  sublabel?: string;
+  time?: string;
+  active?: boolean;
+}) {
+  return (
+    <div
+      className="grid gap-3 py-3 border-b border-border last:border-0"
+      style={{ gridTemplateColumns: "20px 1fr auto" }}
+    >
+      <span
+        className="w-3.5 h-3.5 rounded-full mt-0.5 flex-shrink-0"
+        style={{
+          background: active ? "hsl(var(--primary))" : "hsl(var(--border))",
+        }}
+      />
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        {sublabel && (
+          <p className="text-xs text-muted-foreground mt-0.5">{sublabel}</p>
+        )}
+      </div>
+      {time && (
+        <span className="font-mono text-xs text-muted-foreground self-start pt-0.5">
+          {fmtDate(time)}
+        </span>
+      )}
     </div>
   );
 }

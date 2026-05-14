@@ -166,6 +166,21 @@
       "dingtalk": "钉钉",
       "alipay": "支付宝",
       "microsoft": "微软"
+    },
+    "split": {
+      "eyebrow": "登录",
+      "heading": "欢迎回来,",
+      "heading2": "从你停下的",
+      "heading3": "地方继续。",
+      "sub": "一个账号，调用全部模型。支付宝 / 微信 / 卡都可以付。",
+      "sub_checkout": "登录后会自动回到你刚才看的 Token 套餐页，几秒内完成支付。",
+      "returnto": "登录后将跳回",
+      "stat1": "1.2k+ 注册用户",
+      "stat2": "14 款现货模型",
+      "stat3": "99.9% 可用率",
+      "form_sub": "登录你的 greentokey 账号",
+      "form_sub_checkout": "登录并继续完成支付",
+      "cta_checkout": "登录并继续支付 →"
     }
   },
   "tag": {
@@ -1669,6 +1684,13 @@
         "feishu": "- 飞书推送使用群组自定义机器人\n- 在目标飞书群组中添加自定义机器人\n- 设置机器人名称、头像和描述\n- 选择接收消息的群组\n- 复制生成的 Webhook URL 填入配置\n- 可设置关键词以增强安全性（可选）",
         "webhook": "- 自定义 Webhook URL 推送\n\n```json\nPOST ${WEBHOOK_URL}\n{\n  \"type\": \"string\",\n  \"content\": \"string\",\n  \"time\": \"number\",\n  \"utc_time\": \"string\",\n  \"account_id\": \"number\",\n  \"additional_data\": {...}\n}\n```"
       }
+    },
+    "credentials": {
+      "eyebrow": "主线 · 接入",
+      "title": "你的 greentokey 凭据",
+      "url_hint": "改这一行就能跑",
+      "key_hint": "首次显示，请保存",
+      "no_key": "购买 Token 套餐后自动生成 API Key"
     }
   },
   "key": {
@@ -1887,7 +1909,28 @@
     "carbon-cta": "详细报告",
     "carbon-empty-title": "本月还没有碳数据",
     "carbon-empty-body": "发出第一条对话,我们就开始记录。",
-    "chat-floating-hint": "多模型对话已就绪 · 点右下角 🌱 随时开聊"
+    "chat-floating-hint": "多模型对话已就绪 · 点右下角 🌱 随时开聊",
+    "mode_toggle": {
+      "label": "仪表盘模式切换",
+      "token": "Token API",
+      "mansion": "民宿 SaaS"
+    },
+    "token": {
+      "eyebrow": "Token API · 本月",
+      "heading": "仪表盘",
+      "stat": {
+        "credits_used": "本月 credits 已用",
+        "total_calls": "本月调用次数",
+        "cache_saved": "cache 节省",
+        "actual_spent": "实付支出"
+      },
+      "quickstart": {
+        "heading": "快速开始 · OpenAI-compatible",
+        "sub": "已为你创建 API Key",
+        "no_key": "购买 Token 套餐后自动生成",
+        "buy_cta": "购买 Token 套餐"
+      }
+    }
   },
   "chat-floating": {
     "open": "打开聊天",
@@ -2099,6 +2142,28 @@
     "empty": "敬请期待——首批服务即将上架",
     "tile": {
       "cta": "了解详情"
+    },
+    "placeholder": {
+      "eyebrow": "内测中 · 5月底开放",
+      "heading": "服务市场",
+      "sub": "我们正在为你准备专属的 AI 服务，敬请期待。",
+      "footer": "想提前体验？",
+      "footer_cta": "联系我们加入内测",
+      "contact_label": "服务市场内测",
+      "card1": {
+        "badge": "代运营 · 按月",
+        "title": "民宿小红书 SaaS",
+        "price": "¥1980/月",
+        "body": "AI 帮你写文案、出图、自动发布、应对评论私信。每月全托管，比本地 MCN 更稳更便宜。"
+      },
+      "card2": {
+        "badge": "算力包 · 按次",
+        "title": "Token 增量包",
+        "price": "即将上线",
+        "body": "按需补充 credits，不想订月套餐时按次购买——接入同一 API Key，扣同一个钱包。"
+      },
+      "cta_detail": "了解详情",
+      "cta_contact": "联系我们"
     }
   },
   "lead": {
@@ -2233,7 +2298,16 @@
       "contact_dialog_title": "联系预约 demo"
     },
     "load_failed": "加载订单失败,请重试。",
-    "retry": "重试"
+    "retry": "重试",
+    "col": {
+      "order_no": "订单号",
+      "plan": "套餐",
+      "amount": "金额",
+      "status": "状态",
+      "time": "时间",
+      "action": "操作",
+      "detail": "查看详情"
+    }
   },
   "order_detail": {
     "title": "订单详情",
@@ -2316,6 +2390,108 @@
       "refund_submitted": "退款申请已提交,我们会尽快处理。",
       "refund_failed": "提交失败",
       "reorder_failed": "操作失败"
+    },
+    "header": {
+      "title": "订单"
+    },
+    "tab": {
+      "timeline": "时间线",
+      "output": "输出详情",
+      "refund": "退款申请"
+    },
+    "timeline": {
+      "created": "订单创建",
+      "paid": "支付成功 · webhook order_created",
+      "credited": "已到账",
+      "completed": "已完成",
+      "completed_sub": "entitlement granted · cost_ledger written"
+    },
+    "output": {
+      "credits_granted": "已授予",
+      "credits_note": "余额在 Dashboard 实时可查。",
+      "no_output": "此订单暂无结构化输出详情。"
+    },
+    "refund_log": {
+      "empty": "尚未提交退款申请。"
     }
+  },
+  "welcome": {
+    "mode_toggle": {
+      "label": "首页模式切换",
+      "token": "Token API",
+      "mansion": "民宿 SaaS"
+    },
+    "mcard": {
+      "token": {
+        "badge": "主线 · 已上线",
+        "title": "Token 套餐",
+        "accent": "一个 Key 调一池",
+        "body": "¥99/月，5000 credits。所有模型走同一 endpoint，按上游计价，prompt cache 自动透传。微信/支付宝/卡均可付。",
+        "f1": "OpenAI-compatible base URL",
+        "f2": "14+ 模型 · 一个 Key 直调",
+        "f3": "实时用量 + cache 节省视图",
+        "price": "¥99",
+        "priceSub": "/月",
+        "cta": "立即开通 →"
+      },
+      "market": {
+        "badge": "主线 · 占位",
+        "title": "服务市场",
+        "accent": "买一组现成服务",
+        "body": "「智能体 + Token 包」按次卖——小红书代运营、资料制作、DIY 智能体。底层仍是算力，扣同一个钱包。",
+        "f1": "调好的 Prompt + workflow",
+        "f2": "一次成稿 · 不用调模型",
+        "f3": "共享同一钱包",
+        "cta": "订阅上线提醒",
+        "pricePlaceholder": "敬请期待"
+      }
+    },
+    "values": {
+      "heading": "为什么这样设计",
+      "sub": "底层是算力，上层是体验。Token 套餐让你直接调用，服务市场让你按结果买。",
+      "one-key": {
+        "title": "一 Key 通模型",
+        "body": "NewAPI 在底层调度，你拿到的是一个 OpenAI 兼容 endpoint——切模型只改 model 字段，不再换账号、换 Key。"
+      },
+      "agent": {
+        "title": "智能体即服务",
+        "body": "市场里的 DIY 智能体 = 我们调好的 Prompt + Token 包。你按次买，我们扣算力，效果稳定可复制。"
+      },
+      "sub2api": {
+        "title": "sub2API 扩池(规划)",
+        "body": "把 Claude / OpenAI 官方 API 桥接进 Token 池。聚合更全、合规接入，不挤占第三方中转的不稳定产能。"
+      }
+    }
+  },
+  "pricing_table": {
+    "eyebrow": "定价",
+    "heading1": "所有花费都",
+    "heading2": "从一个钱包扣",
+    "heading3": "。",
+    "sub": "主线只有一个 Token 套餐档。其余按使用量扣 credits，服务市场上线后按次计费，共用同一余额。",
+    "note": {
+      "label": "主页提醒",
+      "body": "本页与 /token-plans 文案不冲突——TokenPlans 是销售页，Pricing 是参照表。点击 CTA 都会跳到 TokenPlans 完成购买。"
+    },
+    "fact": {
+      "sub": { "label": "订阅", "value": "¥99/月 · 5000 credits" },
+      "overage": { "label": "超额", "value": "¥0.020/credit · 自动充值" },
+      "refund": { "label": "退款", "value": "7 天未消费可退" },
+      "invoice": { "label": "发票", "value": "支持电子普票" }
+    },
+    "col": {
+      "model": "模型",
+      "vendor": "厂商",
+      "context": "上下文",
+      "price_in": "¥ / 1M in",
+      "price_out": "¥ / 1M out",
+      "credits": "credits / 1M out",
+      "cache": "cache"
+    },
+    "cache": {
+      "yes": "支持"
+    },
+    "csv_download": "下载完整价表 .csv",
+    "back_to_plans": "回到 Token Plans 开通"
   }
 }

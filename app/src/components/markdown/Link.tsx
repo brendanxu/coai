@@ -17,8 +17,9 @@ function getSocialIcon(url: string) {
     if (hostname.includes("codesandbox.io"))
       return <Codesandbox className="h-4 w-4 inline-block mr-0.5" />;
   } catch (e) {
-    return;
+    return undefined;
   }
+  return undefined;
 }
 
 type LinkProps = {

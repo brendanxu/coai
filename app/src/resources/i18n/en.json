@@ -1233,6 +1233,21 @@
       "dingtalk": "Dingtalk",
       "alipay": "Alipay",
       "microsoft": "Microsoft"
+    },
+    "split": {
+      "eyebrow": "Sign in",
+      "heading": "Welcome back,",
+      "heading2": "pick up from",
+      "heading3": "where you left off.",
+      "sub": "One account, access to every model. Pay via Alipay / WeChat / card.",
+      "sub_checkout": "After signing in you'll be taken right back to the Token plan page — payment takes just a few seconds.",
+      "returnto": "After sign-in you'll return to",
+      "stat1": "1.2k+ registered users",
+      "stat2": "14 models in pool",
+      "stat3": "99.9% uptime",
+      "form_sub": "Sign in to your greentokey account",
+      "form_sub_checkout": "Sign in to complete payment",
+      "cta_checkout": "Sign in & continue to payment →"
     }
   },
   "reset": "Reset",
@@ -1481,7 +1496,14 @@
       "userId": "User UID"
     },
     "oauth": "The third party signin",
-    "oauth-description": "Bind and manage your third-party logins"
+    "oauth-description": "Bind and manage your third-party logins",
+    "credentials": {
+      "eyebrow": "Main line · Integration",
+      "title": "Your greentokey credentials",
+      "url_hint": "Change this one line and you're live",
+      "key_hint": "Shown once — save it",
+      "no_key": "API key is generated automatically after purchasing a Token plan"
+    }
   },
   "manage": "Administration",
   "loading": "In load...",
@@ -1816,7 +1838,28 @@
     "carbon-cta": "Full report",
     "carbon-empty-title": "No carbon to report yet",
     "carbon-empty-body": "Send your first chat and we'll start counting.",
-    "chat-floating-hint": "Multi-model chat is ready · click the 🌱 in the bottom-right anytime"
+    "chat-floating-hint": "Multi-model chat is ready · click the 🌱 in the bottom-right anytime",
+    "mode_toggle": {
+      "label": "Dashboard mode",
+      "token": "Token API",
+      "mansion": "Homestay SaaS"
+    },
+    "token": {
+      "eyebrow": "Token API · This month",
+      "heading": "Dashboard",
+      "stat": {
+        "credits_used": "Credits used this month",
+        "total_calls": "Calls this month",
+        "cache_saved": "Cache savings",
+        "actual_spent": "Actual spend"
+      },
+      "quickstart": {
+        "heading": "Quick start · OpenAI-compatible",
+        "sub": "API key ready for you",
+        "no_key": "Auto-generated after purchasing a Token plan",
+        "buy_cta": "Buy a Token plan"
+      }
+    }
   },
   "chat-floating": {
     "open": "Open chat",
@@ -2016,6 +2059,28 @@
     "empty": "Stay tuned — first services launching soon",
     "tile": {
       "cta": "View details"
+    },
+    "placeholder": {
+      "eyebrow": "Beta · Opening end of May",
+      "heading": "Service Marketplace",
+      "sub": "We're preparing dedicated AI services for you — stay tuned.",
+      "footer": "Want early access?",
+      "footer_cta": "Contact us to join the beta",
+      "contact_label": "Service marketplace beta",
+      "card1": {
+        "badge": "Managed · Monthly",
+        "title": "Homestay Xiaohongshu SaaS",
+        "price": "¥1980/mo",
+        "body": "AI writes copy, generates images, auto-publishes, handles comments and DMs. Fully managed monthly — more reliable and cheaper than a local MCN."
+      },
+      "card2": {
+        "badge": "Compute pack · Pay-per-use",
+        "title": "Token top-up pack",
+        "price": "Coming soon",
+        "body": "Add credits on demand — buy when you don't want a monthly plan. Same API Key, same wallet."
+      },
+      "cta_detail": "Learn more",
+      "cta_contact": "Contact us"
     }
   },
   "footer": {
@@ -2162,7 +2227,16 @@
       "contact_dialog_title": "Book a demo"
     },
     "load_failed": "Couldn't load your orders. Please retry.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "col": {
+      "order_no": "Order no.",
+      "plan": "Plan",
+      "amount": "Amount",
+      "status": "Status",
+      "time": "Time",
+      "action": "Action",
+      "detail": "View detail"
+    }
   },
   "order_detail": {
     "title": "Order detail",
@@ -2189,7 +2263,7 @@
       "manual": "Offline / concierge"
     },
     "refund_log": {
-      "title": "Refund log"
+      "empty": "No refund request submitted yet."
     },
     "status": {
       "pending_payment": {
@@ -2245,6 +2319,117 @@
       "refund_submitted": "Refund request submitted — we'll process it shortly.",
       "refund_failed": "Submission failed",
       "reorder_failed": "Operation failed"
+    },
+    "header": {
+      "title": "Order"
+    },
+    "tab": {
+      "timeline": "Timeline",
+      "output": "Output details",
+      "refund": "Refund request"
+    },
+    "timeline": {
+      "created": "Order created",
+      "paid": "Payment confirmed · webhook order_created",
+      "credited": "Credits deposited",
+      "completed": "Completed",
+      "completed_sub": "entitlement granted · cost_ledger written"
+    },
+    "output": {
+      "credits_granted": "Granted",
+      "credits_note": "Balance visible in real time on your Dashboard.",
+      "no_output": "No structured output details for this order."
     }
+  },
+  "welcome": {
+    "mode_toggle": {
+      "label": "Home mode",
+      "token": "Token API",
+      "mansion": "Homestay SaaS"
+    },
+    "mcard": {
+      "token": {
+        "badge": "Main line · Live",
+        "title": "Token plan",
+        "accent": "One Key, one pool",
+        "body": "¥99/mo, 5000 credits. All models via one endpoint, upstream pricing, prompt cache auto-forwarded. WeChat / Alipay / card.",
+        "f1": "OpenAI-compatible base URL",
+        "f2": "14+ models · one Key",
+        "f3": "Live usage + cache savings view",
+        "price": "¥99",
+        "priceSub": "/mo",
+        "cta": "Activate now →"
+      },
+      "market": {
+        "badge": "Main line · Placeholder",
+        "title": "Service marketplace",
+        "accent": "Buy a ready-made service",
+        "body": "Agent + token packs sold per use — Xiaohongshu management, content packs, DIY agents. Compute underneath, same wallet.",
+        "f1": "Tuned prompts + workflow",
+        "f2": "Ship on first draft · no model tuning",
+        "f3": "Shared wallet",
+        "cta": "Subscribe for launch alert",
+        "pricePlaceholder": "Coming soon"
+      }
+    },
+    "values": {
+      "heading": "Why it's built this way",
+      "sub": "Compute underneath, experience on top. Token plan for direct API access; marketplace for outcome-based buying.",
+      "one-key": {
+        "title": "One Key, all models",
+        "body": "NewAPI handles dispatch underneath. You get one OpenAI-compatible endpoint — switch models by changing the model field, no new account, no new key."
+      },
+      "agent": {
+        "title": "Agents as a service",
+        "body": "DIY agents in the marketplace = our tuned prompts + token packs. Pay per use, we handle compute, consistent repeatable results."
+      },
+      "sub2api": {
+        "title": "sub2API pool expansion (planned)",
+        "body": "Bridge official Claude / OpenAI APIs into the token pool. Broader coverage, compliant access, no reliance on unstable third-party relay capacity."
+      }
+    }
+  },
+  "pricing_table": {
+    "eyebrow": "Pricing",
+    "heading1": "Every spend goes",
+    "heading2": "through one wallet",
+    "heading3": ".",
+    "sub": "One Token plan tier. Everything else deducts credits by usage; once the service marketplace launches, per-use charges share the same balance.",
+    "note": {
+      "label": "Note",
+      "body": "This page and /token-plans don't conflict — TokenPlans is the sales page, Pricing is the reference table. All CTAs here link back to TokenPlans to complete the purchase."
+    },
+    "fact": {
+      "sub": {
+        "label": "Subscription",
+        "value": "¥99/mo · 5000 credits"
+      },
+      "overage": {
+        "label": "Overage",
+        "value": "¥0.020/credit · auto top-up"
+      },
+      "refund": {
+        "label": "Refund",
+        "value": "7-day refund if unused"
+      },
+      "invoice": {
+        "label": "Invoice",
+        "value": "Electronic invoice supported"
+      }
+    },
+    "col": {
+      "model": "Model",
+      "vendor": "Vendor",
+      "context": "Context",
+      "price_in": "¥ / 1M in",
+      "price_out": "¥ / 1M out",
+      "credits": "credits / 1M out",
+      "cache": "Cache"
+    },
+    "cache": {
+      "yes": "Supported"
+    },
+    "csv_download": "Download full price list .csv",
+    "back_to_plans": "Back to Token Plans"
   }
 }

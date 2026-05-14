@@ -41,6 +41,7 @@ function getVirtualIcon(command: string) {
   } else if (command.includes("reroll")) {
     return <RefreshCcwDot className="h-4 w-4 inline-block mr-2" />;
   }
+  return undefined;
 }
 
 function getVirualPrompt(command: string) {
@@ -75,6 +76,7 @@ function getVirualPrompt(command: string) {
     if (command.includes("pan_up")) return "chat.actions.pan-up";
     if (command.includes("pan_down")) return "chat.actions.pan-down";
   }
+  return undefined;
 }
 
 function GetI18nPrompt({ command }: { command: string }) {

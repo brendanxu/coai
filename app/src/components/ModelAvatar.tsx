@@ -133,6 +133,7 @@ const builtinAvatars: Record<string, React.ExoticComponent<IconAvatarProps>> = {
 function getAvatarType(id: string): string | undefined {
   if (id.includes("gpt-3.5")) return "gpt3";
   if (id.includes("gpt-4") || id.includes("o1")) return "gpt4";
+  return undefined;
 }
 
 function ModelAvatar({ model, className, size }: ModelAvatarProps) {
