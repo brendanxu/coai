@@ -10,6 +10,8 @@ import { selectAdmin } from "@/store/auth.ts";
 import { listAdminOrders, markOrderPaid, refundOrder } from "@/api/adminOrders.ts";
 import type { AdminOrderRow, AdminOrderListParams } from "@/api/adminOrders.ts";
 import type { OrderStatus } from "@/api/orders.ts";
+import { listUserRouting, updateUserRouting, SUGGESTED_GROUPS } from "@/api/userRouting.ts";
+import type { UserRoutingRow } from "@/api/userRouting.ts";
 import "./GtkAdmin.css";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -638,6 +640,19 @@ function UsersTab() {
   const [loading, setLoading] = useState(true);
   const [editQuota, setEditQuota] = useState<Record<number, string>>({});
 
+  // NewAPI routing group, joined by coai_user_id. Fetched separately —
+  // the user-routing list only contains users with a NewAPI binding.
+  const [routingMap, setRoutingMap] = useState<Map<number, UserRoutingRow>>(new Map());
+  const [editRouting, setEditRouting] = useState<UserRoutingRow | null>(null);
+  const [editGroup, setEditGroup] = useState("");
+  const [savingRouting, setSavingRouting] = useState(false);
+
+  const loadRouting = useCallback(() => {
+    listUserRouting({ limit: 500, offset: 0 })
+      .then(resp => setRoutingMap(new Map(resp.users.map(u => [u.coai_user_id, u]))))
+      .catch(() => setRoutingMap(new Map())); // NewAPI down → degrade to no-binding view
+  }, []);
+
   const load = useCallback((p: number, kw: string) => {
     setLoading(true);
     axios.get<{ success: boolean; data?: { users: User[]; total: number } }>(
@@ -652,6 +667,26 @@ function UsersTab() {
   }, []);
 
   useEffect(() => { load(page, keyword); }, [load, page, keyword]);
+  useEffect(() => { loadRouting(); }, [loadRouting]);
+
+  const openRouting = (r: UserRoutingRow) => { setEditRouting(r); setEditGroup(r.newapi_group); };
+  const closeRouting = () => { if (savingRouting) return; setEditRouting(null); setEditGroup(""); };
+
+  const submitRouting = () => {
+    if (!editRouting) return;
+    const next = editGroup.trim();
+    if (!next) { toast.error("路由组不能为空"); return; }
+    setSavingRouting(true);
+    updateUserRouting(editRouting.coai_user_id, next)
+      .then(() => {
+        toast.success(`${editRouting.username || `#${editRouting.coai_user_id}`} 路由组已切换为 ${next}`);
+        setEditRouting(null);
+        setEditGroup("");
+        loadRouting();
+      })
+      .catch(e => toast.error(e?.message || "切换失败"))
+      .finally(() => setSavingRouting(false));
+  };
 
   const toggleStatus = (u: User) => {
     const newStatus = u.status === 1 ? 0 : 1;
@@ -720,13 +755,13 @@ function UsersTab() {
         <table>
           <thead>
             <tr>
-              <th>ID</th><th>用户名</th><th>邮箱</th><th>角色</th><th>状态</th>
+              <th>ID</th><th>用户名</th><th>邮箱</th><th>角色</th><th>状态</th><th>路由组</th>
               <th>剩余配额</th><th>已用配额</th><th>注册时间</th><th style={{ textAlign: "right" }}>操作</th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={9} style={{ padding: 20, textAlign: "center", color: "var(--fg-muted)" }}>加载中…</td></tr>}
-            {!loading && filtered.length === 0 && <tr><td colSpan={9} style={{ padding: 20, textAlign: "center", color: "var(--fg-muted)" }}>暂无用户</td></tr>}
+            {loading && <tr><td colSpan={10} style={{ padding: 20, textAlign: "center", color: "var(--fg-muted)" }}>加载中…</td></tr>}
+            {!loading && filtered.length === 0 && <tr><td colSpan={10} style={{ padding: 20, textAlign: "center", color: "var(--fg-muted)" }}>暂无用户</td></tr>}
             {filtered.map(u => (
               <tr key={u.id}>
                 <td className="id">{u.id}</td>
@@ -743,6 +778,20 @@ function UsersTab() {
                     <span className="dot" />
                     {u.status === 1 ? "正常" : "禁用"}
                   </span>
+                </td>
+                <td>
+                  {routingMap.has(u.id) ? (
+                    <span
+                      className="editable-num"
+                      onClick={() => openRouting(routingMap.get(u.id)!)}
+                      title="点击切换 NewAPI 路由组"
+                    >
+                      <span className="tier">{routingMap.get(u.id)!.newapi_group}</span>
+                      <IconEdit />
+                    </span>
+                  ) : (
+                    <span style={{ color: "var(--fg-faint)", fontSize: 12 }} title="该用户无 NewAPI 绑定">—</span>
+                  )}
                 </td>
                 <td>
                   {editQuota[u.id] != null ? (
@@ -807,6 +856,46 @@ function UsersTab() {
           </div>
         )}
       </div>
+
+      {/* Routing group edit modal */}
+      {editRouting && (
+        <div className="modal-bg active" onClick={e => { if (e.target === e.currentTarget) closeRouting(); }}>
+          <div className="modal narrow">
+            <div className="modal-head">
+              <div>
+                <h3>切换路由组</h3>
+                <div className="sub">{editRouting.username || `#${editRouting.coai_user_id}`} · NewAPI #{editRouting.newapi_user_id}</div>
+              </div>
+              <button className="x" onClick={closeRouting}><IconX /></button>
+            </div>
+            <div className="modal-body">
+              <div className="form-grid">
+                <div className="full field">
+                  <label>当前路由组</label>
+                  <div><span className="tier">{editRouting.newapi_group}</span></div>
+                </div>
+                <div className="full field">
+                  <label>选择预设组</label>
+                  <select className="select-field" value={SUGGESTED_GROUPS.includes(editGroup) ? editGroup : ""} onChange={e => setEditGroup(e.target.value)}>
+                    <option value="">— 自定义 —</option>
+                    {SUGGESTED_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div className="full field">
+                  <label>路由组名称 <span className="req">*</span></label>
+                  <input className="input mono" value={editGroup} onChange={e => setEditGroup(e.target.value)} placeholder="可输入自定义组名" />
+                </div>
+              </div>
+            </div>
+            <div className="modal-foot">
+              <button className="btn btn-ghost" onClick={closeRouting} disabled={savingRouting}>取消</button>
+              <button className="btn btn-primary" onClick={submitRouting} disabled={savingRouting}>
+                {savingRouting ? "保存中…" : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
