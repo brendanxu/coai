@@ -1,5 +1,6 @@
 import {
   createBrowserRouter,
+  Navigate,
   RouterProvider,
   useLocation,
   useNavigate,
@@ -53,7 +54,6 @@ const MyOrders = lazyFactor(() => import("@/routes/MyOrders.tsx"));
 const OrderDetail = lazyFactor(() => import("@/routes/OrderDetail.tsx"));
 
 const AdminPage = lazyFactor(() => import("@/routes/Admin.tsx"));
-const AdminDashboard = lazyFactor(() => import("@/routes/admin/DashBoard.tsx"));
 const AdminMarket = lazyFactor(() => import("@/routes/admin/Market.tsx"));
 const AdminChannel = lazyFactor(() => import("@/routes/admin/Channel.tsx"));
 const AdminSystem = lazyFactor(() => import("@/routes/admin/System.tsx"));
@@ -79,9 +79,6 @@ const AdminChannelsRouting = lazyFactor(
 const AdminOrders = lazyFactor(() => import("@/routes/admin/AdminOrders.tsx"));
 // Unified GTK admin panel (users + model-ratios + settings + sub2api hub).
 const GtkAdmin = lazyFactor(() => import("@/routes/admin/GtkAdmin.tsx"));
-const GtkUsers = lazyFactor(() => import("@/routes/admin/GtkUsers.tsx"));
-const GtkModelRatios = lazyFactor(() => import("@/routes/admin/GtkModelRatios.tsx"));
-const GtkSettings = lazyFactor(() => import("@/routes/admin/GtkSettings.tsx"));
 
 // Phase 3+4 — checkout / payment-success / usage / live
 const Checkout = lazyFactor(() => import("@/routes/Checkout.tsx"));
@@ -367,11 +364,7 @@ const router = createBrowserRouter([
           {
             id: "admin-dashboard",
             path: "",
-            element: (
-              <Suspense>
-                <AdminDashboard />
-              </Suspense>
-            ),
+            element: <Navigate to="/admin/gtk" replace />,
           },
           {
             id: "admin-users",
@@ -523,53 +516,20 @@ const router = createBrowserRouter([
               </Suspense>
             ),
           },
-          // Unified GTK admin panel — hub + users + model-ratios + settings.
-          {
-            id: "admin-gtk",
-            path: "gtk",
-            element: (
-              <AdminRequired>
-                <Suspense>
-                  <GtkAdmin />
-                </Suspense>
-              </AdminRequired>
-            ),
-          },
-          {
-            id: "admin-gtk-users",
-            path: "gtk-users",
-            element: (
-              <AdminRequired>
-                <Suspense>
-                  <GtkUsers />
-                </Suspense>
-              </AdminRequired>
-            ),
-          },
-          {
-            id: "admin-gtk-model-ratios",
-            path: "gtk-model-ratios",
-            element: (
-              <AdminRequired>
-                <Suspense>
-                  <GtkModelRatios />
-                </Suspense>
-              </AdminRequired>
-            ),
-          },
-          {
-            id: "admin-gtk-settings",
-            path: "gtk-settings",
-            element: (
-              <AdminRequired>
-                <Suspense>
-                  <GtkSettings />
-                </Suspense>
-              </AdminRequired>
-            ),
-          },
         ],
         ErrorBoundary: NotFound,
+      },
+      // Unified GTK admin panel — standalone, no CoAI admin shell.
+      {
+        id: "admin-gtk",
+        path: "/admin/gtk",
+        element: (
+          <AdminRequired>
+            <Suspense>
+              <GtkAdmin />
+            </Suspense>
+          </AdminRequired>
+        ),
       },
       ...(useDeeptrain
         ? []

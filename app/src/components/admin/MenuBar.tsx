@@ -2,20 +2,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { closeMenu, selectMenu } from "@/store/menu.ts";
 import React, { useMemo } from "react";
 import {
-  BookCopy,
-  CalendarRange,
-  CloudCog,
-  CopyrightIcon,
-  CreditCard,
   FileClock,
   Gauge,
   GitFork,
-  History,
   PackageCheck,
   Radio,
-  Route,
   ServerCog,
-  ServerCrash,
   Settings,
   Users,
 } from "lucide-react";
@@ -74,12 +66,6 @@ function MenuBar() {
       <MenuItem title={t("admin.dashboard")} icon={<Gauge />} path={"/"} />
       <MenuItem title={t("admin.user")} icon={<Users />} path={"/users"} />
       <MenuItem
-        title={t("admin.market.title")}
-        icon={<BookCopy />}
-        path={"/market"}
-      />
-      {/* PKG-N1 — service order management (mark-paid / refund). */}
-      <MenuItem
         title={t("admin.orders.title")}
         icon={<PackageCheck />}
         path={"/orders"}
@@ -94,37 +80,12 @@ function MenuBar() {
         icon={<GitFork />}
         path={"/channel"}
       />
-      {/* PKG-4 (architecture §19) — per-user channel routing admin. */}
-      <MenuItem
-        title={t("admin.user-routing.title")}
-        icon={<Route />}
-        path={"/user-routing"}
-      />
       <MenuItem
         title={t("admin.channels.title")}
         icon={<ServerCog />}
         path={"/channels-routing"}
       />
-      <MenuItem title={t("admin.prize")} icon={<CloudCog />} path={"/charge"} />
       <MenuItem
-        title={t("admin.subscription")}
-        icon={<CalendarRange />}
-        path={"/subscription"}
-      />
-      <MenuItem
-        title={t("admin.payment")}
-        icon={<CreditCard />}
-        path={"/pay"}
-        pro
-      />
-      <MenuItem
-        pro
-        title={t("record.title")}
-        icon={<History />}
-        path={"/record"}
-      />
-      <MenuItem
-        // pro
         title={t("admin.settings")}
         icon={<Settings />}
         path={"/system"}
@@ -133,18 +94,6 @@ function MenuBar() {
         title={t("admin.logger.title")}
         icon={<FileClock />}
         path={"/logger"}
-      />
-      <MenuItem
-        pro
-        title={t("admin.cdn.warmup")}
-        icon={<ServerCrash />}
-        path={"/warmup"}
-      />
-      <MenuItem
-        pro
-        title={t("admin.license.title")}
-        icon={<CopyrightIcon />}
-        path={"/license"}
       />
     </div>
   );
