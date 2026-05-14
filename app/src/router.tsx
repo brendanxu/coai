@@ -78,6 +78,12 @@ const AdminChannelsRouting = lazyFactor(
 // "founder uses curl to mark concierge orders paid" gap from the audit.
 const AdminOrders = lazyFactor(() => import("@/routes/admin/AdminOrders.tsx"));
 
+// Phase 3+4 — checkout / payment-success / usage / live
+const Checkout = lazyFactor(() => import("@/routes/Checkout.tsx"));
+const PaymentSuccess = lazyFactor(() => import("@/routes/PaymentSuccess.tsx"));
+const UsagePage = lazyFactor(() => import("@/routes/Usage.tsx"));
+const LivePage = lazyFactor(() => import("@/routes/Live.tsx"));
+
 const router = createBrowserRouter([
   {
     id: "index",
@@ -182,6 +188,52 @@ const router = createBrowserRouter([
           <AuthRequired>
             <Suspense>
               <OrderDetail />
+            </Suspense>
+          </AuthRequired>
+        ),
+      },
+      // Phase 3+4 — /checkout (auth-gated payment confirmation)
+      {
+        id: "checkout",
+        path: "checkout",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <Checkout />
+            </Suspense>
+          </AuthRequired>
+        ),
+      },
+      // Phase 3+4 — /payment/success (public, reads auth)
+      {
+        id: "payment-success",
+        path: "payment/success",
+        element: (
+          <Suspense>
+            <PaymentSuccess />
+          </Suspense>
+        ),
+      },
+      // Phase 3+4 — /usage (auth-gated usage analytics)
+      {
+        id: "usage",
+        path: "usage",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <UsagePage />
+            </Suspense>
+          </AuthRequired>
+        ),
+      },
+      // Phase 3+4 — /live (auth-gated realtime token flow)
+      {
+        id: "live",
+        path: "live",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <LivePage />
             </Suspense>
           </AuthRequired>
         ),

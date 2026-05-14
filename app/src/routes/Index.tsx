@@ -10,6 +10,8 @@ import {
   Wallet,
   LibraryBig,
   User,
+  BarChart2,
+  Radio,
 } from "lucide-react";
 import React, { useEffect, useLayoutEffect } from "react";
 import Icon from "@/components/utils/Icon.tsx";
@@ -141,6 +143,12 @@ function ToolBar() {
           actually logged in (same pattern as /admin below). */}
       {auth && (
         <BarItem icon={<PackageCheck />} path={`/orders`} name={"orders"} />
+      )}
+      {auth && (
+        <BarItem icon={<BarChart2 />} path={`/usage`} name={"usage"} />
+      )}
+      {auth && (
+        <BarItem icon={<Radio />} path={`/live`} name={"live"} />
       )}
       <BarItem icon={<User />} path={`/account`} name={"account"} />
       {admin && <BarItem icon={<Shield />} path={`/admin`} name={"admin"} />}
