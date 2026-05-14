@@ -35,12 +35,12 @@ type newAPIUserRaw struct {
 }
 
 // newAPIUserListEnvelope matches NewAPI's paginated user response shape.
-// NewAPI /api/user/?p=&page_size= wraps users in data.users (not data.items).
+// NewAPI /api/user/?p=&page_size= wraps the array in data.items.
 type newAPIUserListEnvelope struct {
 	Success bool   `json:"success"`
 	Message string `json:"message,omitempty"`
 	Data    struct {
-		Users []newAPIUserRaw `json:"users"`
+		Items []newAPIUserRaw `json:"items"`
 		Total int64           `json:"total"`
 	} `json:"data"`
 }
@@ -100,7 +100,7 @@ func ListUsersAPI(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"users": env.Data.Users,
+			"users": env.Data.Items,
 			"total": env.Data.Total,
 		},
 	})
