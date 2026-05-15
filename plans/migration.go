@@ -71,6 +71,9 @@ func Migrate(db *sql.DB) error {
 	if err := createProviderPricingTable(db); err != nil {
 		return fmt.Errorf("create gtk_provider_pricing: %w", err)
 	}
+	if err := addProviderPricingDisplayColumns(db); err != nil {
+		return fmt.Errorf("add gtk_provider_pricing display columns: %w", err)
+	}
 	if err := createBillingConfigTable(db); err != nil {
 		return fmt.Errorf("create gtk_billing_config: %w", err)
 	}
@@ -82,6 +85,9 @@ func Migrate(db *sql.DB) error {
 	}
 	if err := seedTokenPlans(db); err != nil {
 		return fmt.Errorf("seed gtk_plan token plans: %w", err)
+	}
+	if err := seedDisplayPricing(db); err != nil {
+		return fmt.Errorf("seed gtk_provider_pricing display rows: %w", err)
 	}
 	return nil
 }
@@ -738,4 +744,162 @@ func seedBillingConfig(db *sql.DB) error {
 		VALUES ('markup_multiplier', '1.300')
 	`)
 	return err
+}
+
+// providerPricingDisplayColumns defines the 7 nullable display columns added
+// by PKG-PRICING-DYNAMIC (2026-05-15). They live on gtk_provider_pricing so
+// the public Pricing.tsx page can be driven from DB rather than a hardcoded
+// array. Columns are nullable: NULL means "not published to the public page".
+//
+// Two engine variants are needed because SQLite uses TEXT/REAL/INTEGER type
+// affinity (no DECIMAL/VARCHAR), but addColumnIfMissing handles dispatch.
+type providerPricingDisplayCol struct {
+	name      string
+	mysqlDef  string
+	sqliteDef string
+}
+
+var providerPricingDisplayCols = []providerPricingDisplayCol{
+	{"display_in_cny_per_m", "DECIMAL(10,2) NULL", "REAL"},
+	{"display_out_cny_per_m", "DECIMAL(10,2) NULL", "REAL"},
+	{"display_credits_per_m", "INT NULL", "INTEGER"},
+	{"display_name", "VARCHAR(60) NULL", "TEXT"},
+	{"vendor_label", "VARCHAR(40) NULL", "TEXT"},
+	{"context_size", "VARCHAR(20) NULL", "TEXT"},
+	{"cache_flag", "VARCHAR(20) NULL", "TEXT"},
+}
+
+// addProviderPricingDisplayColumns adds the 7 nullable display columns to
+// gtk_provider_pricing. Idempotent: each column is added only if absent,
+// using the unified addColumnIfMissing helper (PRAGMA on SQLite,
+// INFORMATION_SCHEMA on MySQL). Re-running on a migrated DB is a no-op.
+func addProviderPricingDisplayColumns(db *sql.DB) error {
+	for _, col := range providerPricingDisplayCols {
+		def := col.mysqlDef
+		if globals.SqliteEngine {
+			def = col.sqliteDef
+		}
+		if err := addColumnIfMissing(db, "gtk_provider_pricing", col.name, def); err != nil {
+			return fmt.Errorf("add %s: %w", col.name, err)
+		}
+	}
+	return nil
+}
+
+// displayPricingSeed maps the 8 models currently shown in Pricing.tsx to the
+// canonical (provider, model_id, token_type='input') key in gtk_provider_pricing.
+// On first boot these rows either UPDATE an existing upstream-tracking row's
+// display fields, or INSERT a new row if no upstream row exists for that model.
+//
+// Values extracted from Pricing.tsx MODEL_ROWS (hardcoded as of v0.30.0).
+// vendor_label stores the Pricing.tsx "vendor" string (friendly); provider
+// stores the canonical slug used by upstream cost tracking.
+var displayPricingSeed = []struct {
+	provider    string // canonical slug (must match upstream seed or be new)
+	modelID     string // upstream model_id slug
+	displayName string // Pricing.tsx model column
+	vendorLabel string // Pricing.tsx vendor column
+	contextSize string // Pricing.tsx context column
+	priceIn     float64
+	priceOut    float64
+	creditsPerM int64
+	cacheFlag   string // "true" | "cache_control" | "false"
+}{
+	{"openai", "gpt-4o", "GPT-4o", "openai", "128k", 18.20, 72.80, 3640, "true"},
+	{"openai", "gpt-4o-mini", "GPT-4o mini", "openai", "128k", 1.10, 4.40, 220, "true"},
+	{"anthropic", "claude-3-5-sonnet", "Claude 3.5 Sonnet", "anthropic", "200k", 21.60, 108.00, 5400, "cache_control"},
+	{"deepseek", "deepseek-v3", "DeepSeek V3", "deepseek", "64k", 1.00, 4.00, 200, "true"},
+	{"deepseek", "deepseek-r1", "DeepSeek R1", "deepseek", "64k", 4.00, 16.00, 800, "true"},
+	{"alibaba", "qwen2.5-max", "Qwen2.5-Max", "阿里", "32k", 8.00, 24.00, 1200, "true"},
+	{"google", "gemini-2.0-flash", "Gemini 2.0 Flash", "google", "1M", 0.72, 2.88, 144, "true"},
+	{"moonshot", "kimi-k2", "Kimi K2", "moonshot", "200k", 12.00, 12.00, 600, "true"},
+}
+
+// seedDisplayPricing populates the 7 display_* columns for the 8 baseline
+// models. Idempotent: for each seed row it tries to UPDATE the existing
+// (provider, model_id, token_type='input') row first; if no row matches it
+// INSERTs a new one with both upstream_per_m (estimated from display_in) and
+// all display fields populated.
+//
+// Re-running this function is safe: the UPDATE is a no-op when the display
+// fields are already set to the same values; the INSERT path guards with
+// INSERT IGNORE / INSERT OR IGNORE so duplicate unique-key violations are
+// silently skipped.
+//
+// SQLite note: unlike seedTokenPlans, this seed DOES run under SQLite because
+// plans/migration_test.go exercises the display-pricing seed and we want
+// idempotency to be exercised in unit tests too.
+func seedDisplayPricing(db *sql.DB) error {
+	for _, r := range displayPricingSeed {
+		// Try to UPDATE an existing input row first.
+		var res sql.Result
+		var err error
+		if globals.SqliteEngine {
+			res, err = globals.ExecDb(db, `
+				UPDATE gtk_provider_pricing
+				SET display_in_cny_per_m  = ?,
+				    display_out_cny_per_m = ?,
+				    display_credits_per_m = ?,
+				    display_name          = ?,
+				    vendor_label          = ?,
+				    context_size          = ?,
+				    cache_flag            = ?
+				WHERE provider = ? AND model_id = ? AND token_type = 'input'
+			`, r.priceIn, r.priceOut, r.creditsPerM,
+				r.displayName, r.vendorLabel, r.contextSize, r.cacheFlag,
+				r.provider, r.modelID)
+		} else {
+			res, err = globals.ExecDb(db, `
+				UPDATE gtk_provider_pricing
+				SET display_in_cny_per_m  = ?,
+				    display_out_cny_per_m = ?,
+				    display_credits_per_m = ?,
+				    display_name          = ?,
+				    vendor_label          = ?,
+				    context_size          = ?,
+				    cache_flag            = ?
+				WHERE provider = ? AND model_id = ? AND token_type = 'input'
+			`, r.priceIn, r.priceOut, r.creditsPerM,
+				r.displayName, r.vendorLabel, r.contextSize, r.cacheFlag,
+				r.provider, r.modelID)
+		}
+		if err != nil {
+			return fmt.Errorf("update display seed %s/%s: %w", r.provider, r.modelID, err)
+		}
+		n, _ := res.RowsAffected()
+		if n > 0 {
+			continue // existing upstream row updated — done for this model
+		}
+
+		// No upstream row exists for this (provider, model_id, input) tuple.
+		// Insert a new row with estimated upstream_per_m = display_in / 7.27
+		// (approximate CNY→USD at 7.27 rate) as a placeholder that ops can
+		// correct later via the admin UI.
+		estimatedUpstreamPerM := r.priceIn / 7.27
+		if globals.SqliteEngine {
+			_, err = globals.ExecDb(db, `
+				INSERT OR IGNORE INTO gtk_provider_pricing
+				  (provider, model_id, token_type, upstream_per_m,
+				   display_in_cny_per_m, display_out_cny_per_m, display_credits_per_m,
+				   display_name, vendor_label, context_size, cache_flag)
+				VALUES (?, ?, 'input', ?, ?, ?, ?, ?, ?, ?, ?)
+			`, r.provider, r.modelID, estimatedUpstreamPerM,
+				r.priceIn, r.priceOut, r.creditsPerM,
+				r.displayName, r.vendorLabel, r.contextSize, r.cacheFlag)
+		} else {
+			_, err = globals.ExecDb(db, `
+				INSERT IGNORE INTO gtk_provider_pricing
+				  (provider, model_id, token_type, upstream_per_m,
+				   display_in_cny_per_m, display_out_cny_per_m, display_credits_per_m,
+				   display_name, vendor_label, context_size, cache_flag)
+				VALUES (?, ?, 'input', ?, ?, ?, ?, ?, ?, ?, ?)
+			`, r.provider, r.modelID, estimatedUpstreamPerM,
+				r.priceIn, r.priceOut, r.creditsPerM,
+				r.displayName, r.vendorLabel, r.contextSize, r.cacheFlag)
+		}
+		if err != nil {
+			return fmt.Errorf("insert display seed %s/%s: %w", r.provider, r.modelID, err)
+		}
+	}
+	return nil
 }

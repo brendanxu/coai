@@ -106,6 +106,11 @@ type AppUsageLog struct {
 // ProviderPricing mirrors a row in gtk_provider_pricing. Owned by ops via
 // the V2 seed in migration.go and any subsequent INSERT (never UPDATE) when
 // upstream prices change.
+//
+// PKG-PRICING-DYNAMIC (2026-05-15): seven nullable display columns added so
+// the public /gtk/v1/pricing endpoint can serve Pricing.tsx from DB instead
+// of a hardcoded array. Rows with NULL display fields are upstream-tracking
+// only and never appear in the public response (all-or-nothing rule).
 type ProviderPricing struct {
 	ID            int64
 	Provider      string
@@ -114,6 +119,15 @@ type ProviderPricing struct {
 	UpstreamPerM  float64
 	EffectiveFrom time.Time
 	Notes         sql.NullString
+
+	// Display columns (all nullable — NULL = not published to public Pricing page).
+	DisplayInCNYPerM   *float64 // ¥ per 1M input tokens  → Pricing.tsx priceIn
+	DisplayOutCNYPerM  *float64 // ¥ per 1M output tokens → Pricing.tsx priceOut
+	DisplayCreditsPerM *int64   // credits per 1M out     → Pricing.tsx creditsPerMOut
+	DisplayName        *string  // friendly model name    → Pricing.tsx model
+	VendorLabel        *string  // friendly vendor label  → Pricing.tsx vendor
+	ContextSize        *string  // context window string  → Pricing.tsx context (e.g. "128k")
+	CacheFlag          *string  // "true"|"cache_control"|"false" → Pricing.tsx cache
 }
 
 // BillingConfig mirrors a row in gtk_billing_config. Single-table key/value
