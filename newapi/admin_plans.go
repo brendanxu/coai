@@ -25,6 +25,7 @@ import (
 	"chat/globals"
 	"database/sql"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -385,10 +386,10 @@ func UpdateBillingConfigAPI(c *gin.Context) {
 	// Validate markup_multiplier range.
 	if key == "markup_multiplier" {
 		f, err := strconv.ParseFloat(val, 64)
-		if err != nil {
+		if err != nil || math.IsNaN(f) || math.IsInf(f, 0) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
-				"message": "markup_multiplier must be a valid decimal number",
+				"message": "markup_multiplier must be a valid finite decimal number",
 			})
 			return
 		}
