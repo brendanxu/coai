@@ -59,8 +59,6 @@ import { Switch } from "@/components/ui/switch.tsx";
 import { MultiCombobox } from "@/components/ui/multi-combobox.tsx";
 import { allGroups } from "@/utils/groups.ts";
 import { useChannelModels } from "@/admin/hook.tsx";
-import { useSelector } from "react-redux";
-import { selectSupportModels } from "@/store/chat.ts";
 import { JSONEditorProvider } from "@/components/EditorProvider.tsx";
 import { Combobox } from "@/components/ui/combo-box.tsx";
 
@@ -667,7 +665,6 @@ function Common({ form, data, dispatch, onChange }: CompProps<CommonState>) {
   const { t } = useTranslation();
 
   const { channelModels } = useChannelModels();
-  const supportModels = useSelector(selectSupportModels);
 
   return (
     <Paragraph
@@ -751,33 +748,6 @@ function Common({ form, data, dispatch, onChange }: CompProps<CommonState>) {
               className={`inline-flex h-4 w-4 mr-2 translate-y-[1px]`}
             />
             {t("admin.system.cacheNone")}
-          </Button>
-          <Button
-            variant={`outline`}
-            onClick={() =>
-              dispatch({
-                type: "update:common.cache",
-                value: supportModels
-                  .filter((item) => item.free)
-                  .map((item) => item.id),
-              })
-            }
-          >
-            <Settings2
-              className={`inline-flex h-4 w-4 mr-2 translate-y-[1px]`}
-            />
-            {t("admin.system.cacheFree")}
-          </Button>
-          <Button
-            variant={`outline`}
-            onClick={() =>
-              dispatch({ type: "update:common.cache", value: channelModels })
-            }
-          >
-            <Settings2
-              className={`inline-flex h-4 w-4 mr-2 translate-y-[1px]`}
-            />
-            {t("admin.system.cacheAll")}
           </Button>
         </div>
       </ParagraphItem>
