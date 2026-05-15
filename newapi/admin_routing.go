@@ -90,6 +90,18 @@ func RegisterAdminRoutes(app *gin.RouterGroup) {
 	app.PUT("/gtk/v1/admin/model-ratios", UpdateModelRatiosAPI)
 	app.GET("/gtk/v1/admin/system-options", GetSystemOptionsAPI)
 	app.PUT("/gtk/v1/admin/system-options", UpdateSystemOptionAPI)
+	// Plans CRUD (admin_plans.go)
+	app.GET("/gtk/v1/admin/plans", ListPlansAPI)
+	app.GET("/gtk/v1/admin/plans/:id", GetPlanAPI)
+	app.POST("/gtk/v1/admin/plans", CreatePlanAPI)
+	app.PUT("/gtk/v1/admin/plans/:id", UpdatePlanAPI)
+	app.DELETE("/gtk/v1/admin/plans/:id", RetirePlanAPI)
+	// Billing config (admin_plans.go)
+	app.GET("/gtk/v1/admin/billing-config", ListBillingConfigAPI)
+	app.PUT("/gtk/v1/admin/billing-config", UpdateBillingConfigAPI)
+	// Provider pricing (admin_plans.go)
+	app.GET("/gtk/v1/admin/provider-pricing", ListProviderPricingAPI)
+	app.POST("/gtk/v1/admin/provider-pricing", CreateProviderPricingAPI)
 }
 
 // UserRoutingRow is the JSON shape returned by the list + detail endpoints.
