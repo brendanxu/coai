@@ -31,6 +31,14 @@ interface ProviderPricingRow {
   upstream_per_m: number;
   effective_from: string;
   notes?: string;
+  // PKG-PRICING-DYNAMIC display fields (nullable — NULL = not published)
+  display_in_cny_per_m?: number | null;
+  display_out_cny_per_m?: number | null;
+  display_credits_per_m?: number | null;
+  display_name?: string | null;
+  vendor_label?: string | null;
+  context_size?: string | null;
+  cache_flag?: string | null;
 }
 
 // ── Small SVG icons (inline, same style as GtkAdmin.tsx) ──────────────────
@@ -370,6 +378,12 @@ function ProviderPricingSection() {
     provider: "", model_id: "", token_type: "input" as TokenType,
     upstream_per_m: "", notes: "",
   });
+  const [showDisplay, setShowDisplay] = useState(false);
+  const [displayForm, setDisplayForm] = useState({
+    display_name: "", vendor_label: "", context_size: "",
+    display_in_cny_per_m: "", display_out_cny_per_m: "",
+    display_credits_per_m: "", cache_flag: "true",
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(() => {
@@ -411,14 +425,49 @@ function ProviderPricingSection() {
     const v = parseFloat(form.upstream_per_m);
     if (!form.provider.trim() || !form.model_id.trim()) { toast.error("provider 和 model_id 不能为空"); return; }
     if (isNaN(v) || v <= 0) { toast.error("upstream_per_m 须 > 0"); return; }
+
+    // All-or-nothing: if display toggle is ON, all 7 display fields must be non-empty.
+    let displayPayload: Record<string, string | number> | null = null;
+    if (showDisplay) {
+      const { display_name, vendor_label, context_size,
+              display_in_cny_per_m, display_out_cny_per_m,
+              display_credits_per_m, cache_flag } = displayForm;
+      if (!display_name.trim() || !vendor_label.trim() || !context_size.trim() ||
+          !display_in_cny_per_m.trim() || !display_out_cny_per_m.trim() ||
+          !display_credits_per_m.trim() || !cache_flag.trim()) {
+        toast.error("勾选「公开」时，所有 7 个展示字段均为必填");
+        return;
+      }
+      const inCNY = parseFloat(display_in_cny_per_m);
+      const outCNY = parseFloat(display_out_cny_per_m);
+      const credits = parseInt(display_credits_per_m, 10);
+      if (isNaN(inCNY) || isNaN(outCNY) || isNaN(credits)) {
+        toast.error("¥/1M in、¥/1M out、credits 须为有效数字");
+        return;
+      }
+      displayPayload = {
+        display_name: display_name.trim(),
+        vendor_label: vendor_label.trim(),
+        context_size: context_size.trim(),
+        display_in_cny_per_m: inCNY,
+        display_out_cny_per_m: outCNY,
+        display_credits_per_m: credits,
+        cache_flag: cache_flag.trim(),
+      };
+    }
+
     setSubmitting(true);
+    const body = { ...form, upstream_per_m: v, ...(displayPayload ?? {}) };
     axios.post<{ success: boolean; data?: { row: ProviderPricingRow } }>(
-      "/gtk/v1/admin/provider-pricing",
-      { ...form, upstream_per_m: v }
+      "/gtk/v1/admin/provider-pricing", body
     ).then(() => {
       toast.success("价格已记录");
       setShowForm(false);
+      setShowDisplay(false);
       setForm({ provider: "", model_id: "", token_type: "input", upstream_per_m: "", notes: "" });
+      setDisplayForm({ display_name: "", vendor_label: "", context_size: "",
+        display_in_cny_per_m: "", display_out_cny_per_m: "",
+        display_credits_per_m: "", cache_flag: "true" });
       load();
     }).catch(e => toast.error(e?.response?.data?.message ?? "提交失败"))
       .finally(() => setSubmitting(false));
@@ -469,8 +518,46 @@ function ProviderPricingSection() {
               {submitting ? <IconSpinner /> : null}
               {submitting ? "提交中…" : "确认记录"}
             </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>取消</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { setShowForm(false); setShowDisplay(false); }}>取消</button>
           </div>
+
+          {/* Display toggle — all-or-nothing */}
+          <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+              <input type="checkbox" checked={showDisplay}
+                onChange={e => setShowDisplay(e.target.checked)} />
+              在公开 Pricing 页显示此模型
+            </label>
+            {showDisplay && (
+              <span style={{ fontSize: 11, color: "var(--fg-muted)" }}>
+                （7 个字段全部必填，any NULL = 不发布）
+              </span>
+            )}
+          </div>
+
+          {showDisplay && (
+            <div className="pricing-add-row" style={{ flexWrap: "wrap", marginTop: 8 }}>
+              <input className="input" placeholder="display_name (e.g. GPT-4o)" value={displayForm.display_name}
+                onChange={e => setDisplayForm(p => ({ ...p, display_name: e.target.value }))} />
+              <input className="input" placeholder="vendor_label (e.g. openai)" value={displayForm.vendor_label}
+                onChange={e => setDisplayForm(p => ({ ...p, vendor_label: e.target.value }))} />
+              <input className="input" placeholder="context_size (e.g. 128k)" value={displayForm.context_size}
+                onChange={e => setDisplayForm(p => ({ ...p, context_size: e.target.value }))} />
+              <input className="input" type="number" step="0.01" placeholder="¥/1M in" value={displayForm.display_in_cny_per_m}
+                onChange={e => setDisplayForm(p => ({ ...p, display_in_cny_per_m: e.target.value }))} />
+              <input className="input" type="number" step="0.01" placeholder="¥/1M out" value={displayForm.display_out_cny_per_m}
+                onChange={e => setDisplayForm(p => ({ ...p, display_out_cny_per_m: e.target.value }))} />
+              <input className="input" type="number" step="1" placeholder="credits/1M out" value={displayForm.display_credits_per_m}
+                onChange={e => setDisplayForm(p => ({ ...p, display_credits_per_m: e.target.value }))} />
+              <select className="select-field" value={displayForm.cache_flag}
+                onChange={e => setDisplayForm(p => ({ ...p, cache_flag: e.target.value }))}>
+                <option value="true">支持 (true)</option>
+                <option value="cache_control">cache_control</option>
+                <option value="false">不支持 (false)</option>
+              </select>
+            </div>
+          )}
+
           <div style={{ fontSize: 11, color: "var(--fg-muted)", marginTop: 4 }}>
             append-only — 不修改已有行，每次涨价/降价插入新行。effective_from 自动设为当前时间。
           </div>
@@ -487,21 +574,23 @@ function ProviderPricingSection() {
               <th style={{ textAlign: "right" }}>USD/1M tokens</th>
               <th>生效时间</th>
               <th>备注</th>
+              <th>公开</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={6} style={{ padding: 20, textAlign: "center", color: "var(--fg-muted)" }}>
+              <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: "var(--fg-muted)" }}>
                 加载中…
               </td></tr>
             )}
             {!loading && visible.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: 20, textAlign: "center", color: "var(--fg-muted)" }}>
+              <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: "var(--fg-muted)" }}>
                 暂无记录
               </td></tr>
             )}
             {visible.map(r => {
               const isCurrent = currentIDSet.has(r.id);
+              const isPublished = r.display_in_cny_per_m != null;
               return (
                 <tr key={r.id} style={!isCurrent ? { opacity: 0.5 } : undefined}>
                   <td style={{ fontFamily: "var(--font-mono)", fontSize: 12 }}>{r.provider}</td>
@@ -522,6 +611,16 @@ function ProviderPricingSection() {
                     {new Date(r.effective_from).toLocaleString("zh-CN")}
                   </td>
                   <td style={{ fontSize: 11, color: "var(--fg-muted)" }}>{r.notes ?? "—"}</td>
+                  <td>
+                    {isPublished ? (
+                      <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4,
+                        background: "hsl(142 60% 88%)", color: "hsl(142 60% 25%)", fontWeight: 600 }}>
+                        公开
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 10, color: "var(--fg-muted)" }}>未公开</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}

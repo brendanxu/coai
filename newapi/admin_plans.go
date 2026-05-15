@@ -433,17 +433,6 @@ func UpdateBillingConfigAPI(c *gin.Context) {
 
 // ── Provider-pricing handlers ──────────────────────────────────────────────
 
-// AdminProviderPricingRow is the JSON shape returned by the list endpoint.
-type AdminProviderPricingRow struct {
-	ID            int64   `json:"id"`
-	Provider      string  `json:"provider"`
-	ModelID       string  `json:"model_id"`
-	TokenType     string  `json:"token_type"`
-	UpstreamPerM  float64 `json:"upstream_per_m"`
-	EffectiveFrom string  `json:"effective_from"`
-	Notes         *string `json:"notes,omitempty"`
-}
-
 // validTokenTypes is the whitelist for the token_type field.
 var validTokenTypes = map[string]bool{
 	"input":          true,
@@ -482,7 +471,9 @@ func ListProviderPricingAPI(c *gin.Context) {
 	if len(where) > 0 {
 		whereClause = "WHERE " + strings.Join(where, " AND ")
 	}
-	q := `SELECT id, provider, model_id, token_type, upstream_per_m, effective_from, notes
+	q := `SELECT id, provider, model_id, token_type, upstream_per_m, effective_from, notes,
+	             display_in_cny_per_m, display_out_cny_per_m, display_credits_per_m,
+	             display_name, vendor_label, context_size, cache_flag
 	      FROM gtk_provider_pricing ` + whereClause + ` ORDER BY effective_from DESC`
 
 	rows, err := globals.QueryDb(connection.DB, q, args...)
@@ -500,8 +491,13 @@ func ListProviderPricingAPI(c *gin.Context) {
 		var r AdminProviderPricingRow
 		var notesNull sql.NullString
 		var ts time.Time
+		var dispIn, dispOut sql.NullFloat64
+		var dispCredits sql.NullInt64
+		var dispName, vendorLabel, ctxSize, cacheFlag sql.NullString
 		if err := rows.Scan(&r.ID, &r.Provider, &r.ModelID, &r.TokenType,
-			&r.UpstreamPerM, &ts, &notesNull); err != nil {
+			&r.UpstreamPerM, &ts, &notesNull,
+			&dispIn, &dispOut, &dispCredits,
+			&dispName, &vendorLabel, &ctxSize, &cacheFlag); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
 				"message": "scan provider pricing: " + err.Error(),
@@ -513,6 +509,13 @@ func ListProviderPricingAPI(c *gin.Context) {
 			s := notesNull.String
 			r.Notes = &s
 		}
+		if dispIn.Valid { v := dispIn.Float64; r.DisplayInCNYPerM = &v }
+		if dispOut.Valid { v := dispOut.Float64; r.DisplayOutCNYPerM = &v }
+		if dispCredits.Valid { v := dispCredits.Int64; r.DisplayCreditsPerM = &v }
+		if dispName.Valid { v := dispName.String; r.DisplayName = &v }
+		if vendorLabel.Valid { v := vendorLabel.String; r.VendorLabel = &v }
+		if ctxSize.Valid { v := ctxSize.String; r.ContextSize = &v }
+		if cacheFlag.Valid { v := cacheFlag.String; r.CacheFlag = &v }
 		out = append(out, r)
 	}
 	if err := rows.Err(); err != nil {
@@ -532,16 +535,48 @@ func ListProviderPricingAPI(c *gin.Context) {
 }
 
 // CreateProviderPricingRequest is the JSON body for POST /admin/provider-pricing.
+// The seven Display* fields are all-or-nothing: send all 7 or none. Sending
+// a partial set returns 400. When omitted/null, the row is created as an
+// upstream-tracking-only row and won't appear on the public Pricing page.
 type CreateProviderPricingRequest struct {
 	Provider     string  `json:"provider"`
 	ModelID      string  `json:"model_id"`
 	TokenType    string  `json:"token_type"`
 	UpstreamPerM float64 `json:"upstream_per_m"`
 	Notes        string  `json:"notes"`
+
+	// Display fields (PKG-PRICING-DYNAMIC). All-or-nothing: send all 7 or none.
+	DisplayInCNYPerM   *float64 `json:"display_in_cny_per_m"`
+	DisplayOutCNYPerM  *float64 `json:"display_out_cny_per_m"`
+	DisplayCreditsPerM *int64   `json:"display_credits_per_m"`
+	DisplayName        *string  `json:"display_name"`
+	VendorLabel        *string  `json:"vendor_label"`
+	ContextSize        *string  `json:"context_size"`
+	CacheFlag          *string  `json:"cache_flag"`
+}
+
+// AdminProviderPricingRow is the JSON shape returned by the list endpoint.
+// Extended with nullable display fields so the admin UI can show 公开/未公开.
+type AdminProviderPricingRow struct {
+	ID                 int64    `json:"id"`
+	Provider           string   `json:"provider"`
+	ModelID            string   `json:"model_id"`
+	TokenType          string   `json:"token_type"`
+	UpstreamPerM       float64  `json:"upstream_per_m"`
+	EffectiveFrom      string   `json:"effective_from"`
+	Notes              *string  `json:"notes,omitempty"`
+	DisplayInCNYPerM   *float64 `json:"display_in_cny_per_m,omitempty"`
+	DisplayOutCNYPerM  *float64 `json:"display_out_cny_per_m,omitempty"`
+	DisplayCreditsPerM *int64   `json:"display_credits_per_m,omitempty"`
+	DisplayName        *string  `json:"display_name,omitempty"`
+	VendorLabel        *string  `json:"vendor_label,omitempty"`
+	ContextSize        *string  `json:"context_size,omitempty"`
+	CacheFlag          *string  `json:"cache_flag,omitempty"`
 }
 
 // CreateProviderPricingAPI handles POST /api/gtk/v1/admin/provider-pricing.
 // Appends a new row with effective_from=NOW(). No UPDATE or DELETE.
+// All-or-nothing rule for display fields: either all 7 present or none.
 func CreateProviderPricingAPI(c *gin.Context) {
 	if a := auth.RequireAdmin(c); a == nil {
 		return
@@ -579,6 +614,24 @@ func CreateProviderPricingAPI(c *gin.Context) {
 		return
 	}
 
+	// All-or-nothing display field validation.
+	displayCount := 0
+	if req.DisplayInCNYPerM != nil { displayCount++ }
+	if req.DisplayOutCNYPerM != nil { displayCount++ }
+	if req.DisplayCreditsPerM != nil { displayCount++ }
+	if req.DisplayName != nil { displayCount++ }
+	if req.VendorLabel != nil { displayCount++ }
+	if req.ContextSize != nil { displayCount++ }
+	if req.CacheFlag != nil { displayCount++ }
+	if displayCount > 0 && displayCount < 7 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": fmt.Sprintf(
+				"display fields are all-or-nothing: send all 7 or none (got %d)", displayCount),
+		})
+		return
+	}
+
 	now := time.Now().UTC()
 	var notesArg any
 	if req.Notes != "" {
@@ -587,11 +640,25 @@ func CreateProviderPricingAPI(c *gin.Context) {
 		notesArg = nil
 	}
 
-	res, err := globals.ExecDb(connection.DB,
-		`INSERT INTO gtk_provider_pricing
-		 (provider, model_id, token_type, upstream_per_m, effective_from, notes)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		req.Provider, req.ModelID, req.TokenType, req.UpstreamPerM, now, notesArg)
+	var res sql.Result
+	var err error
+	if displayCount == 7 {
+		res, err = globals.ExecDb(connection.DB,
+			`INSERT INTO gtk_provider_pricing
+			 (provider, model_id, token_type, upstream_per_m, effective_from, notes,
+			  display_in_cny_per_m, display_out_cny_per_m, display_credits_per_m,
+			  display_name, vendor_label, context_size, cache_flag)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			req.Provider, req.ModelID, req.TokenType, req.UpstreamPerM, now, notesArg,
+			req.DisplayInCNYPerM, req.DisplayOutCNYPerM, req.DisplayCreditsPerM,
+			req.DisplayName, req.VendorLabel, req.ContextSize, req.CacheFlag)
+	} else {
+		res, err = globals.ExecDb(connection.DB,
+			`INSERT INTO gtk_provider_pricing
+			 (provider, model_id, token_type, upstream_per_m, effective_from, notes)
+			 VALUES (?, ?, ?, ?, ?, ?)`,
+			req.Provider, req.ModelID, req.TokenType, req.UpstreamPerM, now, notesArg)
+	}
 	if err != nil {
 		if isUniqueConflict(err) {
 			c.JSON(http.StatusConflict, gin.H{
@@ -613,13 +680,20 @@ func CreateProviderPricingAPI(c *gin.Context) {
 		notesPtr = &s
 	}
 	row := AdminProviderPricingRow{
-		ID:            newID,
-		Provider:      req.Provider,
-		ModelID:       req.ModelID,
-		TokenType:     req.TokenType,
-		UpstreamPerM:  req.UpstreamPerM,
-		EffectiveFrom: now.Format(time.RFC3339),
-		Notes:         notesPtr,
+		ID:                 newID,
+		Provider:           req.Provider,
+		ModelID:            req.ModelID,
+		TokenType:          req.TokenType,
+		UpstreamPerM:       req.UpstreamPerM,
+		EffectiveFrom:      now.Format(time.RFC3339),
+		Notes:              notesPtr,
+		DisplayInCNYPerM:   req.DisplayInCNYPerM,
+		DisplayOutCNYPerM:  req.DisplayOutCNYPerM,
+		DisplayCreditsPerM: req.DisplayCreditsPerM,
+		DisplayName:        req.DisplayName,
+		VendorLabel:        req.VendorLabel,
+		ContextSize:        req.ContextSize,
+		CacheFlag:          req.CacheFlag,
 	}
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
