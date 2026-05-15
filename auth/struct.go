@@ -178,20 +178,10 @@ func GetGroup(db *sql.DB, user *User) string {
 	if user == nil {
 		return globals.AnonymousType
 	}
-
-	level := user.GetSubscriptionLevel(db)
-	switch level {
-	case 0:
-		return globals.NormalType
-	case 1:
-		return globals.BasicType
-	case 2:
-		return globals.StandardType
-	case 3:
-		return globals.ProType
-	default:
-		return globals.NormalType
+	if user.IsAdmin(db) {
+		return globals.AdminType
 	}
+	return globals.NormalType
 }
 
 func HitGroup(db *sql.DB, user *User, group string) bool {

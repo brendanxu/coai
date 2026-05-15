@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"chat/channel"
 	"chat/globals"
 	"chat/utils"
 	"net/http"
@@ -39,11 +38,6 @@ type ResetForm struct {
 
 type BuyForm struct {
 	Quota int `json:"quota" binding:"required"`
-}
-
-type SubscribeForm struct {
-	Level int `json:"level" binding:"required"`
-	Month int `json:"month" binding:"required"`
 }
 
 func GetUser(c *gin.Context) *User {
@@ -91,44 +85,6 @@ func RequireAdmin(c *gin.Context) *User {
 		c.JSON(200, gin.H{
 			"status": false,
 			"error":  "admin required",
-		})
-		c.Abort()
-		return nil
-	}
-
-	return user
-}
-
-func RequireSubscription(c *gin.Context) *User {
-	user := RequireAuth(c)
-	if user == nil {
-		return nil
-	}
-
-	db := utils.GetDBFromContext(c)
-	if !user.IsSubscribe(db) {
-		c.JSON(200, gin.H{
-			"status": false,
-			"error":  "subscription required",
-		})
-		c.Abort()
-		return nil
-	}
-
-	return user
-}
-
-func RequireEnterprise(c *gin.Context) *User {
-	user := RequireAuth(c)
-	if user == nil {
-		return nil
-	}
-
-	db := utils.GetDBFromContext(c)
-	if !user.IsEnterprise(db) {
-		c.JSON(200, gin.H{
-			"status": false,
-			"error":  "enterprise required",
 		})
 		c.Abort()
 		return nil
@@ -368,80 +324,6 @@ func QuotaAPI(c *gin.Context) {
 		"status": true,
 		"quota":  user.GetQuota(db),
 	})
-}
-
-func SubscriptionAPI(c *gin.Context) {
-	user := GetUserByCtx(c)
-	if user == nil {
-		return
-	}
-
-	db := utils.GetDBFromContext(c)
-	cache := utils.GetCacheFromContext(c)
-
-	if disableSubscription() {
-		c.JSON(200, gin.H{
-			"status":        true,
-			"level":         0,
-			"is_subscribed": false,
-			"enterprise":    false,
-			"expired":       0,
-			"expired_at":    "1970-01-01 00:00:00",
-			"refresh":       0,
-			"refresh_at":    "1970-01-01 00:00:00",
-			"usage":         channel.UsageMap{},
-		})
-	}
-
-	c.JSON(200, gin.H{
-		"status":        true,
-		"level":         user.GetSubscriptionLevel(db),
-		"is_subscribed": user.IsSubscribe(db),
-		"enterprise":    user.IsEnterprise(db),
-		"expired":       user.GetSubscriptionExpiredDay(db),
-		"expired_at":    user.GetSubscriptionExpiredAt(db).Format("2006-01-02 15:04:05"),
-		"refresh":       user.GetSubscriptionRefreshDay(db, cache),
-		"refresh_at":    user.GetSubscriptionRefreshAt(db, cache).Format("2006-01-02 15:04:05"),
-		"usage":         user.GetSubscriptionUsage(db, cache),
-	})
-}
-
-func SubscribeAPI(c *gin.Context) {
-	user := GetUserByCtx(c)
-	if user == nil {
-		return
-	}
-
-	db := utils.GetDBFromContext(c)
-	cache := utils.GetCacheFromContext(c)
-	var form SubscribeForm
-	if err := c.ShouldBindJSON(&form); err != nil {
-		c.JSON(200, gin.H{
-			"status": false,
-			"error":  err.Error(),
-		})
-		return
-	}
-
-	if form.Month <= 0 || form.Month > 999 {
-		c.JSON(200, gin.H{
-			"status": false,
-			"error":  "invalid month range (1 ~ 999)",
-		})
-		return
-	}
-
-	if err := BuySubscription(db, cache, user, form.Level, form.Month); err == nil {
-		c.JSON(200, gin.H{
-			"status": true,
-			"error":  "success",
-		})
-	} else {
-		c.JSON(200, gin.H{
-			"status": false,
-			"error":  err.Error(),
-		})
-	}
 }
 
 func BuyAPI(c *gin.Context) {

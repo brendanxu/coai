@@ -2,6 +2,7 @@ package channel
 
 import (
 	"chat/globals"
+	"chat/utils"
 )
 
 type Channel struct {
@@ -71,4 +72,88 @@ type ChargeManager struct {
 	Sequence         ChargeSequence     `json:"sequence"`
 	Models           map[string]*Charge `json:"models"`
 	NonBillingModels []string           `json:"non_billing_models"`
+}
+
+// PlanManager stub — nil-var bridge removed once all callers gone (EXCISE-3).
+type PlanManager struct{}
+
+func (p *PlanManager) IsEnabled() bool { return false }
+
+// Charge value-object accessors (implements utils.Charge interface).
+// Moved from deleted charge.go (EXCISE-3); pure struct accessors retained.
+
+func (c *Charge) IsUnsetType() bool { return c.Unset }
+
+func (c *Charge) GetType() string {
+	if c.Type == "" {
+		return globals.NonBilling
+	}
+	return c.Type
+}
+
+func (c *Charge) GetModels() []string { return c.Models }
+
+func (c *Charge) GetInput() float32 {
+	if c.Input <= 0 {
+		return 0
+	}
+	return c.Input
+}
+
+func (c *Charge) GetOutput() float32 {
+	if c.Output <= 0 {
+		return 0
+	}
+	return c.Output
+}
+
+func (c *Charge) GetCacheRead() float32 {
+	if c.CacheRead <= 0 {
+		return c.GetInput()
+	}
+	return c.CacheRead
+}
+
+func (c *Charge) GetCacheWrite5m() float32 {
+	if c.CacheWrite5m <= 0 {
+		return c.GetInput() * 1.25
+	}
+	return c.CacheWrite5m
+}
+
+func (c *Charge) GetCacheWrite1h() float32 {
+	if c.CacheWrite1h <= 0 {
+		return c.GetInput() * 2.0
+	}
+	return c.CacheWrite1h
+}
+
+func (c *Charge) SupportAnonymous() bool { return c.Anonymous }
+
+func (c *Charge) IsBilling() bool { return c.GetType() != globals.NonBilling }
+
+func (c *Charge) IsBillingType(t string) bool { return c.GetType() == t }
+
+func (c *Charge) GetLimit() float32 {
+	switch c.GetType() {
+	case globals.NonBilling:
+		return 0
+	case globals.TimesBilling:
+		return c.GetOutput()
+	case globals.TokenBilling:
+		return c.GetInput() + c.GetOutput()
+	default:
+		return 0
+	}
+}
+
+func (c *Charge) Contains(model string) bool { return utils.Contains(model, c.Models) }
+
+// ChargeManager methods needed by usage/writer_test.go (nil-var bridge).
+
+func (m *ChargeManager) GetCharge(model string) *Charge {
+	if m.Models == nil {
+		return nil
+	}
+	return m.Models[model]
 }

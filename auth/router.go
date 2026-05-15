@@ -15,8 +15,6 @@ func Register(app *gin.RouterGroup) {
 	app.GET("/package", PackageAPI)
 	app.GET("/quota", QuotaAPI)
 	app.POST("/buy", BuyAPI)
-	app.GET("/subscription", SubscriptionAPI)
-	app.POST("/subscribe", SubscribeAPI)
 	app.GET("/invite", InviteAPI)
 	app.GET("/redeem", RedeemAPI)
 }

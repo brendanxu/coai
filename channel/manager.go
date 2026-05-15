@@ -4,6 +4,7 @@ import (
 	"chat/globals"
 	"chat/utils"
 	"errors"
+	"sort"
 	"time"
 
 	"github.com/spf13/viper"
@@ -183,4 +184,27 @@ func (m *Manager) DeactivateChannel(id int) error {
 		}
 	}
 	return errors.New("channel not found")
+}
+
+// Sequence utility methods (moved from deleted sequence.go, EXCISE-3)
+
+func (s *Sequence) Len() int { return len(*s) }
+
+func (s *Sequence) Less(i, j int) bool {
+	return (*s)[i].GetPriority() > (*s)[j].GetPriority()
+}
+
+func (s *Sequence) Swap(i, j int) { (*s)[i], (*s)[j] = (*s)[j], (*s)[i] }
+
+func (s *Sequence) GetChannelById(id int) *Channel {
+	for _, ch := range *s {
+		if ch.Id == id {
+			return ch
+		}
+	}
+	return nil
+}
+
+func (s *Sequence) Sort() {
+	sort.Sort(s)
 }
