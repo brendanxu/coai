@@ -34,6 +34,8 @@ import (
 // newapi.Register call picks them up without a separate hookup.
 func Register(app *gin.RouterGroup) {
 	app.GET("/gtk/v1/pool", PoolAPI)
+	// Public pricing reference table — no auth (Pricing.tsx data source).
+	app.GET("/gtk/v1/pricing", GetPublicPricingAPI)
 	app.GET("/gtk/v1/binding", BindingAPI)
 
 	// Usage aggregation — auth-gated, user-scoped.
