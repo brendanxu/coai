@@ -7,11 +7,6 @@ import (
 	"net/http"
 )
 
-type SyncChargeForm struct {
-	Overwrite bool           `json:"overwrite"`
-	Data      ChargeSequence `json:"data"`
-}
-
 func GetInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, SystemInstance.AsInfo())
 }
@@ -106,56 +101,6 @@ func UpdateChannel(c *gin.Context) {
 	})
 }
 
-func SetCharge(c *gin.Context) {
-	var charge Charge
-	if err := c.ShouldBindJSON(&charge); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": false,
-			"error":  err.Error(),
-		})
-		return
-	}
-
-	state := ChargeInstance.SetRule(charge)
-	c.JSON(http.StatusOK, gin.H{
-		"status": state == nil,
-		"error":  utils.GetError(state),
-	})
-}
-
-func GetChargeList(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"status": true,
-		"data":   ChargeInstance.ListRules(),
-	})
-}
-
-func DeleteCharge(c *gin.Context) {
-	id := c.Param("id")
-	state := ChargeInstance.DeleteRule(utils.ParseInt(id))
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": state == nil,
-		"error":  utils.GetError(state),
-	})
-}
-
-func SyncCharge(c *gin.Context) {
-	var form SyncChargeForm
-	if err := c.ShouldBindJSON(&form); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": false,
-			"error":  err.Error(),
-		})
-	}
-
-	state := ChargeInstance.SyncRules(form.Data, form.Overwrite)
-	c.JSON(http.StatusOK, gin.H{
-		"status": state == nil,
-		"error":  utils.GetError(state),
-	})
-}
-
 func GetConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": true,
@@ -180,23 +125,3 @@ func UpdateConfig(c *gin.Context) {
 	})
 }
 
-func GetPlanConfig(c *gin.Context) {
-	c.JSON(http.StatusOK, PlanInstance)
-}
-
-func UpdatePlanConfig(c *gin.Context) {
-	var config PlanManager
-	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status": false,
-			"error":  err.Error(),
-		})
-		return
-	}
-
-	state := PlanInstance.UpdateConfig(&config)
-	c.JSON(http.StatusOK, gin.H{
-		"status": state == nil,
-		"error":  utils.GetError(state),
-	})
-}

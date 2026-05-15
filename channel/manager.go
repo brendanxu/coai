@@ -10,15 +10,17 @@ import (
 )
 
 var ConduitInstance *Manager
-var ChargeInstance *ChargeManager
 var SystemInstance *SystemConfig
+
+// ChargeInstance and PlanInstance kept as nil vars for compilation compatibility
+// until auth/{rule,subscription,usage}.go are deleted in EXCISE-3 commit 6.
+var ChargeInstance *ChargeManager
 var PlanInstance *PlanManager
 
 func InitManager() {
 	ConduitInstance = NewChannelManager()
-	ChargeInstance = NewChargeManager()
 	SystemInstance = NewSystemConfig()
-	PlanInstance = NewPlanManager()
+	// ChargeInstance and PlanInstance intentionally not constructed (EXCISE-3)
 }
 
 func NewChannelManager() *Manager {
@@ -117,14 +119,6 @@ func (m *Manager) HitSequence(model string) Sequence {
 // HasChannel returns whether the channel exists
 func (m *Manager) HasChannel(model string) bool {
 	return utils.Contains(model, m.Models)
-}
-
-func (m *Manager) GetTicker(model, group string) *Ticker {
-	if !m.HasChannel(model) {
-		return nil
-	}
-
-	return NewTicker(m.HitSequence(model), group)
 }
 
 func (m *Manager) Len() int {
