@@ -19,18 +19,14 @@ import { useTranslation } from "react-i18next";
 import Icon from "@/components/utils/Icon.tsx";
 import {
   CalendarClock,
-  Clock,
   Cloud,
   CloudRain,
   Copy,
   ExternalLink,
   HandIcon,
-  HelpCircle,
   Plug,
   Power,
   RotateCw,
-  Share2,
-  Trash2,
   Undo2,
   UserRoundCog,
   UserRoundIcon,
@@ -46,16 +42,13 @@ import { CommonResponse, withNotify } from "@/api/common.ts";
 import { goAuth } from "@/utils/app.ts";
 import { quotaSelector } from "@/store/quota.ts";
 import Tips from "@/components/Tips.tsx";
-import { getSharedLink, SharingPreviewForm } from "@/api/sharing.ts";
 import { openWindow } from "@/utils/device.ts";
-import { dataSelector, deleteData, syncData } from "@/store/sharing.ts";
 import { DeeptrainOnly } from "@/conf/deeptrain.tsx";
 import { deeptrainEndpoint, docsEndpoint, HIDE_CREDIT_UI } from "@/conf/env.ts";
 import { getApiKey, keySelector, regenerateApiKey } from "@/store/api.ts";
 import { Input } from "@/components/ui/input.tsx";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -65,7 +58,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog.tsx";
 import { toast } from "sonner";
-import Emoji from "@/components/Emoji";
 
 type AccountCardProps = {
   title: string;
@@ -123,74 +115,6 @@ function AccountCard({
   );
 }
 
-type ShareContentProps = {
-  data: SharingPreviewForm[];
-};
-
-function ShareContent({ data }: ShareContentProps) {
-  const { t } = useTranslation();
-  const dispatch = useDispatch();
-
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return `${date.getMonth() + 1}-${date.getDate()} ${date
-      .getHours()
-      .toString()
-      .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
-  };
-
-  return (
-    <div className="space-y-3 pt-2 pb-6">
-      {data.map((row) => (
-        <div
-          key={row.conversation_id}
-          onClick={() => openWindow(getSharedLink(row.hash), "_blank")}
-          className="flex items-center justify-between w-full border border-input p-4 rounded-lg hover:bg-muted/20 duration-200 cursor-pointer transition-colors"
-        >
-          <div className="flex-grow mr-4">
-            <div className="flex items-center mb-1">
-              <h3 className="text-sm font-medium line-clamp-1">{row.name}</h3>
-            </div>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <Clock className="h-3 w-3 mr-1" />
-              {formatTime(row.time)}
-            </div>
-          </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="light-destructive"
-                size="icon"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t("account.share-delete")}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t("account.share-delete-description")}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteData(dispatch, row.hash);
-                  }}
-                >
-                  {t("confirm")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ─── CredentialsHero ─────────────────────────────────────────────────
 // Phase 2 §3.2 — credentials hero card injected at the TOP of Account page.
@@ -513,20 +437,6 @@ function Account() {
     ...initialUserInfo,
   });
 
-  const sharingData = useSelector(dataSelector);
-
-  useEffectAsync(async () => {
-    if (auth) {
-      if (sharingData.length > 0) return;
-      const resp = await syncData(dispatch);
-      if (resp) {
-        toast.error(t("share.sync-error"), {
-          description: resp,
-        });
-      }
-    }
-  }, [auth]);
-
   const updateUserInfo = async () => {
     if (!auth) {
       return;
@@ -789,37 +699,6 @@ function Account() {
               </Button>
             </div>
           </div>
-        </AccountCard>
-        <AccountCard
-          icon={<Share2 />}
-          title={"share.manage"}
-          description={t("account.share-description")}
-          className={`bg-background px-1`}
-        >
-          {sharingData.length > 0 ? (
-            <ScrollArea className={`h-48 md:h-64 px-4`}>
-              <div className={`w-full`}>
-                <ShareContent data={sharingData} />
-              </div>
-            </ScrollArea>
-          ) : (
-            <div
-              className={`flex flex-col items-center text-sm select-none py-8`}
-            >
-              <Emoji
-                emoji={`1f4c2`}
-                className="w-12 h-12 p-2 rounded-md bg-muted/80 mb-4"
-              />
-              <p>{t("share.empty")}</p>
-
-              <p
-                className={`flex flex-row items-center text-xs text-secondary mt-1.5`}
-              >
-                <HelpCircle className={`h-3 w-3 mr-1`} />
-                {t("share.share-tip")}
-              </p>
-            </div>
-          )}
         </AccountCard>
       </div>
     </ScrollArea>
