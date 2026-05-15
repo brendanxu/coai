@@ -23,7 +23,6 @@ import { useEffectAsync } from "@/utils/hook.ts";
 import { AppDispatch, clearCronJobs, createCronJob } from "@/store";
 import { openDialog } from "@/store/settings.ts";
 import ThemeToggle from "@/components/ThemeProvider.tsx";
-import ProjectLink from "@/components/ProjectLink.tsx";
 
 function NavMenu() {
   const username = useSelector(selectUsername);
@@ -84,7 +83,6 @@ function NavBar() {
           onClick={() => router.navigate("/")}
         />
         <div className={`grow`} />
-        <ProjectLink />
         <ThemeToggle size="icon-md" className={`rounded-full overflow-hidden`} />
         <Button
           size={`icon-md`}

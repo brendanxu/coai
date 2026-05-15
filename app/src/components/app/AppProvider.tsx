@@ -2,7 +2,6 @@ import { ThemeProvider } from "@/components/ThemeProvider.tsx";
 import DialogManager from "@/dialogs";
 import { useEffectAsync } from "@/utils/hook.ts";
 import { useDispatch } from "react-redux";
-import { stack, useMessageActions } from "@/store/chat.ts";
 import { setTheme } from "@/store/globals.ts";
 import { infoEvent } from "@/events/info.ts";
 import { setForm } from "@/store/info.ts";
@@ -13,15 +12,10 @@ import { useEffect } from "react";
 
 function AppProvider({ children }: { children?: React.ReactNode }) {
   const dispatch = useDispatch();
-  const { receive } = useMessageActions();
 
   useEffect(() => {
     infoEvent.bind((data) => dispatch(setForm(data)));
     themeEvent.bind((theme) => dispatch(setTheme(theme)));
-
-    stack.setCallback(async (id, message) => {
-      await receive(id, message);
-    });
   }, []);
 
   useEffectAsync(async () => {
