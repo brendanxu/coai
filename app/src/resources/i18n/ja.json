@@ -580,7 +580,20 @@
       "first-message-as-user-desc": "一部のモデル(DeepSeekなど)は、アシスタントロールとしての最初のメッセージをサポートしていません。このオプションをオンにすると、アシスタントロールの最初のメッセージがユーザーロールに変換されます。",
       "merge-consecutive-user-messages": "継続的なユーザーメッセージをマージする",
       "merge-consecutive-user-messages-tip": "オンの場合、両方の連続したメッセージがユーザーメッセージである場合、は1つのメッセージにマージされます",
-      "merge-consecutive-user-messages-desc": "DeepSeekなどの一部のモデルでは、2つの連続したユーザーメッセージをサポートしていません。このオプションを有効にすると、2つの連続したユーザーメッセージを1つのメッセージに結合できます。"
+      "merge-consecutive-user-messages-desc": "DeepSeekなどの一部のモデルでは、2つの連続したユーザーメッセージをサポートしていません。このオプションを有効にすると、2つの連続したユーザーメッセージを1つのメッセージに結合できます。",
+      "title": "チャンネルリスト",
+      "refresh": "更新",
+      "read-only-note": "NewAPIチャネル読み取り専用ビュー。v 0.19ここでのチャネルグループホワイトリストの変更はサポートされていません。最初にNewAPIバックグラウンドに移動して変更してください。",
+      "load-error": "読み込みに失敗しました: {{error}}",
+      "empty": "設定されたチャンネルはまだありません。",
+      "col-id": "I D",
+      "col-name": "名称",
+      "col-provider": "アップストリーム",
+      "col-models": "モデル",
+      "col-group": "グループ",
+      "col-status": "コンディション",
+      "status-enabled": "アクティブ",
+      "status-disabled": "無効にする"
     },
     "charge": {
       "id": "ID",
@@ -1132,7 +1145,109 @@
     "custom-group-action-desc": "カスタムグループ名を入力してください",
     "group-setting": "グループ設定",
     "notifications": "プッシュセンター",
-    "notify-all": "すべてのユーザーに通知"
+    "notify-all": "すべてのユーザーに通知",
+    "pricing": {
+      "tab": "パッケージ料金",
+      "section-plans": "パッケージ管理",
+      "section-billing": "請求設定",
+      "section-providers": "サプライヤー価格",
+      "add-plan": "パッケージを追加",
+      "retire-plan": "アクティブ",
+      "save-changes": "変更を保存しますか？",
+      "record-price": "新しい料金を記録する",
+      "markup-multiplier-label": "マークアップ係数（ markup_multiplier ）",
+      "markup-multiplier-note": "変更はリアルタイムで有効になります—主要なトラフィック期間の変更に注意してください",
+      "save": "保存",
+      "filter-all": "すべて",
+      "filter-current": "現在のみ",
+      "filter-history": "履歴のみ",
+      "history-tag": "歴史",
+      "retire-conflict": "プランには有効なサブスクリプションがあり、無効にすることはできません"
+    },
+    "orders": {
+      "title": "注文管理",
+      "refresh": "更新",
+      "filter-status": "ステータスフィルター：",
+      "all-statuses": "全てのステータス",
+      "search": "検索",
+      "search-placeholder": "注文番号またはユーザー名（接頭辞）",
+      "clear-filters": "フィルターをクリア",
+      "total": "合計{{total}}件の注文",
+      "load-error": "読み込みに失敗しました: {{error}}",
+      "retry": "リトライ",
+      "empty": "まだ注文はありません。",
+      "empty-filtered": "現在のフィルターに一致する注文はありません。",
+      "col-order-no": "注文書番号",
+      "col-username": "顧客",
+      "col-service": "サービス",
+      "col-status": "コンディション",
+      "col-amount": "金額",
+      "col-provider": "支払い方法",
+      "col-created": "作成日時",
+      "col-actions": "操作",
+      "actions": {
+        "mark-paid": "支払い済みにする",
+        "refund": "返金"
+      },
+      "cancel": "キャンセル",
+      "confirm-mark-paid": "支払いが支払い済みとしてマークされていることを確認する",
+      "confirm-refund": "返金を確認する",
+      "mark-paid-title": "注文{{order_no}}を支払い済みとしてマークする",
+      "mark-paid-desc": "支払い後に注文を完了するためのオフライン/WeChat/銀行振込やその他のチャネルに使用されます。システムは、対応する特典（ポイント/サービス制限）を自動的に発行し、操作のログを保持します。",
+      "mark-paid-success": "注文{{order_no}}は支払済みとしてマークされました。",
+      "refund-title": "注文{{order_no}}が返金されました",
+      "refund-desc": "ヒント：この操作では、このシステムの注文ステータスのみが更新され、LemonSqueezy/Tiger Pepperからの実際の払い戻しは自動的に開始されません。対応する支払いプラットフォームのバックエンドに移動して、実際の払い戻しを完了してください。",
+      "refund-reason-label": "返金理由（必須）",
+      "refund-reason-placeholder": "例:利用者の気が変わった、サービスが期待に応えなかった、料金の調整...",
+      "refund-reason-required": "返金理由を記入してください。",
+      "refund-amount-label": "返金額（任意、元）",
+      "refund-amount-placeholder": "全額返金を受けるには空欄にしてください",
+      "refund-amount-hint": "記録のみの場合、このインターフェースは実際に金額を分割しません。",
+      "refund-amount-invalid": "返金額は正の数値でなければなりません。",
+      "refund-success": "注文{{order_no}}は返金されました。",
+      "refund-already-refunded": "注文{{order_no}}の前に返金されましたが、今回は更新されたメモのみです。",
+      "page-of": "ページ{{page}}/{{total}}",
+      "prev": "前のページへ",
+      "next": "次のページへ",
+      "status": {
+        "pending_payment": "保留中の支払い",
+        "paid": "支払済み",
+        "running": "実行",
+        "completed": "完了済み",
+        "refunded": "返金済み",
+        "refunded_post_delivery": "配達後の払い戻し",
+        "failed": "失敗した",
+        "canceled_mid_flight": "途中キャンセル"
+      }
+    },
+    "user-routing": {
+      "title": "ユーザールーティング管理",
+      "refresh": "更新",
+      "filter-group": "グループで絞り込む：",
+      "all-groups": "すべてグループ化",
+      "total": "合計{{total}}",
+      "load-error": "読み込みに失敗しました: {{error}}",
+      "empty": "NewAPIバインディングを持つユーザーはまだいません。",
+      "col-coai-id": "CoAI ID",
+      "col-username": "ユーザ名",
+      "col-newapi-id": "NewAPI ID",
+      "col-group": "現在のグループ",
+      "col-quota": "最近のクォータのスナップショット",
+      "col-actions": "操作",
+      "edit": "編集",
+      "edit-title": "{{username}}のルーティングを調整する",
+      "edit-desc": "新しいグループはすぐにNewAPIに同期されます。提案のリストから選択するか、チャネルで定義したグループ名を手動で入力できます。",
+      "current-group": "現在のグループ",
+      "pick-group": "おすすめのグループを選択",
+      "custom-group-placeholder": "または、グループ名を手動で入力してください…",
+      "cancel": "キャンセル",
+      "save": "保存",
+      "empty-group-error": "グループ名を空にすることはできません（デフォルトのままにするには、「デフォルト」を明示的に入力してください）。",
+      "update-success": "{{username}}のルートは{{group}}に切り替えられました。",
+      "page-of": "ページ{{page}}/{{total}}",
+      "prev": "前のページへ",
+      "next": "次のページへ"
+    }
   },
   "mask": {
     "title": "プリセット",
@@ -1212,6 +1327,21 @@
       "dingtalk": "ダボ",
       "alipay": "Alipay",
       "microsoft": "Microsoft"
+    },
+    "split": {
+      "eyebrow": "ログイン",
+      "heading": "おかえりなさい！",
+      "heading2": "停止しました",
+      "heading3": "場所は続く。",
+      "sub": "1つのアカウントで、すべてのモデルを呼び出します。Alipay/WeChat/Cardでお支払いいただけます。",
+      "sub_checkout": "ログイン後、表示されたトークンパッケージページに自動的に戻り、数秒で支払いが完了します。",
+      "returnto": "ログインして戻る",
+      "stat1": "1.2k+登録ユーザー",
+      "stat2": "14の既製モデル",
+      "stat3": "99.9%の可用性",
+      "form_sub": "Greentokeyアカウントにログインします",
+      "form_sub_checkout": "ログインして支払いを続行する",
+      "cta_checkout": "ログインして支払いを続行する →"
     }
   },
   "reset": "リセット",
@@ -1360,7 +1490,11 @@
     "admin-full": "管理者",
     "key": "鍵",
     "key-full": "トークン管理",
-    "pricing-full": "パック"
+    "pricing-full": "パック",
+    "orders": "オーダー",
+    "orders-full": "私の注文",
+    "usage": "使用:",
+    "live": "リアルタイム"
   },
   "notify": "お知らせ",
   "new-notify": "新しい通知",
@@ -1458,7 +1592,14 @@
       "userId": "ユーザーUID"
     },
     "oauth": "サードパーティのログイン",
-    "oauth-description": "サードパーティのログインをバインドして管理する"
+    "oauth-description": "サードパーティのログインをバインドして管理する",
+    "credentials": {
+      "eyebrow": "本線・アクセス",
+      "title": "あなたのグリーントーキー認証情報",
+      "url_hint": "この作業ラインを変更すると実行できます",
+      "key_hint": "初めて表示されますので、保存してください",
+      "no_key": "トークンパッケージ購入後にAPIキーを自動的に生成"
+    }
   },
   "manage": "管理",
   "loading": "読み込み中…",
@@ -1672,34 +1813,6 @@
       "rate": "リベート率"
     }
   },
-  "dashboard": {
-    "welcome-back": "Welcome back",
-    "this-month-overview": "Here's how this month is shaping up",
-    "co2-this-month": "CO₂ this month",
-    "vs-last-month": "vs last month",
-    "your-services": "Your services",
-    "svc-chat-title": "Chat Playground",
-    "svc-chat-subtitle": "Multi-model · included in your plan",
-    "svc-chat-body": "Chat with every supported model — your BYOK keys, our gateway, your data stays yours.",
-    "svc-chat-cta": "Start chatting",
-    "svc-tax-title": "AI Tax Filing",
-    "svc-tax-body": "Drop in your invoices and statements; we file or pre-fill the forms.",
-    "svc-editor-title": "Auto Video Editor",
-    "svc-editor-body": "Long-form to short-form, captions, beats, b-roll — automatic.",
-    "coming-soon": "Coming soon",
-    "notify-me": "Notify me",
-    "carbon-monthly-label": "Carbon this month",
-    "carbon-cta": "Full report",
-    "carbon-empty-title": "No carbon to report yet",
-    "carbon-empty-body": "Send your first chat and we'll start counting.",
-    "chat-floating-hint": "マルチモデルチャットが利用可能 · 右下の🌱を押せばすぐ開始"
-  },
-  "chat-floating": {
-    "open": "Open chat",
-    "close": "Close chat",
-    "panel-title": "Chat",
-    "panel-label": "Floating chat panel"
-  },
   "landing": {
     "eyebrow": "ホームステイ・Xiaohongshu運営・完全管理",
     "headline": {
@@ -1707,11 +1820,11 @@
       "middle": "私は知っています",
       "accent": "あなたの小さな赤い本。"
     },
-    "sub": "AIは、コメントのコピー、プロット、自動投稿、プライベートメッセージへの応答を支援します。¥ 1980/月で完全にホストされており、現地のMCNよりも安定して安価です。まずはDali Huan Erhaiを行います。",
+    "sub": "AIは、コメントのコピー、プロット、自動投稿、プライベートメッセージへの応答を支援します。¥ 1980/月完全にホストされており、現地のMCNよりも安定して安価です。まずはDali Huan Erhaiを行います。",
     "cta": {
       "demo": "デモをスケジュールするにはにお問い合わせください",
       "pricing": "月額¥ 1980のプランを見る",
-      "fineprint": "接触頻度の高いエスコートの最初のバッチ· 30日間50 ％の返金コミットメント·割引なし、採点なし"
+      "fineprint": "ハイタッチエスコートの最初のバッチ· 30日間50 ％の返金コミットメント·割引なし、採点なし"
     },
     "contact": {
       "title": "デモをスケジュールするにはにお問い合わせください"
@@ -1748,14 +1861,14 @@
       "heading": "なぜ私たちに頼んだのですか？",
       "replace-mcn": {
         "title": "ローカルMCNを上書きする",
-        "body": "地元のスタジオには月額¥ 2 ～ 5,000を支払い、3か月間キャンセルすることが一般的です。その一連の作業はAIを使用しており、1980円/月は採点されず、効果が不安定な場合は30日間50 ％返金されます。"
+        "body": "地元のスタジオでは月額¥ 2 ～ 5,000を支払っており、3か月間キャンセルすることが一般的です。その一連の作業はAIを使用しており、1980円/月は採点されず、効果が不安定な場合は30日間50 ％返金されます。"
       },
       "vertical": {
         "title": "ホームステイ垂直AI",
-        "body": "私たちは普遍的なAIツールではありません。AIが学んだのは、人気のあるDaliホームステイのコーパスです。洱海、苍山、旅行写真、ハネムーン、親子、季節の遊び。まずダリでエリアを作成し、徹底的に展開します。"
+        "body": "私たちは一般的なAIツールではありません。AIが学んだのは、人気のあるDaliホームステイのコーパスです。洱海、苍山、旅行写真、ハネムーン、親子、季節の遊び。まずダリでエリアを作成し、徹底的に展開します。"
       },
       "your-account": {
-        "title": "あなたのアカウントは完全にあなたの管理下にあります",
+        "title": "アカウントは完全に管理されています",
         "body": "リトルレッドブックのアカウントを乗っ取ることはありません。コンテンツが生成されると、モバイルの下書きボックスにプッシュされ、確認をクリックするとすぐに送信されます。タイトルはリスクが低く、アカウントは常にあなたのものです。"
       }
     },
@@ -1777,14 +1890,14 @@
     "feature-publish": "自動公開：コンテンツはワンクリックでスマートフォンの下書きボックスに自動的に送信されます",
     "feature-engage": "コメント/プライベートメッセージAI下書き、あなたはワンクリックで確認して送信し、予約の問い合わせを直接あなたに送信します",
     "feature-roi": "デイリーROIダッシュボード：今週Little Red BookからX件の注文",
-    "feature-concierge": "5人の顧客のハイコンタクトエスコートの最初のバッチ（創業者の対面指導+チューニングプロンプト）",
+    "feature-concierge": "5人の顧客のハイタッチエスコートの最初のバッチ（創設者の対面指導+チューニングプロンプト）",
     "feature-refund": "30日間稼働率が上がらない場合、50%返金する理由はありません",
     "cta-demo": "デモを予約するにはWeChatを追加してください",
     "disclaimer": "セルフサービス注文の最初のバッチは利用できません・創業者との1対1のコミュニケーションの後に開く・WeChat Pay/Alipay/銀行振込が利用可能です",
     "value-replace-title": "MCNを上書き",
     "value-replace-body": "お住まいの地域のスタジオに¥ 2 -5 K/月、3か月間のキャンセル料を支払うのが普通です。私たちはAIを使用して、その仕事をより安定して安価にし、30日間50 ％の返金保証を提供しています。",
     "value-vertical-title": "ホームステイ（縦型）",
-    "value-vertical-body": "AIが学んだのは、一般的なコーパスではなく、Dali B&Bのデータの人気：洱海、苍山、旅行写真、新婚旅行、親子、季節の遊び。まずダリでエリアを作成し、徹底的に展開します。",
+    "value-vertical-body": "AIが学んだのは、一般的なコーパスではなく、Dali B&Bのデータの人気：洱海、苍山、旅行写真、ハネムーン、親子、季節の遊び。まずダリでエリアを作成し、徹底的に展開します。",
     "value-control-title": "アカウントはご自身で管理できます",
     "value-control-body": "リトルレッドブックのアカウントを乗っ取ることはありません。コンテンツが生成されると、モバイルの下書きボックスにプッシュされ、確認をクリックするとすぐに送信されます。タイトルはリスクが低く、アカウントは常にあなたのものです。",
     "faq-title": "よくある質問",
@@ -1796,13 +1909,62 @@
     "faq-cancel-a": "いつでも。1日前にWeChatでお知らせください。当月分の手数料は月末までとなり、翌月分の手数料は発生しません。30日以内に稼働率が改善されない場合、50%返金する理由はありません。",
     "faq-data-q": "私についてどのようなデータを保持しますか？",
     "faq-data-a": "アップロードされたリスティングの写真と過去の大ヒット写真は、AIによる学習スタイルに使用されており、引き継がれることはありません。AI生成コンテンツの著作権はお客様に帰属します。Xiaohongshuアカウント番号、予約システムデータ、ゲスト情報につきましては、すべて弊社からご連絡を差し上げております。",
-    "trust-concierge": "5人の顧客の最初のバッチは、ハイタッチの護衛です",
+    "trust-concierge": "5人の顧客の最初のバッチのハイタッチの護衛",
     "trust-refund": "30日間50%返金保証",
     "trust-account": "アカウントはいつでもご利用いただけます",
     "contact-title": "デモをスケジュールするにはにお問い合わせください"
   },
+  "dashboard": {
+    "welcome-back": "おかえりなさい！",
+    "this-month-overview": "今月の概要をチェック",
+    "co2-this-month": "今月のCO ₂",
+    "vs-last-month": "先月と比較",
+    "your-services": "あなたのサービス",
+    "svc-chat-title": "チャットプレイグラウンド",
+    "svc-chat-subtitle": "マルチモデル・サブスクリプション",
+    "svc-chat-body": "サポートされているすべてのモデルとチャット—独自のキーがゲートウェイを通過し、データはすべてあなたのものです。",
+    "svc-chat-cta": "会話を開始する",
+    "svc-tax-title": "AI税務申告",
+    "svc-tax-body": "請求書、フローをアップロードすると、フォームまたは申告書に記入されます。",
+    "svc-editor-title": "自動クリッピング",
+    "svc-editor-body": "ロングビデオからショートビデオ、字幕、リズム、Bロールまで完全自動。",
+    "coming-soon": "近日公開",
+    "notify-me": "本番稼働の通知を受け取る",
+    "carbon-monthly-label": "今月のカーボンフットプリント",
+    "carbon-cta": "詳報",
+    "carbon-empty-title": "今月のカーボンデータはありません",
+    "carbon-empty-body": "最初の会話を送信すると、録画が開始されます。",
+    "chat-floating-hint": "マルチモデルカンバセーションの準備ができました・右下隅をクリックすると、🌱いつでもチャットできます",
+    "mode_toggle": {
+      "label": "ダッシュボードモード切り替え",
+      "token": "トークンAPI",
+      "mansion": "ホームステイSaaS"
+    },
+    "token": {
+      "eyebrow": "トークンAPI・今月",
+      "heading": "ダッシュボード",
+      "stat": {
+        "credits_used": "今月使用されたクレジット",
+        "total_calls": "今月の通話数",
+        "cache_saved": "キャッシュの節約",
+        "actual_spent": "支払い済みの支出"
+      },
+      "quickstart": {
+        "heading": "クイックスタート・OpenAI対応",
+        "sub": "あなたのために作成されたAPIキー",
+        "no_key": "トークンパッケージ購入後に自動生成",
+        "buy_cta": "トークンパッケージを購入"
+      }
+    }
+  },
+  "chat-floating": {
+    "open": "チャットを開く",
+    "close": "チャットを閉じる",
+    "panel-title": "チャット",
+    "panel-label": "スティッキーチャットパネル"
+  },
   "nav": {
-    "home": "ホーム",
+    "home": "ホームページ",
     "token": "トークンパッケージ",
     "services": "サービス市場",
     "pool": "モデルプール",
@@ -1868,21 +2030,109 @@
       "line1": "キー、",
       "line2": "1つのプールモデル。"
     },
-    "sub": "OpenAI互換エンドポイント、ベアラー認証。GPT/Claude/DeepSeek/Qwen間の切り替えは、モデルフィールドのみを変更します。アカウントの変更、キーの変更はありません。基盤となるNewAPIルーティング、sub 2 APIブリッジング公式APIが進行中です。",
+    "sub": "OpenAI互換エンドポイント。GPT/Claude/DeepSeek/Qwen a sk - xxx full run, only change the model field.基礎となるインテリジェントルーティングで、最も安価な利用可能なチャネルをリアルタイムで選択します。",
+    "facts": {
+      "cost": "¥ 99/月単一ファイル",
+      "compat": "OpenAI互換",
+      "pay": "Alipay/WeChat",
+      "migrate": "行をbase_urlに変更",
+      "refund": "7日間の理由のない返金"
+    },
     "plan": {
       "name": "標準",
       "badge": "ユニーク装備",
       "month": "月",
       "tagline": "5,000クレジット・約5,000回の標準通話・プール内フルモデル",
       "feat": {
-        "1": "1つのsk - xxx APIキー、OpenAI互換",
+        "1": "sk - xxx APIキー、OpenAI互換エンドポイント",
         "2": "5,000クレジット/月、標準コール¥ 0.02/回（≈ 1 k +1 kトークン）",
-        "3": "モデルを切り替えるためにモデルフィールドのみが変更されます-自動ルーティング+請求",
-        "4": "ライト/スタンダード/プレミアムステージング： DeepSeek/Qwen 0.5 ×、クロード俳句1 ×、GPT -4 o/ソネット3 ×",
-        "5": "ダッシュボードリアルタイム残高・使用状況詳細・モデル分布"
+        "3": "モデルを切り替えると、モデルフィールドのみが変更されます-インテリジェントルーティング+自動請求",
+        "5": "ダッシュボードリアルタイム残高・使用状況詳細・モデル分布",
+        "4-v2": "3段階課金（ 1クレジット≈¥ 0.02/標準通話） ： Light 0.5 × = DeepSeek/Qwen、Standard 1 × = Claude - haiku/GPT -4 - o - mini、Premium 3 × = Claude - sonnet/GPT -4 o。非表示のマークアップはありません。"
       },
-      "cta": "連絡先の有効化",
-      "disclaimer": "最初の顧客1対1の護衛・WeChat Pay/Alipay/銀行振込が利用可能・LemonSqueezyクレジットカード決済がまもなく登場"
+      "cta": {
+        "cny": "WeChat/Alipay ¥ 99今すぐローンチ",
+        "cny-loading": "WeChat/Alipayを開いています...",
+        "usd": "クレジットカード決済・14米ドル",
+        "usd-loading": "LemonSqueezyにジャンプしています…",
+        "enterprise": "またはセールス・ビジネス/チーム/大量の顧客に連絡する",
+        "trial": "最初に50クレジットを無料でお試しになりますか？ WeChatを追加してください"
+      },
+      "disclaimer-v2": "国内WeChat/Alipay即時到着・外国カードLemonSqueezy MoR自動オープン・5,000クレジット/月",
+      "qr": {
+        "title": "コードをスキャンして99円をお支払いください",
+        "subtitle": "モバイルWeChat/Alipayを使用してコードをスキャンすると、支払いが完了するとアカウントが自動的に開設されます",
+        "fallback": "新しいウィンドウで支払いリンクを開く",
+        "close": "オフ"
+      },
+      "error": {
+        "checkout-failed": "チェックアウトの作成に失敗しました。もう一度お試しいただくか、セールスチームにお",
+        "network": "ネットワークエラーが発生しました。ネットワークを確認して、もう一度お試しください"
+      }
+    },
+    "quickstart": {
+      "eyebrow": "30秒アクセス・30秒統合",
+      "heading": "行をbase_urlに変更して実行します。",
+      "sub": "OpenAI SDK/Claude Code/curlはすべてサポートされ、SDKは変更されず、エンドポイント+キーのみが置き換えられます。",
+      "hint": "Anthropic SDK/Vercel AI SDK/LangChainが必要ですか？完全に互換性のあるドキュメントクエリ →",
+      "copied": "コピーしました",
+      "copy-failed": "コピーに失敗しました。手動で選択してください",
+      "tab": {
+        "openai": "OpenAI SDK · node.js",
+        "claudecode": "Claude Code CLI",
+        "curl": "curl・raw HTTP"
+      }
+    },
+    "vsdiy": {
+      "eyebrow": "意思決定の明確化",
+      "heading": "購入する前によく考えてください。",
+      "sub": "公正な比較greentokeyと彼自身は、OpenAI + Anthropic + DeepSeekの3つのAPIに直接接続して、どちらがあなたに適しているかを確認します。",
+      "footer": "適していませんか？",
+      "contact": "セールスチャットエンタープライズソリューションに問い合わせる",
+      "col": {
+        "what": "あなたが気にかけていること",
+        "us": "greentokey ¥ 99/月",
+        "diy": "自分のために3個持っていきましょう",
+        "why": "なぜそれが重要なのか"
+      },
+      "row": {
+        "cost": {
+          "what": "月額費用",
+          "us": "固定99円",
+          "diy": "複数回のリチャージ、予算〜50〜80ドル",
+          "why": "予測可能なコスト"
+        },
+        "signup": {
+          "what": "登録",
+          "us": "一度に1つのアカウントに登録する",
+          "diy": "マルチプラットフォーム登録+キー+支払い方法",
+          "why": "はじめてしきい値を下げる"
+        },
+        "models": {
+          "what": "モデルのオーバーライド",
+          "us": "複数のモデルを1か所に集約",
+          "diy": "プロバイダーを自分でメンテナンスする",
+          "why": "DIYはより自由ですが、より気楽です"
+        },
+        "bill": {
+          "what": "勘定書",
+          "us": "1つの請求書、1つの照合",
+          "diy": "複数回投与+為替レート+トップアップ",
+          "why": "月末の照合なし"
+        },
+        "fault": {
+          "what": "故障/制限",
+          "us": "プラットフォームサイドルートの切り替え",
+          "diy": "セルフフォールバック+トラブルシューティング",
+          "why": "高周波では明らか"
+        },
+        "who": {
+          "what": "対象者",
+          "us": "安心して着実に使いたい",
+          "diy": "ルーティング/コンプライアンス/ログを詳細に制御したい",
+          "why": "トレードオフの公正な承認"
+        }
+      }
     },
     "why": {
       "one": {
@@ -1894,9 +2144,18 @@
         "body": "公式APIとsub 2 APIの75倍のコスト差を吸収します。ライト/スタンダード/プレミアムのティアリングは透明であり、その違いはあなたの管理下にはありません。"
       },
       "three": {
-        "title": "プールの自動スケジューリング",
-        "body": "基礎となるNewAPIは、毎回利用可能な最も安いチャンネルを自動的に選択します。ベンダーが電話を切ると、あなたはそれを見ることができません。"
+        "title": "プールスマートルーティング",
+        "body": "基礎となるNewAPIルーティング： 1回の通話で利用可能で費用対効果の高いチャネルを自動的に選択します。ある家族が次から次へとフォールバックしましたが、あなたはそれを見ることができません。"
       }
+    },
+    "trust": {
+      "eyebrow": "心配になるかもしれないこと",
+      "balance": "残高は永久的なものであり、清算されません",
+      "failure": "リクエストが失敗した場合、料金は発生しません",
+      "privacy": "プロンプトを保存しない/履歴を読まない",
+      "refund": "理由なしに7日分の料金を全額返金",
+      "routing": "マルチライン+リアルタイムの可用性モニタリング",
+      "payment": "Alipay/WeChat/クレジットカードオプション"
     },
     "pool-link": "モデルプール全体を表示"
   },
@@ -1908,6 +2167,28 @@
     "empty": "ご期待ください。最初のサービスがまもなく登場します",
     "tile": {
       "cta": "もっと詳しく"
+    },
+    "placeholder": {
+      "eyebrow": "インテスト・5月末オープン",
+      "heading": "サービス市場",
+      "sub": "専用のAIサービスをご用意しておりますので、どうぞご期待ください。",
+      "footer": "事前に体験したいですか？",
+      "footer_cta": "社内テストに参加するにはお問い合わせください",
+      "contact_label": "サービス市場内部テスト",
+      "card1": {
+        "badge": "他者に代わって業務を行う・毎月",
+        "title": "ホームステイXiaohongshu SaaS",
+        "price": "¥ 1980/月",
+        "body": "AIは、コメントのコピー、プロット、自動投稿、プライベートメッセージへの応答を支援します。毎月のフルホスティングで、現地のMCNよりも安定して安価です。"
+      },
+      "card2": {
+        "badge": "ハッシュパック・オンデマンド",
+        "title": "トークンデルタパック",
+        "price": "近日公開",
+        "body": "オンデマンドでクレジットを追加し、1回限りの月間プランを購入したくありません。同じAPIキーにアクセスして同じウォレットを差し引きます。"
+      },
+      "cta_detail": "もっと詳しく",
+      "cta_contact": "お間合せ"
     }
   },
   "lead": {
@@ -1954,5 +2235,393 @@
     "cancel": "キャンセル",
     "submit": "送信してください。追ってご連絡いたします",
     "disclaimer": "この情報は、お問い合わせへの返信にのみ使用されます。マスメッセージングや第三者への販売は禁止されています。"
+  },
+  "home_dashboard": {
+    "welcome": {
+      "eyebrow": "あなたのリトルレッドブックオペレーションアシスタント",
+      "greeting": "こんにちは、{{name}}さん",
+      "subtitle": "ホームステイの独占コンテンツマトリックスでは、創業者がずっとあなたに同行します。",
+      "fallback_name": "民宿ホスト"
+    },
+    "orders": {
+      "heading": "私の注文",
+      "view_all": "すべての予約を見る",
+      "empty_title": "まだ注文はありません",
+      "empty_body": "サービスをオンにしますか？ WeChatで創業者に直接連絡し、5分で有効にします。",
+      "empty_cta": "創業者WeChatに連絡する",
+      "error_title": "一時的に注文を読み込めません",
+      "error_body": "ネットワークが不安定であるか、サーバーが再起動しています。しばらくしてからもう一度お試しください。",
+      "retry": "リトライ"
+    },
+    "roadmap": {
+      "heading": "サービスロードマップ"
+    },
+    "phase": {
+      "content": {
+        "title": "フェーズ1.A・リトルレッドブックコンテンツ生成",
+        "desc": "ホームステイ、ゲストグループ、ゲストの単価に基づいて、写真とテキスト+ノートタイトル+タグを自動的に生成し、創設者が原稿を一対一でレビューして公開します。"
+      },
+      "publish": {
+        "title": "フェーズ1.B ·自動公開",
+        "desc": "ノートは定期的に公開され、最初のコメントには自動的に上限が設定され、カレンダービューがその月のリズムを制御します。"
+      },
+      "engage": {
+        "title": "フェーズ1.C・インタラクション管理",
+        "desc": "コメントは、統一された受信トレイとプライベートメッセージの意図（問い合わせ/交渉/価格比較）に分類され、応答は見逃されません。"
+      },
+      "attribution": {
+        "title": "フェーズ1.d · ROIアトリビューション",
+        "desc": "メモ→ 非公開→メッセージでチェックイン毎月どのメモが予約につながるかを正確に把握し、完全なリンクトラッキングを行います。"
+      }
+    },
+    "status": {
+      "live": "オンライン",
+      "soon": "今後の予約",
+      "planned": "計画"
+    },
+    "support": {
+      "title": "ご不明な点がございましたら、創業者にお",
+      "body": "ホストは創業者と直接つながっており、カスタマーサービスの譲渡、チケットシステム、曲げはありません。",
+      "wechat_label": "WeChat",
+      "wechat_handle": "tanaxu 626",
+      "email": "tanaxu626@gmail.com",
+      "email_cta": "メールを送信"
+    }
+  },
+  "my_orders": {
+    "title": "私の注文",
+    "subtitle": "購入したサービスパックとその配達状況を確認できます。",
+    "refresh": "更新",
+    "credits": "{{count}}クレジット",
+    "created_at": "作成",
+    "paid_at": "支払う",
+    "completed_at": "ok",
+    "filter": {
+      "all": "すべて",
+      "pending_payment": "保留中の支払い",
+      "paid": "支払い済み",
+      "running": "実行",
+      "completed": "完了済み",
+      "refunded": "返金済み"
+    },
+    "status": {
+      "pending_payment": "保留中の支払い",
+      "paid": "支払い済み",
+      "running": "実行",
+      "completed": "完了済み",
+      "refunded": "返金済み",
+      "refunded_post_delivery": "配達後の払い戻し",
+      "failed": "失敗した",
+      "canceled_mid_flight": "途中キャンセル"
+    },
+    "empty": {
+      "title": "まだ注文はありません",
+      "body": "まだサービスパックを購入していません。有効化にあたってサポートが必要な場合は、お問い合わせください。",
+      "filtered_title": "このステータスの注文はありません",
+      "filtered_body": "他のフィルターを切り替えてみてください。",
+      "contact_cta": "WeChatの予約を追加",
+      "contact_dialog_title": "デモをスケジュールするにはにお問い合わせください"
+    },
+    "load_failed": "注文を読み込めませんでした。もう一度お試しください。",
+    "retry": "リトライ",
+    "col": {
+      "order_no": "注文書番号",
+      "plan": "パック",
+      "amount": "金額",
+      "status": "コンディション",
+      "time": "日時",
+      "action": "操作",
+      "detail": "詳細を見る"
+    }
+  },
+  "order_detail": {
+    "title": "オーダー詳細",
+    "back": "注文リストに戻る",
+    "loading": "読み込み中",
+    "refresh": "更新",
+    "polling": "更新中",
+    "not_found": {
+      "title": "この注文は見つかりませんでした",
+      "body": "注文が削除されたか、アクセスできない可能性があります。"
+    },
+    "metadata": {
+      "title": "注文情報",
+      "amount": "支払金額",
+      "credits": "発行されたポイント",
+      "payment_provider": "支払い方法",
+      "created_at": "作成日時",
+      "paid_at": "支払い時間",
+      "completed_at": "完了時間"
+    },
+    "payment_provider": {
+      "lemonsqueezy": "海外カード（ LemonSqueezy ）",
+      "hupijiao": "アリペイ",
+      "manual": "オフライン/バトラー決済"
+    },
+    "refund_log": {
+      "empty": "払い戻しリクエストは送信されていません。"
+    },
+    "status": {
+      "pending_payment": {
+        "label": "保留中の支払い",
+        "message": "支払い待ち。更新するか、サポートに連絡して、支払いが別の方法で行われたかどうかを確認してください。"
+      },
+      "paid": {
+        "label": "支払い済み",
+        "message": "支払いが確認されました。実行が開始されるのを待っています。"
+      },
+      "running": {
+        "label": "実行",
+        "message": "コンテンツが生成されています。これには通常数分かかります。ページは自動的に更新されます。"
+      },
+      "completed": {
+        "label": "完了済み",
+        "message": "サービスが提供されました。ご不明な点がございましたら、払い戻しまたは再注文をリクエストできます。"
+      },
+      "refunded": {
+        "label": "返金済み",
+        "message": "この注文は返金されました。"
+      },
+      "refunded_post_delivery": {
+        "label": "配達後の払い戻し",
+        "message": "サービスは提供されましたが、注文は返金されました。"
+      },
+      "failed": {
+        "label": "失敗した",
+        "message": "注文処理に失敗しました。確認のため、サポートにお問い合わせください。"
+      },
+      "canceled_mid_flight": {
+        "label": "途中キャンセル",
+        "message": "実行中にキャンセルされました。サポートが必要な場合は、サポートにお問い合わせください。"
+      },
+      "canceled": {
+        "message": "こちらの予約はキャンセルされました。"
+      }
+    },
+    "action": {
+      "reorder": "あと1回注文できます",
+      "refund": "返金をリクエストする"
+    },
+    "modal": {
+      "refund_title": "返金をリクエストする",
+      "refund_description": "理由を簡単に説明してください。1営業日以内に対応いたします。",
+      "refund_reason_label": "返金の理由",
+      "refund_placeholder": "例:コンテンツが需要を満たしていない/時間通りに配達されていない/注文が重複している",
+      "refund_submit": "申請書を提出する",
+      "refund_too_short": "理由を4語以上記入してください",
+      "cancel": "キャンセル"
+    },
+    "toast": {
+      "refund_submitted": "払い戻しリクエストが送信されました。できるだけ早く処理されます。",
+      "refund_failed": "送信できませんでした",
+      "reorder_failed": "操作に失敗しました"
+    },
+    "header": {
+      "title": "オーダー"
+    },
+    "tab": {
+      "timeline": "年齢軸",
+      "output": "出力の詳細",
+      "refund": "返金リクエスト"
+    },
+    "timeline": {
+      "created": "注文の作成",
+      "paid": "支払いが完了しました· webhook order_created",
+      "credited": "受領済み",
+      "completed": "完了済み",
+      "completed_sub": "付与された資格・書かれたcost_ledger"
+    },
+    "output": {
+      "credits_granted": "付与済み",
+      "credits_note": "残高はダッシュボードでリアルタイムで確認できます。",
+      "no_output": "この注文の構造化された出力の詳細はまだありません。"
+    }
+  },
+  "welcome": {
+    "mode_toggle": {
+      "label": "ホームモード切り替え",
+      "token": "トークンAPI",
+      "mansion": "ホームステイSaaS"
+    },
+    "mcard": {
+      "token": {
+        "badge": "本線・オンライン",
+        "title": "トークンパッケージ",
+        "accent": "1つのキーを1つのプールにチューニング",
+        "body": "¥ 99/月、5,000クレジット。すべてのモデルは同じエンドポイントに移動し、アップストリームで価格が設定され、プロンプトキャッシュは自動的に透過されます。WeChat/Alipay/カードでお支払いいただけます。",
+        "f1": "OpenAI互換のベースURL",
+        "f2": "14以上のモデル·ワンキーストレート",
+        "f3": "リアルタイム使用量+キャッシュ節約ビュー",
+        "price": "0. 99",
+        "priceSub": "月",
+        "cta": "登録"
+      },
+      "market": {
+        "badge": "メインライン・プレースホルダー",
+        "title": "サービス市場",
+        "accent": "既製のサービスを購入する",
+        "body": "「エージェント+トークンパッケージ」は、オペレーション、データ制作、DIYエージェントに代わってXiaohongshuの注文ごとに販売されます。最下層は依然としてコンピューティングパワーであり、同じウォレットを差し引いています。",
+        "f1": "カスタマイズされたプロンプト+ワークフロー",
+        "f2": "1つのドラフト・モデルを調整する必要はありません",
+        "f3": "同じウォレットを共有する",
+        "cta": "本番稼働アラートを購読する",
+        "pricePlaceholder": "お楽しみに"
+      }
+    },
+    "values": {
+      "heading": "このように設計されている理由",
+      "sub": "下層はコンピューティングパワー、上層はエクスペリエンスです。トークンパッケージを使用すると、直接電話をかけることができ、サービス市場では結果に応じて購入することができます。",
+      "one-key": {
+        "title": "ワンキーパスモデル",
+        "body": "下部にあるNewAPIスケジュールでは、OpenAI互換のエンドポイントが表示されます。モデルを切り替えてモデルフィールドを変更するだけで、アカウント番号を変更せず、キーを変更します。"
+      },
+      "agent": {
+        "title": "サービスとしてのエージェント",
+        "body": "市場のDIYエージェント= Prompt +私たちが調整したトークンパッケージ。あなたは毎回購入し、計算能力を差し引き、効果は安定しており、コピーすることができます。"
+      },
+      "sub2api": {
+        "title": "sub 2 API拡張プール（計画）",
+        "body": "Claude/OpenAI公式APIをトークンプールにブリッジします。サードパーティの輸送の不安定なキャパシティを圧迫することなく、より完全で準拠したアクセスを集約します。"
+      }
+    }
+  },
+  "pricing_table": {
+    "eyebrow": "価格設定",
+    "heading1": "すべての費用は",
+    "heading2": "財布からバックル",
+    "heading3": "。",
+    "sub": "メインラインにはトークンパッケージティアが1つしかありません。残りは使用状況に応じてクレジットで差し引かれ、サービスマーケットはオンラインになると請求され、同じ残高が共有されます。",
+    "note": {
+      "label": "ホームリマインダー",
+      "body": "このページは/token - plansコピーと競合しません- TokenPlansは販売ページであり、Pricingは参照テーブルです。CTAをクリックすると、TokenPlansにジャンプして購入を完了します。"
+    },
+    "fact": {
+      "sub": {
+        "label": "サブスクリプション",
+        "value": "¥ 99/月・5,000クレジット"
+      },
+      "overage": {
+        "label": "超過",
+        "value": "¥ 0.020/credit ·自動チャージ"
+      },
+      "refund": {
+        "label": "返金",
+        "value": "7日間の非消費の場合は返金可能"
+      },
+      "invoice": {
+        "label": "送り状",
+        "value": "eチケットのサポート"
+      }
+    },
+    "col": {
+      "model": "モデル",
+      "vendor": "メーカー",
+      "context": "コンテキスト",
+      "price_in": "¥/ 1 M in",
+      "price_out": "¥/ 1 M out",
+      "credits": "クレジット/100万アウト",
+      "cache": "キャッシュ"
+    },
+    "cache": {
+      "yes": "サポート"
+    },
+    "csv_download": "完全な価格表をダウンロード.csv",
+    "back_to_plans": "トークンプランに戻る"
+  },
+  "checkout": {
+    "title": "注文を確定する",
+    "method_title": "お支払い方法を選択してください",
+    "method_wechat": "WeChat Pay",
+    "method_wechat_desc": "WeChat/Alipay QRコードスキャン支払い",
+    "method_alipay": "アリペイ",
+    "method_alipay_desc": "Alipayスキャンコード支払い",
+    "method_card": "クレジットカード（米ドル）",
+    "method_card_desc": "LemonSqueezyマネージドチェックアウト",
+    "method_recommended": "おすすめ",
+    "remarks_label": "注文メモ(任意)",
+    "remarks_placeholder": "特別なご要望がある場合は、こちらからお知らせください",
+    "agree_terms": "私はを読み、これに同意します",
+    "agree_terms_link": "ユーザー契約",
+    "agree_privacy": "私はを読み、これに同意します",
+    "agree_privacy_link": "プライバシー",
+    "summary_title": "注文確認",
+    "summary_plan": "トークン月間プラン",
+    "summary_credits": "5,000クレジット· 30日間有効",
+    "summary_price_cny": "¥ 99.00/月",
+    "summary_price_usd": "~ 14ドル/月",
+    "summary_tax": "税込",
+    "continue": "続くよ",
+    "continue_hint": "[続行]をクリックすると、ユーザー契約とプライバシーポリシーに同意したものとみなされます",
+    "error_checkout_failed": "チェックアウトの作成に失敗しました。もう一度お試しください"
+  },
+  "payment_success": {
+    "title": "購入完了！",
+    "subtitle": "トークンパッケージが有効になりました",
+    "polling": "通常5秒以内に支払いを確認しています...",
+    "timeout": "タイムアウトしました。サポートにお問い合わせください",
+    "credentials_title": "API認証情報",
+    "base_url_label": "ベースURL",
+    "api_key_label": "APIキー",
+    "api_key_warning": "初めて表示して安全に保管しましょう",
+    "copy": "複製",
+    "copied": "コピーしました",
+    "next_title": "次へ",
+    "next_usage": "使用状況を表示",
+    "next_docs": "ドキュメントにアクセスする",
+    "next_support": "サポートに問い合わせる",
+    "back_home": "ホームページに戻る",
+    "not_authenticated": "ご注文状況を確認するにはログインしてください",
+    "login": "ログインに移動"
+  },
+  "usage": {
+    "title": "投与量と節約",
+    "range_month": "今月",
+    "range_7d": "7日間",
+    "range_30d": "30日",
+    "stat_credits": "クレジットが使用されました",
+    "stat_calls": "API呼び出し",
+    "stat_cache_saved": "キャッシュの節約",
+    "stat_spent": "支払われた金額",
+    "chart_title": "30日間のトレンド",
+    "chart_legend_miss": "キャッシュミス",
+    "chart_legend_hit": "キャッシュヒット",
+    "table_title": "モデル別内訳",
+    "col_model": "モデル",
+    "col_calls": "通話回数",
+    "col_input": "トークンを入力",
+    "col_output": "出力トークン",
+    "col_cache_saved": "キャッシュの節約",
+    "col_credits": "クレジット",
+    "col_spent": "支払い済み",
+    "empty_chart": "利用可能な投与量データがありません",
+    "empty_table": "利用可能なモデル使用データがありません",
+    "cache_help": "プロンプトキャッシュヒットのアップストリームコスト削減"
+  },
+  "live": {
+    "title": "ライブトークンストリーム",
+    "status_live": "ライブ・リアルタイム",
+    "status_paused": "一時停止",
+    "pause": "一時停止",
+    "resume": "続くよ",
+    "filter_model": "モデルを絞り込む",
+    "filter_cache": "/caches",
+    "filter_all": "すべて",
+    "filter_hit": "ヒット",
+    "filter_miss": "見逃した",
+    "filter_clear": "クリア",
+    "col_time": "日時",
+    "col_model": "モデル",
+    "col_provider": "メーカー",
+    "col_cache": "/caches",
+    "col_tokens": "トークン",
+    "col_cost": "花费",
+    "col_latency": "遅延",
+    "cache_hit": "ヒット",
+    "cache_miss": "Miss",
+    "session_title": "このセッションの統計",
+    "session_calls": "総通話数",
+    "session_hit_rate": "キャッシュヒット率",
+    "session_cost": "このセッションの費用",
+    "empty": "API呼び出しを待っています..."
   }
 }

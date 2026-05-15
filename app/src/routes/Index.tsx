@@ -1,7 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import ErrorBoundary from "@/components/ErrorBoundary.tsx";
 import "@/assets/pages/home.less";
-import React, { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { useDispatch } from "react-redux";
 import { validateToken } from "@/store/auth.ts";
 import { tokenField } from "@/conf/bootstrap.ts";
