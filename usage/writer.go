@@ -2,7 +2,6 @@ package usage
 
 import (
 	"chat/auth"
-	"chat/channel"
 	"chat/globals"
 	"chat/utils"
 	"database/sql"
@@ -78,14 +77,7 @@ func resolveCharge(buffer *utils.Buffer) utils.Charge {
 	if buffer == nil {
 		return nil
 	}
-	if buffer.Model != "" && channel.ChargeInstance != nil {
-		if charge := channel.ChargeInstance.GetCharge(buffer.Model); charge != nil {
-			if charge.IsUnsetType() && buffer.Charge != nil {
-				return buffer.Charge
-			}
-			return charge
-		}
-	}
+	// ChargeInstance gate removed (EXCISE-3): fall through to buffer.Charge only
 	return buffer.Charge
 }
 

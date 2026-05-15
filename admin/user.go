@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"chat/channel"
 	"chat/globals"
 	"chat/utils"
 	"context"
@@ -227,13 +226,7 @@ func releaseUsage(db *sql.DB, cache *redis.Client, id int64) error {
 		return fmt.Errorf("user is not subscribed")
 	}
 
-	u := &AuthLike{ID: id}
-
-	plan := channel.PlanInstance.GetPlan(int(level.Int64))
-	if !plan.ReleaseAll(u, cache) {
-		return fmt.Errorf("cannot release usage")
-	}
-
+	_ = cache // legacy plan release removed (EXCISE-3)
 	return nil
 }
 
