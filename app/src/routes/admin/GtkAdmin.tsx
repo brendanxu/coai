@@ -13,9 +13,10 @@ import type { OrderStatus } from "@/api/orders.ts";
 import { listUserRouting, updateUserRouting, SUGGESTED_GROUPS } from "@/api/userRouting.ts";
 import type { UserRoutingRow } from "@/api/userRouting.ts";
 import "./GtkAdmin.css";
+import { PricingTab } from "./PricingTab";
 
 // ── Types ──────────────────────────────────────────────────────────────────
-type Tab = "hub" | "channels" | "users" | "ratios" | "orders" | "settings";
+type Tab = "hub" | "channels" | "users" | "ratios" | "orders" | "settings" | "pricing";
 
 interface Channel {
   id: number;
@@ -210,6 +211,12 @@ const IconWarn = () => (
     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
     <line x1="12" y1="9" x2="12" y2="13"/>
     <line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+);
+const IconPricing = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="5" width="20" height="14" rx="2"/>
+    <line x1="2" y1="10" x2="22" y2="10"/>
   </svg>
 );
 const IconSpinner = () => (
@@ -1374,6 +1381,7 @@ const NAV: { id: Tab; label: string; Icon: React.FC }[] = [
   { id: "users", label: "用户管理", Icon: IconUsers },
   { id: "ratios", label: "模型计费", Icon: IconRatios },
   { id: "orders", label: "订单", Icon: IconOrders },
+  { id: "pricing", label: "套餐定价", Icon: IconPricing },
   { id: "settings", label: "系统设置", Icon: IconSettings },
 ];
 
@@ -1383,6 +1391,7 @@ const TAB_TITLES: Record<Tab, string> = {
   users: "用户管理",
   ratios: "模型计费",
   orders: "订单",
+  pricing: "套餐定价",
   settings: "系统设置",
 };
 
@@ -1469,6 +1478,7 @@ function GtkAdmin() {
           {tab === "users" && <UsersTab />}
           {tab === "ratios" && <RatiosTab />}
           {tab === "orders" && <OrdersTab />}
+          {tab === "pricing" && <PricingTab />}
           {tab === "settings" && <SettingsTab />}
         </main>
       </div>

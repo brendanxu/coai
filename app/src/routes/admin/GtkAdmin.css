@@ -574,3 +574,11 @@
 /* ── spin animation ── */
 @keyframes gtk-spin { to { transform: rotate(360deg); } }
 .gtk-spin { animation: gtk-spin 1s linear infinite; }
+
+/* ── pricing tab ── */
+.pricing-tab { display: flex; flex-direction: column; }
+.pricing-section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 0; }
+.pricing-add-form { padding: 12px 18px; background: var(--card-2); border-bottom: 1px solid var(--line); }
+.pricing-add-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pricing-add-row .input { height: 32px; font-size: 13px; min-width: 120px; }
+.pricing-add-row .select-field { height: 32px; font-size: 13px; }
