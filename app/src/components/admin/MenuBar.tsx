@@ -4,9 +4,7 @@ import React, { useMemo } from "react";
 import {
   FileClock,
   Gauge,
-  GitFork,
   PackageCheck,
-  Radio,
   ServerCog,
   Settings,
   Users,
@@ -69,16 +67,6 @@ function MenuBar() {
         title={t("admin.orders.title")}
         icon={<PackageCheck />}
         path={"/orders"}
-      />
-      <MenuItem
-        title={t("admin.broadcast")}
-        icon={<Radio />}
-        path={"/broadcast"}
-      />
-      <MenuItem
-        title={t("admin.channel")}
-        icon={<GitFork />}
-        path={"/channel"}
       />
       <MenuItem
         title={t("admin.channels.title")}

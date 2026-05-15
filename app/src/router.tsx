@@ -54,16 +54,9 @@ const MyOrders = lazyFactor(() => import("@/routes/MyOrders.tsx"));
 const OrderDetail = lazyFactor(() => import("@/routes/OrderDetail.tsx"));
 
 const AdminPage = lazyFactor(() => import("@/routes/Admin.tsx"));
-const AdminMarket = lazyFactor(() => import("@/routes/admin/Market.tsx"));
-const AdminChannel = lazyFactor(() => import("@/routes/admin/Channel.tsx"));
 const AdminSystem = lazyFactor(() => import("@/routes/admin/System.tsx"));
 const AdminLicense = lazyFactor(() => import("@/routes/admin/License.tsx"));
-const AdminCharge = lazyFactor(() => import("@/routes/admin/Charge.tsx"));
 const AdminUsers = lazyFactor(() => import("@/routes/admin/Users.tsx"));
-const AdminBroadcast = lazyFactor(() => import("@/routes/admin/Broadcast.tsx"));
-const AdminSubscription = lazyFactor(
-  () => import("@/routes/admin/Subscription.tsx"),
-);
 const AdminLogger = lazyFactor(() => import("@/routes/admin/Logger.tsx"));
 // v0.12 Tier 1 block 5 — founder concierge workspace for 民宿 wedge
 const AdminMansu = lazyFactor(() => import("@/routes/admin/Mansu.tsx"));
@@ -376,24 +369,6 @@ const router = createBrowserRouter([
             ),
           },
           {
-            id: "admin-market",
-            path: "market",
-            element: (
-              <Suspense>
-                <AdminMarket />
-              </Suspense>
-            ),
-          },
-          {
-            id: "admin-channel",
-            path: "channel",
-            element: (
-              <Suspense>
-                <AdminChannel />
-              </Suspense>
-            ),
-          },
-          {
             id: "admin-system",
             path: "system",
             element: (
@@ -417,33 +392,6 @@ const router = createBrowserRouter([
             element: (
               <Suspense>
                 <AdminLicense />
-              </Suspense>
-            ),
-          },
-          {
-            id: "admin-charge",
-            path: "charge",
-            element: (
-              <Suspense>
-                <AdminCharge />
-              </Suspense>
-            ),
-          },
-          {
-            id: "admin-broadcast",
-            path: "broadcast",
-            element: (
-              <Suspense>
-                <AdminBroadcast />
-              </Suspense>
-            ),
-          },
-          {
-            id: "admin-subscription",
-            path: "subscription",
-            element: (
-              <Suspense>
-                <AdminSubscription />
               </Suspense>
             ),
           },
@@ -494,9 +442,7 @@ const router = createBrowserRouter([
               </Suspense>
             ),
           },
-          // /admin/channels-routing (NOT /admin/channels — that path is
-          // unused but the singular /admin/channel is taken by the
-          // CoAI-upstream channel admin page).
+          // /admin/channels-routing — PKG-4 per-channel routing admin.
           {
             id: "admin-channels-routing",
             path: "channels-routing",
