@@ -8,17 +8,23 @@
  * Sections:
  *   1. Header + sub-copy
  *   2. Facts strip: 4 pills
- *   3. Per-model rate table (hardcoded from mockup — backend extension deferred)
+ *   3. Per-model rate table (fetched from /gtk/v1/pricing — backend extension)
  *   4. Footer: CSV download stub + "回到 Token Plans" link
+ *
+ * PKG-PRICING-DYNAMIC (2026-05-15): MODEL_ROWS hardcoded array replaced with
+ * a fetch from /api/gtk/v1/pricing. Graceful degradation: shows "暂时无法加载"
+ * message on fetch failure without crashing (no white screen).
  *
  * i18n: pricing.* namespace replaced with pricing_table.* keys.
  * Old pricing-page.* (民宿) keys untouched in cn/en.json — they are still
  * used by the 民宿 SaaS service detail page (deferred).
  */
 
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { ArrowRight, Download } from "lucide-react";
+import axios from "axios";
 
 import Header from "@/components/Marketing/Header.tsx";
 import Footer from "@/components/Marketing/Footer.tsx";
@@ -31,86 +37,36 @@ type ModelRow = {
   priceIn: string;
   priceOut: string;
   creditsPerMOut: string;
-  cache: boolean | "cache_control";
+  cache: string; // "true" | "cache_control" | "false"
 };
-
-const MODEL_ROWS: ModelRow[] = [
-  {
-    model: "GPT-4o",
-    vendor: "openai",
-    context: "128k",
-    priceIn: "18.20",
-    priceOut: "72.80",
-    creditsPerMOut: "3640",
-    cache: true,
-  },
-  {
-    model: "GPT-4o mini",
-    vendor: "openai",
-    context: "128k",
-    priceIn: "1.10",
-    priceOut: "4.40",
-    creditsPerMOut: "220",
-    cache: true,
-  },
-  {
-    model: "Claude 3.5 Sonnet",
-    vendor: "anthropic",
-    context: "200k",
-    priceIn: "21.60",
-    priceOut: "108.00",
-    creditsPerMOut: "5400",
-    cache: "cache_control",
-  },
-  {
-    model: "DeepSeek V3",
-    vendor: "deepseek",
-    context: "64k",
-    priceIn: "1.00",
-    priceOut: "4.00",
-    creditsPerMOut: "200",
-    cache: true,
-  },
-  {
-    model: "DeepSeek R1",
-    vendor: "deepseek",
-    context: "64k",
-    priceIn: "4.00",
-    priceOut: "16.00",
-    creditsPerMOut: "800",
-    cache: true,
-  },
-  {
-    model: "Qwen2.5-Max",
-    vendor: "阿里",
-    context: "32k",
-    priceIn: "8.00",
-    priceOut: "24.00",
-    creditsPerMOut: "1200",
-    cache: true,
-  },
-  {
-    model: "Gemini 2.0 Flash",
-    vendor: "google",
-    context: "1M",
-    priceIn: "0.72",
-    priceOut: "2.88",
-    creditsPerMOut: "144",
-    cache: true,
-  },
-  {
-    model: "Kimi K2",
-    vendor: "moonshot",
-    context: "200k",
-    priceIn: "12.00",
-    priceOut: "12.00",
-    creditsPerMOut: "600",
-    cache: true,
-  },
-];
 
 function Pricing() {
   const { t } = useTranslation();
+
+  const [models, setModels] = useState<ModelRow[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    axios
+      .get<{ success: boolean; data?: { models: ModelRow[] } }>(
+        "/api/gtk/v1/pricing"
+      )
+      .then((r) => {
+        if (cancelled) return;
+        if (r.data.success && r.data.data?.models) {
+          setModels(r.data.data.models);
+        } else {
+          setLoadError(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const facts = [
     {
@@ -131,12 +87,61 @@ function Pricing() {
     },
   ];
 
+  // Render the cache badge identically to the old hardcoded branch.
+  // The backend sends "true" | "cache_control" | "false" strings.
+  const renderCache = (cache: string) => {
+    if (cache === "cache_control") {
+      return (
+        <span
+          className="inline-block text-[10px] px-2 py-0.5 rounded-full font-medium"
+          style={{
+            background: "hsl(var(--accent-soft))",
+            color: "hsl(var(--primary-deep))",
+          }}
+        >
+          cache_control
+        </span>
+      );
+    }
+    if (cache === "true") {
+      return (
+        <span
+          className="inline-block text-[10px] px-2 py-0.5 rounded-full font-medium"
+          style={{
+            background: "hsl(var(--accent-soft))",
+            color: "hsl(var(--primary-deep))",
+          }}
+        >
+          {t("pricing_table.cache.yes", "支持")}
+        </span>
+      );
+    }
+    return <span className="text-muted-foreground text-xs">—</span>;
+  };
+
+  const renderCacheMobile = (cache: string) => {
+    if (cache === "true" || cache === "cache_control") {
+      return (
+        <span
+          className="text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+          style={{
+            background: "hsl(var(--accent-soft))",
+            color: "hsl(var(--primary-deep))",
+          }}
+        >
+          {cache === "cache_control" ? "cache_control" : t("pricing_table.cache.yes", "支持")}
+        </span>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="flex-1 overflow-y-auto">
       <Header />
       <div className="max-w-5xl mx-auto px-6 py-12 md:py-20">
 
-        {/* ── Header ────────────────────────────────────────────────── */}
+        {/* ── Header ────────────────────────────────────────────────────── */}
         <div className="grid md:grid-cols-[1.4fr_1fr] gap-8 mb-10">
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-3">
@@ -204,138 +209,141 @@ function Pricing() {
             border: "1px solid hsl(var(--border-soft))",
           }}
         >
-          {/* Desktop */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr
-                  className="text-left"
-                  style={{
-                    background: "hsl(var(--muted) / 0.5)",
-                    borderBottom: "1px solid hsl(var(--border-soft))",
-                  }}
-                >
-                  <th className="px-5 py-3 font-medium text-xs text-muted-foreground">
-                    {t("pricing_table.col.model", "模型")}
-                  </th>
-                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground">
-                    {t("pricing_table.col.vendor", "厂商")}
-                  </th>
-                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground">
-                    {t("pricing_table.col.context", "上下文")}
-                  </th>
-                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground text-right">
-                    {t("pricing_table.col.price_in", "¥ / 1M in")}
-                  </th>
-                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground text-right">
-                    {t("pricing_table.col.price_out", "¥ / 1M out")}
-                  </th>
-                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground text-right">
-                    {t("pricing_table.col.credits", "credits / 1M out")}
-                  </th>
-                  <th className="px-4 py-3 font-medium text-xs text-muted-foreground">
-                    {t("pricing_table.col.cache", "cache")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {MODEL_ROWS.map((row, i) => (
-                  <tr
-                    key={row.model}
-                    className="hover:bg-muted/20 transition-colors"
-                    style={
-                      i < MODEL_ROWS.length - 1
-                        ? { borderBottom: "1px solid hsl(var(--border-soft) / 0.6)" }
-                        : undefined
-                    }
-                  >
-                    <td className="px-5 py-3.5 font-medium">{row.model}</td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
-                      {row.vendor}
-                    </td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
-                      {row.context}
-                    </td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-right tabular-nums">
-                      {row.priceIn}
-                    </td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-right tabular-nums">
-                      {row.priceOut}
-                    </td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-right tabular-nums">
-                      {row.creditsPerMOut}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      {row.cache === "cache_control" ? (
-                        <span
-                          className="inline-block text-[10px] px-2 py-0.5 rounded-full font-medium"
-                          style={{
-                            background: "hsl(var(--accent-soft))",
-                            color: "hsl(var(--primary-deep))",
-                          }}
-                        >
-                          cache_control
-                        </span>
-                      ) : row.cache ? (
-                        <span
-                          className="inline-block text-[10px] px-2 py-0.5 rounded-full font-medium"
-                          style={{
-                            background: "hsl(var(--accent-soft))",
-                            color: "hsl(var(--primary-deep))",
-                          }}
-                        >
-                          {t("pricing_table.cache.yes", "支持")}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* Loading skeleton */}
+          {models === null && !loadError && (
+            <div
+              style={{
+                padding: "40px 20px",
+                textAlign: "center",
+                color: "hsl(var(--muted-foreground))",
+                fontSize: 14,
+              }}
+            >
+              {t("pricing_table.loading", "加载定价数据中…")}
+            </div>
+          )}
 
-          {/* Mobile stacked cards */}
-          <div className="md:hidden divide-y divide-border">
-            {MODEL_ROWS.map((row) => (
-              <div key={row.model} className="px-5 py-4">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div>
-                    <p className="font-medium text-sm">{row.model}</p>
-                    <p className="font-mono text-xs text-muted-foreground mt-0.5">
-                      {row.vendor} · {row.context}
-                    </p>
-                  </div>
-                  {row.cache && (
-                    <span
-                      className="text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-                      style={{
-                        background: "hsl(var(--accent-soft))",
-                        color: "hsl(var(--primary-deep))",
-                      }}
+          {/* Error state — graceful degradation, no white screen */}
+          {loadError && (
+            <div
+              style={{
+                padding: "40px 20px",
+                textAlign: "center",
+                color: "hsl(var(--muted-foreground))",
+                fontSize: 14,
+              }}
+            >
+              {t(
+                "pricing_table.load_error",
+                "暂时无法加载定价信息，请稍后再试。",
+              )}
+            </div>
+          )}
+
+          {/* Desktop table — only when data loaded */}
+          {models !== null && !loadError && (
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr
+                    className="text-left"
+                    style={{
+                      background: "hsl(var(--muted) / 0.5)",
+                      borderBottom: "1px solid hsl(var(--border-soft))",
+                    }}
+                  >
+                    <th className="px-5 py-3 font-medium text-xs text-muted-foreground">
+                      {t("pricing_table.col.model", "模型")}
+                    </th>
+                    <th className="px-4 py-3 font-medium text-xs text-muted-foreground">
+                      {t("pricing_table.col.vendor", "厂商")}
+                    </th>
+                    <th className="px-4 py-3 font-medium text-xs text-muted-foreground">
+                      {t("pricing_table.col.context", "上下文")}
+                    </th>
+                    <th className="px-4 py-3 font-medium text-xs text-muted-foreground text-right">
+                      {t("pricing_table.col.price_in", "¥ / 1M in")}
+                    </th>
+                    <th className="px-4 py-3 font-medium text-xs text-muted-foreground text-right">
+                      {t("pricing_table.col.price_out", "¥ / 1M out")}
+                    </th>
+                    <th className="px-4 py-3 font-medium text-xs text-muted-foreground text-right">
+                      {t("pricing_table.col.credits", "credits / 1M out")}
+                    </th>
+                    <th className="px-4 py-3 font-medium text-xs text-muted-foreground">
+                      {t("pricing_table.col.cache", "cache")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {models.map((row, i) => (
+                    <tr
+                      key={row.model}
+                      className="hover:bg-muted/20 transition-colors"
+                      style={
+                        i < models.length - 1
+                          ? { borderBottom: "1px solid hsl(var(--border-soft) / 0.6)" }
+                          : undefined
+                      }
                     >
-                      {row.cache === "cache_control" ? "cache_control" : t("pricing_table.cache.yes", "支持")}
-                    </span>
-                  )}
+                      <td className="px-5 py-3.5 font-medium">{row.model}</td>
+                      <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                        {row.vendor}
+                      </td>
+                      <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
+                        {row.context}
+                      </td>
+                      <td className="px-4 py-3.5 font-mono text-xs text-right tabular-nums">
+                        {row.priceIn}
+                      </td>
+                      <td className="px-4 py-3.5 font-mono text-xs text-right tabular-nums">
+                        {row.priceOut}
+                      </td>
+                      <td className="px-4 py-3.5 font-mono text-xs text-right tabular-nums">
+                        {row.creditsPerMOut}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {renderCache(row.cache)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Mobile stacked cards — only when data loaded */}
+          {models !== null && !loadError && (
+            <div className="md:hidden divide-y divide-border">
+              {models.map((row) => (
+                <div key={row.model} className="px-5 py-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <p className="font-medium text-sm">{row.model}</p>
+                      <p className="font-mono text-xs text-muted-foreground mt-0.5">
+                        {row.vendor} · {row.context}
+                      </p>
+                    </div>
+                    {renderCacheMobile(row.cache)}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs font-mono tabular-nums text-right">
+                    <div>
+                      <p className="text-muted-foreground mb-0.5 text-[10px] text-left">¥/1M in</p>
+                      <p>{row.priceIn}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-0.5 text-[10px] text-left">¥/1M out</p>
+                      <p>{row.priceOut}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-0.5 text-[10px] text-left">credits/1M</p>
+                      <p>{row.creditsPerMOut}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-xs font-mono tabular-nums text-right">
-                  <div>
-                    <p className="text-muted-foreground mb-0.5 text-[10px] text-left">¥/1M in</p>
-                    <p>{row.priceIn}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground mb-0.5 text-[10px] text-left">¥/1M out</p>
-                    <p>{row.priceOut}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground mb-0.5 text-[10px] text-left">credits/1M</p>
-                    <p>{row.creditsPerMOut}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Footer actions ────────────────────────────────────────── */}
