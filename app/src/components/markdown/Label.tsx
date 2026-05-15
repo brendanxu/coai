@@ -84,7 +84,7 @@ function QuotaExceededForm({
         <Button
           classNameWrapper={`w-full`}
           className={`w-full`}
-          onClick={() => router.navigate("/wallet")}
+          onClick={() => router.navigate("/pricing")}
         >
           <Plus className={`h-4 w-4 mr-1`} />
           {t("buy.dialog-title")}
@@ -94,7 +94,7 @@ function QuotaExceededForm({
             variant={`outline`}
             classNameWrapper={`w-full`}
             className={`w-full`}
-            onClick={() => router.navigate("/wallet#plan")}
+            onClick={() => router.navigate("/pricing#plan")}
           >
             <CalendarPlus className={`h-4 w-4 mr-1`} />
             {t("sub.dialog-title")}
