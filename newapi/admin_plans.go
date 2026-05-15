@@ -232,6 +232,20 @@ func UpdatePlanAPI(c *gin.Context) {
 		return
 	}
 
+	// LOW-2 audit log: capture is_active before update so we can log the flip.
+	// Load current plan only when is_active is being toggled (cheap path for
+	// other field edits). Mirror the UpdateUserRoutingAPI pattern.
+	var prevIsActive *bool
+	if req.IsActive != nil {
+		existing, loadErr := loadPlan(connection.DB, id)
+		if loadErr == nil {
+			v := existing.IsActive
+			prevIsActive = &v
+		}
+		// If loadErr != nil (e.g. not found), updatePlan will return ErrNoRows
+		// below — no need to handle here.
+	}
+
 	plan, err := updatePlan(connection.DB, id, req)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -247,6 +261,20 @@ func UpdatePlanAPI(c *gin.Context) {
 		})
 		return
 	}
+
+	// Emit audit log when is_active was toggled (LOW-2 finding from ADMIN-L2-1 review).
+	// Reactivating a retired plan is a potentially-money-affecting action.
+	if req.IsActive != nil && prevIsActive != nil && *prevIsActive != *req.IsActive {
+		admin := auth.RequireAdmin(c)
+		adminID := int64(0)
+		if admin != nil {
+			adminID = int64(admin.GetID(connection.DB))
+		}
+		globals.Info(fmt.Sprintf(
+			"plans: admin=%d toggled plan id=%d code=%q is_active %v → %v",
+			adminID, plan.ID, plan.Code, *prevIsActive, *req.IsActive))
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    gin.H{"plan": plan},
