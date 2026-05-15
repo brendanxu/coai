@@ -1,3 +1,24 @@
+import { ChargeBaseProps } from "@/admin/charge.ts";
+
+export type Model = {
+  id: string;
+  name: string;
+  description?: string;
+  free: boolean;
+  auth: boolean;
+  default: boolean;
+  high_context: boolean;
+  function_calling?: boolean;
+  vision_model?: boolean;
+  ocr_model?: boolean;
+  reverse_model?: boolean;
+  thinking_model?: boolean;
+  avatar: string;
+  tag?: string[];
+
+  price?: ChargeBaseProps;
+};
+
 export type CommonResponse = {
   status: boolean;
   message: string;
