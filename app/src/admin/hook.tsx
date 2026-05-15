@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { getUniqueList } from "@/utils/base.ts";
 import { defaultChannelModels } from "@/admin/channel.ts";
-import { getApiMarket, getApiModels } from "@/api/v1.ts";
+import { getApiMarket, getApiModels } from "@/admin/api/models.ts";
 import { useEffectAsync } from "@/utils/hook.ts";
 import { Model } from "@/admin/types.ts";
 
