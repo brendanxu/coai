@@ -1,38 +1,15 @@
 .main {
   position: relative;
-  display: inline-flex;
-  flex-direction: row;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: calc(100% - var(--navbar-height));
   overflow: hidden;
 
   @media (orientation: portrait) {
-    flex-direction: column-reverse;
-
     .home-page {
       height: calc(100% - 9rem);
       width: 100%;
-    }
-
-    .toolbar {
-      flex-direction: row;
-      height: max-content;
-      width: 100%;
-      border-right: none;
-      border-top: 1px solid hsl(var(--border));
-
-        & > * {
-            margin-bottom: 0;
-            margin-right: auto;
-
-            &:last-child {
-            margin-right: 0.5rem;
-            }
-
-          &:first-child {
-            margin-left: 0.5rem;
-          }
-        }
     }
 
     .sidebar.open {
@@ -372,106 +349,6 @@
   }
 }
 
-.toolbar {
-  position: relative;
-  display: flex;
-  flex-shrink: 0;
-  flex-direction: column;
-  height: 100%;
-  margin: 0;
-  width: max-content;
-  padding: 0.5rem;
-  background: hsl(var(--background));
-  border-right: 1px solid hsl(var(--border));
-  transition: 0.25s;
-
-  &.stacked {
-    @media (orientation: landscape) {
-      width: 0;
-      padding-left: 0;
-      padding-right: 0;
-      border-right: 0;
-    }
-
-    @media (orientation: portrait) {
-      height: 0;
-      padding-top: 0;
-      padding-bottom: 0;
-      border-top: 0;
-    }
-
-    .toolbar-text {
-      display: none;
-    }
-
-    button {
-      width: 0;
-      flex-shrink: 1;
-    }
-  }
-
-  .bar-kit {
-    position: absolute;
-    opacity: 0;
-    transition: 0.25s ease-in-out;
-    cursor: pointer;
-    z-index: 64;
-    border-radius: 0.25rem;
-    background: hsl(var(--background));
-    width: max-content;
-    height: max-content;
-    border: 1px solid hsl(var(--border-active));
-
-    @media (orientation: portrait) {
-      top: 0;
-      left: 50%;
-      transform: translate(-50%, -100%);
-      padding: 0 0.75rem;
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0;
-
-      svg {
-        rotate: 0deg;
-      }
-
-      &.stacked svg {
-        rotate: 180deg;
-      }
-    }
-
-    @media (orientation: landscape) {
-      top: 50%;
-      right: 0;
-      transform: translate(100%, -50%);
-      padding: 0.75rem 0;
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
-
-      svg {
-        rotate: 90deg;
-      }
-
-      &.stacked svg {
-        rotate: -90deg;
-      }
-    }
-  }
-
-  &:hover, &:focus-within, &:focus, &:active {
-    .bar-kit {
-      opacity: 1;
-      pointer-events: all;
-    }
-  }
-
-  & > * {
-    margin-bottom: 0.75rem;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-}
 
 .sidebar {
   display: flex;
