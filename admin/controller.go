@@ -57,11 +57,6 @@ type SubscriptionOperationForm struct {
 	Expired string `json:"expired" binding:"required"`
 }
 
-type SubscriptionLevelForm struct {
-	Id    int64  `json:"id" binding:"required"`
-	Level *int64 `json:"level" binding:"required"`
-}
-
 type ReleaseUsageForm struct {
 	Id int64 `json:"id" binding:"required"`
 }
@@ -355,32 +350,6 @@ func UserSubscriptionAPI(c *gin.Context) {
 	}
 
 	if err := subscriptionMigration(db, form.Id, form.Expired); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  false,
-			"message": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": true,
-	})
-}
-
-func SubscriptionLevelAPI(c *gin.Context) {
-	db := utils.GetDBFromContext(c)
-
-	var form SubscriptionLevelForm
-	if err := c.ShouldBindJSON(&form); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  false,
-			"message": err.Error(),
-		})
-		return
-	}
-
-	err := subscriptionLevelMigration(db, form.Id, *form.Level)
-	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  false,
 			"message": err.Error(),

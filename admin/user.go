@@ -201,19 +201,6 @@ func subscriptionMigration(db *sql.DB, id int64, expired string) error {
 	return err
 }
 
-func subscriptionLevelMigration(db *sql.DB, id int64, level int64) error {
-	if level < 0 || level > 3 {
-		return fmt.Errorf("invalid subscription level")
-	}
-
-	_, err := globals.ExecDb(db, `
-		INSERT INTO subscription (user_id, level) VALUES (?, ?)
-		ON DUPLICATE KEY UPDATE level = ?
-	`, id, level, level)
-
-	return err
-}
-
 func releaseUsage(db *sql.DB, cache *redis.Client, id int64) error {
 	var level sql.NullInt64
 	if err := globals.QueryRowDb(db, `
