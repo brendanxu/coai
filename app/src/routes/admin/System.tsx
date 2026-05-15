@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/dialog.tsx";
 import { DialogTitle } from "@radix-ui/react-dialog";
 import Require from "@/components/Require.tsx";
-import { Loader2, PencilLine, RotateCw, Save, Settings2 } from "lucide-react";
+import { Loader2, RotateCw, Save, Settings2 } from "lucide-react";
 import { FlexibleTextarea, Textarea } from "@/components/ui/textarea.tsx";
 import Tips from "@/components/Tips.tsx";
 import { cn } from "@/components/ui/lib/utils.ts";
@@ -59,7 +59,6 @@ import { Switch } from "@/components/ui/switch.tsx";
 import { MultiCombobox } from "@/components/ui/multi-combobox.tsx";
 import { allGroups } from "@/utils/groups.ts";
 import { useChannelModels } from "@/admin/hook.tsx";
-import { JSONEditorProvider } from "@/components/EditorProvider.tsx";
 import { Combobox } from "@/components/ui/combo-box.tsx";
 
 type CompProps<T> = {
@@ -229,20 +228,6 @@ function General({ data, dispatch, onChange }: CompProps<GeneralState>) {
       <ParagraphDescription border>
         {t("admin.system.fileTip")}
       </ParagraphDescription>
-      <ParagraphItem>
-        <Label>PWA Manifest</Label>
-        <JSONEditorProvider
-          value={data.pwa_manifest ?? ""}
-          onChange={(value) =>
-            dispatch({ type: "update:general.pwa_manifest", value })
-          }
-        >
-          <Button variant={`outline`}>
-            <PencilLine className={`h-4 w-4 mr-1`} />
-            {t("edit")}
-          </Button>
-        </JSONEditorProvider>
-      </ParagraphItem>
       <ParagraphItem>
         <Label>
           {t("admin.system.debugMode")}
