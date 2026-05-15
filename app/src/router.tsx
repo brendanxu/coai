@@ -18,7 +18,6 @@ import { selectAdmin, selectAuthenticated, selectInit } from "@/store/auth.ts";
 import Index from "@/routes/Index.tsx";
 import License from "@/routes/admin/License.tsx";
 
-const Wallet = lazyFactor(() => import("@/routes/Wallet.tsx"));
 const Account = lazyFactor(() => import("@/routes/Account.tsx"));
 const Pricing = lazyFactor(() => import("@/routes/Pricing.tsx"));
 const Contact = lazyFactor(() => import("@/routes/Contact.tsx"));
@@ -33,8 +32,6 @@ const Terms = lazyFactor(() => import("@/routes/Terms.tsx"));
 const Docs = lazyFactor(() => import("@/routes/Docs.tsx"));
 // v0.12 Tier 1 block 4 — DIY agent runner (post-purchase)
 const ServiceRun = lazyFactor(() => import("@/routes/ServiceRun.tsx"));
-
-const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
 
 // v0.6 carbon — /dashboard kept (founder may use ESG narrative later);
 // /methodology removed (long-form essay had no traffic and the Carbon
@@ -96,22 +93,7 @@ const router = createBrowserRouter([
         path: "",
         element: <Home />,
       },
-      // /wallet route — hidden when HIDE_CREDIT_UI=true (greentokey BYOK has
-      // no internal credit/quota model). Direct access to /wallet falls through
-      // to the catch-all NotFound. Restore by setting VITE_HIDE_CREDIT_UI=false.
-      ...(import.meta.env.VITE_HIDE_CREDIT_UI === "false"
-        ? [
-            {
-              id: "wallet",
-              path: "wallet",
-              element: (
-                <Suspense>
-                  <Wallet />
-                </Suspense>
-              ),
-            },
-          ]
-        : []),
+      // /wallet route removed (excise-1c-sweep — Wallet.tsx deleted)
       // {
       //   id: "log",
       //   path: "log",
@@ -503,16 +485,7 @@ const router = createBrowserRouter([
           ]),
     ],
   },
-  {
-    id: "share",
-    path: "/share/:hash",
-    element: (
-      <Suspense>
-        <Sharing />
-      </Suspense>
-    ),
-    ErrorBoundary: NotFound,
-  },
+  // /share/:hash route removed (excise-1c-sweep — Sharing.tsx deleted)
 ]);
 
 export function AuthRequired({ children }: { children: React.ReactNode }) {

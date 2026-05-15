@@ -3,12 +3,10 @@ import infoReducer from "./info";
 import globalReducer from "./globals";
 import menuReducer from "./menu";
 import authReducer from "./auth";
-import chatReducer from "./chat";
 import quotaReducer from "./quota";
 import packageReducer from "./package";
 import subscriptionReducer from "./subscription";
 import apiReducer from "./api";
-import sharingReducer from "./sharing";
 import settingsReducer from "./settings";
 import recordReducer from "./record";
 import avatarReducer from "./avatar";
@@ -20,12 +18,10 @@ const store = configureStore({
     global: globalReducer,
     menu: menuReducer,
     auth: authReducer,
-    chat: chatReducer,
     quota: quotaReducer,
     package: packageReducer,
     subscription: subscriptionReducer,
     api: apiReducer,
-    sharing: sharingReducer,
     settings: settingsReducer,
     record: recordReducer,
     avatar: avatarReducer,

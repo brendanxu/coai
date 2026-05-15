@@ -15,8 +15,6 @@ import router from "@/router.tsx";
 import { HIDE_CREDIT_UI } from "@/conf/env.ts";
 import Emoji from "../Emoji";
 import { cn } from "../ui/lib/utils";
-import ModelAvatar from "../ModelAvatar";
-import { selectSupportModels } from "@/store/chat";
 
 type QuotaExceededFormProps = {
   model: string;
@@ -32,8 +30,6 @@ function QuotaExceededForm({
   plan,
 }: QuotaExceededFormProps) {
   const { t } = useTranslation();
-  const supportModels = useSelector(selectSupportModels);
-  const modelInfo = supportModels.find((m) => m.id === model);
 
   return (
     <div className={`flex flex-col items-center pt-4 pb-1`}>
@@ -52,16 +48,7 @@ function QuotaExceededForm({
           {t("model")}
           <div className={`grow`} />
           <div className={`!mb-0 flex flex-row items-center space-x-1`}>
-            <ModelAvatar
-              size={24}
-              model={
-                modelInfo ?? {
-                  id: model,
-                  name: model,
-                }
-              }
-            />
-            <p className={`!mb-0`}>{modelInfo?.name ?? model}</p>
+            <p className={`!mb-0`}>{model}</p>
           </div>
         </div>
         <div

@@ -118,6 +118,24 @@ export type RedeemGenerateResponse = {
   message: string;
 };
 
+// Subscription plan types (moved from api/types.tsx — excise-1c-sweep)
+export type PlanItem = {
+  id: string;
+  name: string;
+  value: number;
+  icon: string;
+  models: string[];
+};
+
+export type Plan = {
+  level: number;
+  price: number;
+  items: PlanItem[];
+  discounts?: Record<string, number>;
+};
+
+export type Plans = Plan[];
+
 export type UserData = {
   id: number;
   username: string;

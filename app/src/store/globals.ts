@@ -1,8 +1,25 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { Plans } from "@/api/types.tsx";
+import { Plans } from "@/admin/types.ts";
 import { AppDispatch, RootState } from "@/store/index.ts";
-import { getOfflinePlans, setOfflinePlans } from "@/conf/storage.ts";
 import { getTheme, Theme } from "@/components/ThemeProvider.tsx";
+import { getMemory, setMemory } from "@/utils/memory.ts";
+
+// Inlined from conf/storage.ts (excise-1c-sweep — storage.ts deleted)
+function getOfflinePlans(): Plans {
+  const memory = getMemory("plan_offline");
+  if (!memory || !memory.length) return [];
+  try {
+    const parsed = JSON.parse(memory);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => typeof item === "object");
+  } catch {
+    return [];
+  }
+}
+
+function setOfflinePlans(plans: Plans): void {
+  setMemory("plan_offline", JSON.stringify(plans));
+}
 
 type GlobalState = {
   theme: Theme;
