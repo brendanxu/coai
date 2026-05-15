@@ -57,10 +57,6 @@ type SubscriptionOperationForm struct {
 	Expired string `json:"expired" binding:"required"`
 }
 
-type ReleaseUsageForm struct {
-	Id int64 `json:"id" binding:"required"`
-}
-
 type UpdateRootPasswordForm struct {
 	Password string `json:"password" binding:"required"`
 }
@@ -350,33 +346,6 @@ func UserSubscriptionAPI(c *gin.Context) {
 	}
 
 	if err := subscriptionMigration(db, form.Id, form.Expired); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  false,
-			"message": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": true,
-	})
-}
-
-func ReleaseUsageAPI(c *gin.Context) {
-	db := utils.GetDBFromContext(c)
-	cache := utils.GetCacheFromContext(c)
-
-	var form ReleaseUsageForm
-	if err := c.ShouldBindJSON(&form); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  false,
-			"message": err.Error(),
-		})
-		return
-	}
-
-	err := releaseUsage(db, cache, form.Id)
-	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  false,
 			"message": err.Error(),

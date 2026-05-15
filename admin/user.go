@@ -201,22 +201,6 @@ func subscriptionMigration(db *sql.DB, id int64, expired string) error {
 	return err
 }
 
-func releaseUsage(db *sql.DB, cache *redis.Client, id int64) error {
-	var level sql.NullInt64
-	if err := globals.QueryRowDb(db, `
-		SELECT level FROM subscription WHERE user_id = ?
-	`, id).Scan(&level); err != nil {
-		return err
-	}
-
-	if !level.Valid || level.Int64 == 0 {
-		return fmt.Errorf("user is not subscribed")
-	}
-
-	_ = cache // legacy plan release removed (EXCISE-3)
-	return nil
-}
-
 func UpdateRootPassword(db *sql.DB, cache *redis.Client, password string) error {
 	password = strings.TrimSpace(password)
 	if len(password) < 6 || len(password) > 36 {
