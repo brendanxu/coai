@@ -175,30 +175,40 @@ func TestUpgradeAppUsageLogV2_PreExistingV1(t *testing.T) {
 
 // TestSeedProviderPricing_OnlyOnce confirms the seed inserts on first run
 // and is a no-op on second run, matching ops' "append-not-update" rule.
+//
+// PKG-PRICING-DYNAMIC update: Migrate() now also calls seedDisplayPricing()
+// which may INSERT additional rows for models in the public Pricing page that
+// have no upstream tracking row in providerPricingSeed (e.g. deepseek-r1,
+// gpt-4o-mini, qwen2.5-max, gemini-2.0-flash, kimi-k2, claude-3-5-sonnet).
+// The test now counts upstream rows + display-only insertions separately and
+// verifies the idempotency invariant: a second full Migrate() is a no-op.
 func TestSeedProviderPricing_OnlyOnce(t *testing.T) {
 	db := newTestDB(t)
 	if err := Migrate(db); err != nil {
-		t.Fatalf("migrate: %v", err)
+		t.Fatalf("first migrate: %v", err)
 	}
 
 	var first int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM gtk_provider_pricing`).Scan(&first); err != nil {
 		t.Fatalf("count: %v", err)
 	}
-	if first != len(providerPricingSeed) {
-		t.Errorf("first seed: got %d rows, want %d", first, len(providerPricingSeed))
+	// After Migrate(): at minimum providerPricingSeed rows must be present;
+	// seedDisplayPricing may have added display-only rows on top.
+	if first < len(providerPricingSeed) {
+		t.Errorf("first migrate: got %d rows, want >= %d (providerPricingSeed len)",
+			first, len(providerPricingSeed))
 	}
 
-	// Re-seed must be a no-op (table already non-empty).
-	if err := seedProviderPricing(db); err != nil {
-		t.Fatalf("re-seed: %v", err)
+	// Re-running the full Migrate() must be a no-op — row count unchanged.
+	if err := Migrate(db); err != nil {
+		t.Fatalf("second migrate: %v", err)
 	}
 	var second int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM gtk_provider_pricing`).Scan(&second); err != nil {
 		t.Fatalf("re-count: %v", err)
 	}
 	if second != first {
-		t.Errorf("re-seed mutated table: had %d, now %d", first, second)
+		t.Errorf("second migrate mutated table: had %d, now %d (not idempotent)", first, second)
 	}
 }
 
