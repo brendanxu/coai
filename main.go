@@ -1,8 +1,6 @@
 package main
 
 import (
-	"chat/adapter"
-	"chat/addition"
 	"chat/admin"
 	"chat/auth"
 	"chat/billing"
@@ -13,8 +11,6 @@ import (
 	"chat/connection"
 	"chat/globals"
 	"chat/lead"
-	"chat/manager"
-	"chat/manager/conversation"
 	"chat/middleware"
 	"chat/newapi"
 	"chat/payment"
@@ -93,10 +89,6 @@ func registerApiRouter(engine *gin.Engine) {
 	{
 		auth.Register(app)
 		admin.Register(app)
-		adapter.Register(app)
-		manager.Register(app)
-		addition.Register(app)
-		conversation.Register(app)
 		payment.Register(app)
 		// v0.6 carbon routes
 		carbon.Register(app)
