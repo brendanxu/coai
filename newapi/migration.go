@@ -22,10 +22,12 @@
 package newapi
 
 import (
+	"chat/crypto"
 	"chat/globals"
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 )
 
 // Migrate creates gtk_newapi_binding + gtk_newapi_pending_provisions. Idempotent.
@@ -93,6 +95,13 @@ func migrateBinding(db *sql.DB) error {
 	if err := addColumnIfMissing(db, "gtk_newapi_binding", "newapi_group",
 		"VARCHAR(64) NOT NULL DEFAULT 'default' AFTER newapi_token_key"); err != nil {
 		return fmt.Errorf("add newapi_group: %w", err)
+	}
+	// PKG-M6: widen newapi_token_key VARCHAR(64) → VARCHAR(255) to hold
+	// base64-encoded AES-256-GCM envelopes (~120 chars vs 51-char plaintext).
+	// Idempotent: modifyColumnWidth is a no-op if already VARCHAR(255).
+	if err := modifyColumnWidth(db, "gtk_newapi_binding", "newapi_token_key",
+		"VARCHAR(255) NOT NULL"); err != nil {
+		return fmt.Errorf("widen newapi_token_key: %w", err)
 	}
 	return nil
 }
@@ -190,6 +199,12 @@ type Binding struct {
 
 // LoadBinding fetches the binding for a greentokey user. Returns
 // (nil, sql.ErrNoRows) when the user has never been provisioned.
+//
+// PKG-M6: if KEK_BASE64 is set and the stored value is an envelope,
+// the token is decrypted before returning. Legacy plaintext rows are
+// returned as-is (backward compat). If decryption fails (wrong KEK /
+// tampered ciphertext), an error is returned — callers should treat
+// this as a missing binding and force re-provision.
 func LoadBinding(db *sql.DB, coaiUserID int64) (*Binding, error) {
 	var b Binding
 	err := db.QueryRow(`
@@ -203,6 +218,26 @@ func LoadBinding(db *sql.DB, coaiUserID int64) (*Binding, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// PKG-M6: decrypt if envelope detected.
+	if crypto.IsEncryptedEnvelope(b.NewapiTokenKey) {
+		kek, kekErr := crypto.LoadKEK()
+		if kekErr != nil {
+			return nil, fmt.Errorf("newapi: LoadBinding: load KEK: %w", kekErr)
+		}
+		if kek == nil {
+			// KEK absent but envelope present — log and return error; token is
+			// unreadable without the key. Caller must re-provision.
+			log.Printf("[newapi] LoadBinding user=%d: encrypted envelope found but KEK_BASE64 not set", coaiUserID)
+			return nil, fmt.Errorf("newapi: LoadBinding: token is encrypted but KEK_BASE64 is not set")
+		}
+		plain, decErr := crypto.DecryptToken(kek, b.NewapiTokenKey)
+		if decErr != nil {
+			return nil, fmt.Errorf("newapi: LoadBinding: decrypt token: %w", decErr)
+		}
+		b.NewapiTokenKey = plain
+	}
+	// Legacy plaintext rows pass through unchanged.
 	return &b, nil
 }
 
@@ -212,11 +247,30 @@ func LoadBinding(db *sql.DB, coaiUserID int64) (*Binding, error) {
 // Group normalization: empty Group → "default" before write, so the DB
 // never holds an empty string here even if older callers (pre-CR8)
 // forget to set it.
+//
+// PKG-M6: if KEK_BASE64 is set, the token is envelope-encrypted before
+// writing. If KEK is absent, token is stored as plaintext (backward
+// compat for dev / pre-KEK prod).
 func SaveBinding(db *sql.DB, b *Binding) error {
 	group := b.Group
 	if group == "" {
 		group = "default"
 	}
+
+	// PKG-M6: encrypt token if KEK is present.
+	tokenVal := b.NewapiTokenKey
+	kek, kekErr := crypto.LoadKEK()
+	if kekErr != nil {
+		return fmt.Errorf("newapi: SaveBinding: load KEK: %w", kekErr)
+	}
+	if kek != nil {
+		envelope, encErr := crypto.EncryptToken(kek, b.NewapiTokenKey)
+		if encErr != nil {
+			return fmt.Errorf("newapi: SaveBinding: encrypt token: %w", encErr)
+		}
+		tokenVal = envelope
+	}
+
 	if globals.SqliteEngine {
 		_, err := globals.ExecDb(db, `
 			INSERT INTO gtk_newapi_binding
@@ -229,7 +283,7 @@ func SaveBinding(db *sql.DB, b *Binding) error {
 			    newapi_group     = excluded.newapi_group,
 			    last_known_quota = excluded.last_known_quota,
 			    updated_at       = CURRENT_TIMESTAMP
-		`, b.CoaiUserID, b.NewapiUserID, b.NewapiTokenID, b.NewapiTokenKey, group, b.LastKnownQuota)
+		`, b.CoaiUserID, b.NewapiUserID, b.NewapiTokenID, tokenVal, group, b.LastKnownQuota)
 		return err
 	}
 	_, err := globals.ExecDb(db, `
@@ -243,7 +297,7 @@ func SaveBinding(db *sql.DB, b *Binding) error {
 		    newapi_group     = VALUES(newapi_group),
 		    last_known_quota = VALUES(last_known_quota),
 		    updated_at       = CURRENT_TIMESTAMP
-	`, b.CoaiUserID, b.NewapiUserID, b.NewapiTokenID, b.NewapiTokenKey, group, b.LastKnownQuota)
+	`, b.CoaiUserID, b.NewapiUserID, b.NewapiTokenID, tokenVal, group, b.LastKnownQuota)
 	return err
 }
 
@@ -270,6 +324,21 @@ func addColumnIfMissing(db *sql.DB, table, column, columnDef string) error {
 	}
 	_, err := globals.ExecDb(db, fmt.Sprintf(
 		"ALTER TABLE %s ADD COLUMN %s %s", table, column, columnDef))
+	return err
+}
+
+// modifyColumnWidth runs ALTER TABLE ... MODIFY COLUMN to widen a column.
+// Idempotent for MySQL: MODIFY is always applied (MySQL is tolerant of
+// no-op width changes). SQLite skips (TEXT columns have no length limit).
+//
+// PKG-M6: used to widen newapi_token_key VARCHAR(64) → VARCHAR(255) to
+// accommodate base64-encoded AES-256-GCM envelopes (~120 chars).
+func modifyColumnWidth(db *sql.DB, table, column, columnDef string) error {
+	if globals.SqliteEngine {
+		return nil // SQLite TEXT has no length; no-op
+	}
+	_, err := globals.ExecDb(db, fmt.Sprintf(
+		"ALTER TABLE %s MODIFY COLUMN %s %s", table, column, columnDef))
 	return err
 }
 
