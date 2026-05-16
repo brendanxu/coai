@@ -528,7 +528,7 @@ type usageLogV2Column struct {
 
 var usageLogV2Columns = []usageLogV2Column{
 	{"model_id", "VARCHAR(80) NOT NULL DEFAULT ''", "TEXT NOT NULL DEFAULT ''"},
-	{"provider", "VARCHAR(40) NOT NULL DEFAULT ''", "TEXT NOT NULL DEFAULT ''"},
+	{"provider", "VARCHAR(40) NULL", "TEXT NULL"},
 	{"input_tokens", "INT NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
 	{"output_tokens", "INT NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
 	{"cache_write_tokens", "INT NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
