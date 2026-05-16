@@ -38,6 +38,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 )
 
 // handleServiceEvent dispatches the LS event family for service-order
@@ -66,12 +67,9 @@ func handleServiceEvent(db *sql.DB, p *webhookPayload, orderNo string) error {
 		return nil
 
 	case eventSubPayment:
-		// TODO v0.11: create new gtk_service_order row for this month of
-		// the existing subscription, flip to paid.
-		logf(globals.Info, "service_order_monthly_renewal_deferred",
-			"order_no", orderNo, "ls_subscription_id", p.Data.ID,
-			"todo", "v0.11 cron creates new monthly order row")
-		return nil
+		// PKG-M1-①: subscription_payment_success on a service subscription.
+		// Create a new gtk_service_order row for the next billing cycle.
+		return handleServiceRenewal(db, p, orderNo)
 
 	default:
 		logf(globals.Info, "service_order_event_acked",
@@ -160,6 +158,119 @@ func sessionIDFromCustomData(custom map[string]interface{}) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+// handleServiceRenewal handles subscription_payment_success for service-order
+// subscriptions. It creates a new gtk_service_order row per billing cycle so
+// each renewal period has its own audit row.
+//
+// First-month-vs-renewal detection: looks up the most recent gtk_service_order
+// for this subscription_id. If created_at < 24h ago → initial order_created
+// already covered it → skip. Month 2+ rows are older → create new order.
+//
+// The new order copies service_id, service_slug, and price_cny_cents_paid from
+// the most-recent order for this subscription (stable; ops edits the catalog
+// row, not historical orders). status is set directly to 'paid' because LS has
+// already collected the money before firing this event.
+//
+// Dedup: ls_order_id on gtk_service_order is UNIQUE. We use
+// "renew-" + ls_subscription_id + "-" + renews_at_date (YYYY-MM-DD) as the
+// stable-per-cycle ls_order_id. order_no is freshly generated (SVC-XXXXXXXX).
+// The outer gtk_webhook_event SHA256 provides a second dedup layer.
+func handleServiceRenewal(db *sql.DB, p *webhookPayload, origOrderNo string) error {
+	lsSubID := p.Data.ID // LS subscription id string
+
+	// Look up subscription_id from the original order (populated at first
+	// payment by handleServiceOrderPaid or set by the subscription FK).
+	// Fall back to lsSubID string comparison if no numeric id is stored yet.
+	var (
+		latestCreatedAt  sql.NullString
+		latestServiceID  int64
+		latestSlug       string
+		latestPriceCents int64
+		latestSubID      sql.NullString
+	)
+	err := db.QueryRow(`
+		SELECT created_at, service_id, service_slug, price_cny_cents_paid,
+		       CAST(subscription_id AS TEXT)
+		FROM gtk_service_order
+		WHERE subscription_id = ? OR order_no = ?
+		ORDER BY id DESC LIMIT 1
+	`, lsSubID, origOrderNo).Scan(
+		&latestCreatedAt, &latestServiceID, &latestSlug,
+		&latestPriceCents, &latestSubID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			logf(globals.Warn, "service_renewal_no_prior_order",
+				"ls_subscription_id", lsSubID, "orig_order_no", origOrderNo)
+			return nil // nothing to renew against
+		}
+		return fmt.Errorf("service_renewal: lookup latest order: %w", err)
+	}
+
+	// First-month detection: if the latest order was created within 24h, skip.
+	if latestCreatedAt.Valid {
+		var parsed time.Time
+		for _, layout := range []string{"2006-01-02 15:04:05", time.RFC3339} {
+			if t, e := time.Parse(layout, latestCreatedAt.String); e == nil {
+				parsed = t
+				break
+			}
+		}
+		if !parsed.IsZero() && time.Since(parsed) < 24*time.Hour {
+			logf(globals.Info, "service_renewal_skipped_first_month",
+				"ls_subscription_id", lsSubID, "orig_order_no", origOrderNo,
+				"latest_created_at", latestCreatedAt.String)
+			return nil
+		}
+	}
+
+	// Build a stable, cycle-unique ls_order_id for the new service order row.
+	renewsAt := p.Data.Attributes.RenewsAt
+	renewsDate := renewsAt
+	if len(renewsAt) >= 10 {
+		renewsDate = renewsAt[:10]
+	}
+	renewalLsOrderID := fmt.Sprintf("renew-%s-%s", lsSubID, renewsDate)
+	newOrderNo := service.NewOrderNo()
+
+	// Insert the new renewal order row. Status='paid' because LS already
+	// collected the money. Idempotent via UNIQUE(ls_order_id): a second call
+	// with the same renewalLsOrderID is caught by isDupErr → log + no-op.
+	_, err = globals.ExecDb(db, `
+		INSERT INTO gtk_service_order
+		  (order_no, coai_user_id, service_id, service_slug,
+		   price_cny_cents_paid, payment_provider, subscription_id,
+		   ls_order_id, status, paid_at)
+		SELECT ?, coai_user_id, ?, ?, ?,
+		       'lemonsqueezy', ?,
+		       ?, 'paid', CURRENT_TIMESTAMP
+		FROM gtk_service_order WHERE order_no = ? LIMIT 1
+	`, newOrderNo, latestServiceID, latestSlug, latestPriceCents,
+		lsSubID, renewalLsOrderID, origOrderNo)
+	if err != nil {
+		if isDupErr(err) {
+			logf(globals.Info, "service_renewal_idempotent",
+				"ls_order_id", renewalLsOrderID, "orig_order_no", origOrderNo)
+			return nil
+		}
+		return fmt.Errorf("service_renewal: insert order: %w", err)
+	}
+
+	// Back-fill subscription_id on the original order row if it was NULL
+	// (pre-PKG-M1 orders don't have it set).
+	if _, err := globals.ExecDb(db, `
+		UPDATE gtk_service_order SET subscription_id = ?
+		WHERE order_no = ? AND subscription_id IS NULL
+	`, lsSubID, origOrderNo); err != nil {
+		logf(globals.Warn, "service_renewal_backfill_failed",
+			"orig_order_no", origOrderNo, "err", err)
+	}
+
+	logf(globals.Info, "service_renewal_created",
+		"ls_subscription_id", lsSubID, "new_order_no", newOrderNo,
+		"orig_order_no", origOrderNo, "ls_order_id", renewalLsOrderID)
+	return nil
 }
 
 // RefundServiceOrder is the public refund entry point for service-order

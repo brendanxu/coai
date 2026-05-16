@@ -284,6 +284,102 @@ func TestSessionIDFromCustomData_Absent(t *testing.T) {
 	}
 }
 
+// --- PKG-M1-① service renewal tests (TDD: written before implementation) ----
+
+// TestHandleServiceSubPayment_Renewal verifies that subscription_payment_success
+// creates a new gtk_service_order row when the latest order for this subscription
+// is older than 24h (month 2+).
+func TestHandleServiceSubPayment_Renewal(t *testing.T) {
+	db := newServiceTestEngine(t)
+	const (
+		origOrderNo = "SVC-ORIG-0001"
+		lsSubID     = "ls-svc-sub-2"
+	)
+
+	// Seed the original (month 1) order with subscription_id set and paid.
+	// Simulate 31 days old via created_at.
+	if _, err := globals.ExecDb(db, `
+		INSERT INTO gtk_service_order
+		  (order_no, coai_user_id, service_id, service_slug,
+		   price_cny_cents_paid, payment_provider, subscription_id,
+		   ls_order_id, status, paid_at, created_at)
+		VALUES (?, 1, 1, 'svc-stub', 198000, 'lemonsqueezy', ?,
+		        'ls-order-orig', 'paid', datetime('now','-31 days'),
+		        datetime('now','-31 days'))
+	`, origOrderNo, lsSubID); err != nil {
+		t.Fatalf("seed original order: %v", err)
+	}
+
+	p := makeServicePayload(eventSubPayment, lsSubID, origOrderNo, "")
+	if err := handleServiceEvent(db, p, origOrderNo); err != nil {
+		t.Fatalf("handleServiceEvent(renewal): %v", err)
+	}
+
+	// Two rows should now exist for this subscription_id.
+	var count int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM gtk_service_order WHERE subscription_id = ?`, lsSubID,
+	).Scan(&count); err != nil {
+		t.Fatalf("count gtk_service_order: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("gtk_service_order rows for sub=%q: got %d want 2 (orig + renewal)", lsSubID, count)
+	}
+
+	// Newest row must be status='paid' with a distinct order_no.
+	var newStatus, newOrderNo string
+	if err := db.QueryRow(`
+		SELECT status, order_no FROM gtk_service_order
+		WHERE subscription_id = ? ORDER BY id DESC LIMIT 1
+	`, lsSubID).Scan(&newStatus, &newOrderNo); err != nil {
+		t.Fatalf("read newest order: %v", err)
+	}
+	if newStatus != "paid" {
+		t.Errorf("renewal order status=%q want paid", newStatus)
+	}
+	if newOrderNo == origOrderNo {
+		t.Errorf("renewal order_no=%q same as original; expected fresh SVC-XXXXXXXX", newOrderNo)
+	}
+}
+
+// TestHandleServiceSubPayment_FirstMonth_Skips verifies no new order is created
+// when the most recent order for this subscription is <24h old.
+func TestHandleServiceSubPayment_FirstMonth_Skips(t *testing.T) {
+	db := newServiceTestEngine(t)
+	const (
+		origOrderNo = "SVC-FRESH-0001"
+		lsSubID     = "ls-svc-fresh-1"
+	)
+
+	// Seed a fresh order (NOW, within 24h window).
+	if _, err := globals.ExecDb(db, `
+		INSERT INTO gtk_service_order
+		  (order_no, coai_user_id, service_id, service_slug,
+		   price_cny_cents_paid, payment_provider, subscription_id,
+		   ls_order_id, status, paid_at)
+		VALUES (?, 1, 1, 'svc-stub', 198000, 'lemonsqueezy', ?,
+		        'ls-order-fresh', 'paid', datetime('now'))
+	`, origOrderNo, lsSubID); err != nil {
+		t.Fatalf("seed fresh order: %v", err)
+	}
+
+	p := makeServicePayload(eventSubPayment, lsSubID, origOrderNo, "")
+	if err := handleServiceEvent(db, p, origOrderNo); err != nil {
+		t.Fatalf("handleServiceEvent(fresh): %v", err)
+	}
+
+	// Must still be exactly 1 row — renewal was skipped.
+	var count int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM gtk_service_order WHERE subscription_id = ?`, lsSubID,
+	).Scan(&count); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 row (skip), got %d", count)
+	}
+}
+
 // --- routing smoke: dispatch() routes to service when greentokey_order_no set --
 
 func TestDispatch_RoutesToServiceWhenOrderNoPresent(t *testing.T) {
