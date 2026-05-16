@@ -46,6 +46,7 @@ type UserPlan struct {
 	ID                 int64
 	UserID             int64
 	PlanID             int64
+	SubscriptionID     sql.NullInt64  // LS subscription id for renewal chain (PKG-M1-①)
 	ProductType        string         // 'token' | 'service' — inherited from Plan
 	Status             string         // 'active' | 'expired' | 'canceled'
 	CancellationReason sql.NullString // free-text reason when status != 'active'

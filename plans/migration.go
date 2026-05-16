@@ -59,6 +59,9 @@ func Migrate(db *sql.DB) error {
 	if err := alterUserPlanForProductType(db); err != nil {
 		return fmt.Errorf("alter gtk_user_plan for product_type: %w", err)
 	}
+	if err := alterUserPlanForSubscriptionID(db); err != nil {
+		return fmt.Errorf("alter gtk_user_plan for subscription_id: %w", err)
+	}
 	if err := createAppUsageLogTable(db); err != nil {
 		return fmt.Errorf("create gtk_app_usage_log: %w", err)
 	}
@@ -223,6 +226,32 @@ func alterUserPlanForProductType(db *sql.DB) error {
 	return nil
 }
 
+// alterUserPlanForSubscriptionID adds the nullable subscription_id column to
+// gtk_user_plan so renewal handlers can look up "all gtk_user_plan rows
+// belonging to LS subscription X". Added by PKG-M1-① (2026-05-16).
+//
+// Uses a plain BIGINT (not FK) because gtk_ls_subscription.id is an
+// auto-increment INT on MySQL; an FK here would require the subscription row
+// to exist before the renewal row — but back-fill for legacy rows (NULL →
+// populated) happens in the webhook handler, not here. The INT NULL shape
+// is safe for both engines.
+//
+// The composite index (user_id, subscription_id) lets the renewal handler
+// efficiently find "most recent gtk_user_plan for this user + subscription"
+// without a full-table scan.
+func alterUserPlanForSubscriptionID(db *sql.DB) error {
+	if err := addColumnIfMissing(db, "gtk_user_plan", "subscription_id",
+		"BIGINT NULL AFTER plan_id"); err != nil {
+		return fmt.Errorf("add subscription_id: %w", err)
+	}
+	if err := addIndexIfMissing(db, "gtk_user_plan",
+		"idx_gtk_user_plan_sub",
+		"(user_id, subscription_id)"); err != nil {
+		return fmt.Errorf("add idx_gtk_user_plan_sub: %w", err)
+	}
+	return nil
+}
+
 func alterAppUsageLogForAttribution(db *sql.DB) error {
 	if err := addColumnIfMissing(db, "gtk_app_usage_log", "source",
 		"ENUM('chat','api','service_order','admin_test') NOT NULL DEFAULT 'chat' AFTER service"); err != nil {
@@ -353,6 +382,7 @@ func createUserPlanTable(db *sql.DB) error {
 			  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
 			  user_id             INTEGER NOT NULL,
 			  plan_id             INTEGER NOT NULL,
+			  subscription_id     INTEGER,
 			  product_type        TEXT    NOT NULL DEFAULT 'token'
 			                       CHECK (product_type IN ('token','service')),
 			  status              TEXT    NOT NULL DEFAULT 'active'
