@@ -229,13 +229,18 @@ func seedAgent(db *sql.DB, a SeedAgent) error {
 	}
 	// Upgrade in place. Preserve the row id (and any FK relationships
 	// pointing at it).
+	// Operator-mutable fields (name, preferred_model) are NOT touched:
+	// once an operator has customised these via SQL or admin UI their
+	// edits win. We only update system-managed fields (system_prompt,
+	// inputs_schema, status, version) so the prompt + schema stay in
+	// sync with the binary without clobbering human overrides.
 	_, err := globals.ExecDb(db, `
 		UPDATE gtk_agent
-		SET name = ?, description = ?, system_prompt = ?,
-		    preferred_model = ?, min_tier = ?, inputs_schema = ?,
+		SET description = ?, system_prompt = ?,
+		    min_tier = ?, inputs_schema = ?,
 		    status = ?, version = ?
 		WHERE slug = ?
-	`, a.Name, a.Description, a.SystemPrompt, a.PreferredModel,
+	`, a.Description, a.SystemPrompt,
 		a.MinTier, nullableString(a.InputsSchema), a.Status, a.Version, a.Slug)
 	if err != nil {
 		return fmt.Errorf("upgrade agent %s v%d→v%d: %w",
