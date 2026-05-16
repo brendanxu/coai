@@ -49,6 +49,7 @@
 package payment
 
 import (
+	"chat/auth"
 	"chat/commerce"
 	"chat/globals"
 	"chat/newapi"
@@ -77,6 +78,11 @@ func handleTokenPlanEvent(db *sql.DB, p *webhookPayload) error {
 		// Log only; LS handles dunning. User keeps access until subscription_cancelled fires.
 		logf(globals.Warn, "payment_failed", "ls_subscription_id", p.Data.ID)
 		return nil
+	case eventSubPayment:
+		// PKG-M1-①: subscription_payment_success fires on every renewal cycle
+		// (month 2, month 3, …). Create a new gtk_user_plan row so the user's
+		// credit quota is topped up for the new period.
+		return handleTokenRenewal(db, p)
 	default:
 		// Unknown event_name. Ack with 200 (don't 4xx — LS would mark endpoint broken).
 		logf(globals.Info, "unknown_event", "event_type", p.Meta.EventName)
@@ -234,6 +240,108 @@ func activateExternalSubscription(db *sql.DB, userID int64, level int, expiredAt
 		 WHERE user_id = ? AND (expired_at IS NULL OR expired_at <= ?)`,
 		date, level, userID, date)
 	return err
+}
+
+// handleTokenRenewal handles subscription_payment_success for the legacy
+// levelStarter subscription path (no plan_code in custom_data). It creates a
+// new gtk_user_plan row per renewal cycle so the user's quota is topped up.
+//
+// First-month-vs-renewal detection: LS fires subscription_payment_success
+// alongside order_created + subscription_created on the very first purchase
+// (BL-01 multi-fire pattern). To avoid a double-grant on month 1, we look up
+// the most recent gtk_user_plan for this subscription; if it was purchased
+// within the last 24h, the initial order_created handler already covered it
+// and we skip. Month 2+ rows are older than 24h → create new renewal row.
+//
+// Dedup key for the new gtk_user_plan row:
+//   "renew-" + ls_subscription_id + "-" + renews_at_date (YYYY-MM-DD)
+// This is stable across LS retries of the same webhook (same renews_at) and
+// unique per billing cycle (renews_at advances monthly). The outer
+// gtk_webhook_event SHA256 provides a second dedup layer.
+//
+// Back-fill: existing gtk_user_plan rows with NULL subscription_id but
+// matching (user_id, plan_code='token-99') get back-filled on first renewal.
+// This covers purchases made before PKG-M1-① deployed.
+func handleTokenRenewal(db *sql.DB, p *webhookPayload) error {
+	userID, err := userIDFromCustomData(p.Meta.CustomData)
+	if err != nil {
+		return fmt.Errorf("token_renewal: user_id: %w", err)
+	}
+	lsSubID := p.Data.ID // LS subscription id (string, e.g. "123456")
+
+	// Look up the most recent gtk_user_plan row for this subscription.
+	// NULL subscription_id rows may exist for pre-PKG-M1 purchases — we join
+	// on user_id as a fallback so back-fill can happen.
+	var latestPurchasedAt sql.NullString
+	var latestID int64
+	err = db.QueryRow(`
+		SELECT id, purchased_at FROM gtk_user_plan
+		WHERE subscription_id = ? AND user_id = ?
+		ORDER BY id DESC LIMIT 1
+	`, lsSubID, userID).Scan(&latestID, &latestPurchasedAt)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("token_renewal: lookup latest row: %w", err)
+	}
+
+	if latestPurchasedAt.Valid {
+		// Parse the purchased_at timestamp. Both SQLite ("2006-01-02 15:04:05")
+		// and MySQL ("2006-01-02T15:04:05Z") formats are tried.
+		var parsed time.Time
+		for _, layout := range []string{"2006-01-02 15:04:05", time.RFC3339} {
+			if t, e := time.Parse(layout, latestPurchasedAt.String); e == nil {
+				parsed = t
+				break
+			}
+		}
+		if !parsed.IsZero() && time.Since(parsed) < 24*time.Hour {
+			// Most recent row is <24h old → initial purchase already handled.
+			logf(globals.Info, "token_renewal_skipped_first_month",
+				"ls_subscription_id", lsSubID, "user_id", userID,
+				"latest_purchased_at", latestPurchasedAt.String)
+			return nil
+		}
+	}
+
+	// Build a stable, cycle-unique order_id for the new gtk_user_plan row.
+	renewsAt := p.Data.Attributes.RenewsAt
+	renewsDate := renewsAt
+	if len(renewsAt) >= 10 {
+		renewsDate = renewsAt[:10] // YYYY-MM-DD
+	}
+	renewalOrderID := fmt.Sprintf("renew-%s-%s", lsSubID, renewsDate)
+
+	// auth.RedeemPlanForOrder inserts gtk_user_plan + tops up quota.
+	// It is idempotent on order_id: a second call with the same renewalOrderID
+	// is a no-op, which protects against LS retry storms.
+	if err := auth.RedeemPlanForOrder(db, userID, "token-99", renewalOrderID); err != nil {
+		return fmt.Errorf("token_renewal: redeem: %w", err)
+	}
+
+	// Stamp subscription_id on the freshly created row.
+	if _, err := globals.ExecDb(db, `
+		UPDATE gtk_user_plan SET subscription_id = ?
+		WHERE order_id = ? AND subscription_id IS NULL
+	`, lsSubID, renewalOrderID); err != nil {
+		// Non-fatal: the row was created; subscription_id is for query
+		// efficiency, not correctness. Log and continue.
+		logf(globals.Warn, "token_renewal_sub_id_stamp_failed",
+			"order_id", renewalOrderID, "err", err)
+	}
+
+	// Back-fill subscription_id on legacy NULL rows for this user so future
+	// renewals can find them via the subscription_id index.
+	if _, err := globals.ExecDb(db, `
+		UPDATE gtk_user_plan SET subscription_id = ?
+		WHERE user_id = ? AND subscription_id IS NULL AND product_type = 'token'
+	`, lsSubID, userID); err != nil {
+		logf(globals.Warn, "token_renewal_backfill_failed",
+			"ls_subscription_id", lsSubID, "user_id", userID, "err", err)
+	}
+
+	logf(globals.Info, "token_renewal_created",
+		"ls_subscription_id", lsSubID, "user_id", userID,
+		"renewal_order_id", renewalOrderID)
+	return nil
 }
 
 // RefundTokenPlan is the public refund entry point for token plans.

@@ -307,6 +307,155 @@ func TestWebhook_OutOfOrderExpired_NoRegression(t *testing.T) {
 	}
 }
 
+// newTokenRenewalTestEngine extends newTokenTestEngine with the quota table
+// that auth.RedeemPlanForOrder writes to. Renewal tests need this because
+// handleTokenPlanEvent(subscription_payment_success) calls RedeemPlanForOrder
+// under the hood.
+func newTokenRenewalTestEngine(t *testing.T) *sql.DB {
+	t.Helper()
+	db := newTokenTestEngine(t)
+
+	// quota table (mirrors auth/recharge_test.go seedRechargeSchema).
+	if _, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS quota (
+		  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+		  user_id INTEGER UNIQUE,
+		  quota   REAL,
+		  used    REAL,
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+	`); err != nil {
+		t.Fatalf("seed quota: %v", err)
+	}
+	return db
+}
+
+// seedRenewalPlan inserts a minimal active token plan the renewal handler can
+// look up. plan_id=888 avoids collisions with other test seeds.
+func seedRenewalPlan(t *testing.T, db *sql.DB) {
+	t.Helper()
+	if _, err := globals.ExecDb(db, `
+		INSERT OR IGNORE INTO gtk_plan
+		  (id, code, name, type, product_type, billing_mode,
+		   price_cents, duration_days, quota_grant, quota_config, is_active)
+		VALUES (888, 'token-99', 'Token ¥99', 'subscription', 'token',
+		        'subscription', 9900, 30, 5000,
+		        '{"quota":5000}', 1)
+	`); err != nil {
+		t.Fatalf("seed gtk_plan: %v", err)
+	}
+}
+
+// seedUserPlanWithSub inserts a gtk_user_plan row for user 42, bound to the
+// given subscription_id. purchasedDaysAgo controls how old the row is so
+// tests can simulate "just bought" vs "month-old" scenarios.
+func seedUserPlanWithSub(t *testing.T, db *sql.DB, orderID, lsSubID string, purchasedDaysAgo int) {
+	t.Helper()
+	purchasedAt := time.Now().UTC().AddDate(0, 0, -purchasedDaysAgo)
+	if _, err := globals.ExecDb(db, `
+		INSERT INTO gtk_user_plan
+		  (user_id, plan_id, subscription_id, product_type, status,
+		   expire_at, order_id, purchased_at)
+		VALUES (42, 888, ?, 'token', 'active',
+		        datetime('now', '+30 days'), ?, ?)
+	`, lsSubID, orderID, purchasedAt.Format("2006-01-02 15:04:05")); err != nil {
+		t.Fatalf("seed gtk_user_plan: %v", err)
+	}
+}
+
+// --- PKG-M1-① token renewal tests (TDD: written before implementation) ----
+
+// TestHandleTokenSubPayment_Renewal verifies that subscription_payment_success
+// on an existing subscription (latest row >24h old) creates a new gtk_user_plan
+// row with the same subscription_id and a fresh purchased_at.
+func TestHandleTokenSubPayment_Renewal(t *testing.T) {
+	db := newTokenRenewalTestEngine(t)
+	seedRenewalPlan(t, db)
+
+	const lsSubID = "ls-sub-renew-1"
+	// Pre-seed an existing gtk_user_plan row purchased 31 days ago (month 1).
+	seedUserPlanWithSub(t, db, "order-month-1", lsSubID, 31)
+
+	// Also seed gtk_ls_subscription so the handler can look up user_id.
+	if _, err := globals.ExecDb(db, `
+		INSERT INTO gtk_ls_subscription
+		  (user_id, ls_subscription_id, variant_id, status, renews_at, test_mode)
+		VALUES (42, ?, '999', 'active', datetime('now', '+30 days'), 1)
+	`, lsSubID); err != nil {
+		t.Fatalf("seed gtk_ls_subscription: %v", err)
+	}
+
+	renewsAt := time.Now().UTC().AddDate(0, 1, 0)
+	p := makeTokenPayload(eventSubPayment, lsSubID, renewsAt, "active")
+
+	if err := handleTokenPlanEvent(db, p); err != nil {
+		t.Fatalf("handleTokenPlanEvent(renewal): %v", err)
+	}
+
+	// Two rows should exist for this subscription: the seeded month-1 row + new renewal row.
+	var count int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM gtk_user_plan WHERE subscription_id = ?`, lsSubID,
+	).Scan(&count); err != nil {
+		t.Fatalf("count gtk_user_plan: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("gtk_user_plan rows for sub=%q: got %d want 2 (month-1 + renewal)", lsSubID, count)
+	}
+
+	// The newest row must have status='active' and a fresh purchased_at (within last minute).
+	var status, purchasedAt string
+	if err := db.QueryRow(`
+		SELECT status, purchased_at FROM gtk_user_plan
+		WHERE subscription_id = ? ORDER BY id DESC LIMIT 1
+	`, lsSubID).Scan(&status, &purchasedAt); err != nil {
+		t.Fatalf("read newest gtk_user_plan: %v", err)
+	}
+	if status != "active" {
+		t.Errorf("renewal row status=%q want active", status)
+	}
+}
+
+// TestHandleTokenSubPayment_FirstMonth_Skips verifies that
+// subscription_payment_success is skipped (no new row) when the most recent
+// gtk_user_plan for this subscription was purchased within the last 24h —
+// indicating the initial order_created already handled month 1.
+func TestHandleTokenSubPayment_FirstMonth_Skips(t *testing.T) {
+	db := newTokenRenewalTestEngine(t)
+	seedRenewalPlan(t, db)
+
+	const lsSubID = "ls-sub-fresh-1"
+	// Seed a row purchased NOW (0 days ago = fresh, within 24h window).
+	seedUserPlanWithSub(t, db, "order-fresh-month-1", lsSubID, 0)
+
+	if _, err := globals.ExecDb(db, `
+		INSERT INTO gtk_ls_subscription
+		  (user_id, ls_subscription_id, variant_id, status, renews_at, test_mode)
+		VALUES (42, ?, '999', 'active', datetime('now', '+30 days'), 1)
+	`, lsSubID); err != nil {
+		t.Fatalf("seed gtk_ls_subscription: %v", err)
+	}
+
+	renewsAt := time.Now().UTC().AddDate(0, 1, 0)
+	p := makeTokenPayload(eventSubPayment, lsSubID, renewsAt, "active")
+
+	if err := handleTokenPlanEvent(db, p); err != nil {
+		t.Fatalf("handleTokenPlanEvent(fresh sub): %v", err)
+	}
+
+	// Must still be exactly 1 row — renewal was skipped.
+	var count int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM gtk_user_plan WHERE subscription_id = ?`, lsSubID,
+	).Scan(&count); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 row (no new renewal), got %d", count)
+	}
+}
+
 // --- HTTP path integration: ensure the slimmed dispatch() still 200s ----
 
 func TestHandleWebhook_TokenPath_StillWorks(t *testing.T) {
