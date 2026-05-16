@@ -47,6 +47,9 @@ import (
 //   - PKG-1 ALTER passes go through the same addColumnIfMissing helper so
 //     re-boot is a no-op on a migrated DB.
 func Migrate(db *sql.DB) error {
+	if err := createAuditDeletionTable(db); err != nil {
+		return fmt.Errorf("create gtk_audit_deletion: %w", err)
+	}
 	if err := createPlanTable(db); err != nil {
 		return fmt.Errorf("create gtk_plan: %w", err)
 	}
@@ -268,6 +271,74 @@ func alterAppUsageLogForAttribution(db *sql.DB) error {
 	if err := addIndexIfMissing(db, "gtk_app_usage_log",
 		"idx_gtk_usage_source_order", "(source, order_id)"); err != nil {
 		return fmt.Errorf("add idx_gtk_usage_source_order: %w", err)
+	}
+	return nil
+}
+
+// createAuditDeletionTable creates gtk_audit_deletion, the permanent audit
+// trail for customer data deletion requests (PKG-D5). One row per deletion
+// attempt; the table itself is never deleted even when a customer is erased.
+//
+// Columns:
+//
+//	coai_user_id             — which greentokey user was deleted
+//	deletion_request_at      — when the CLI script started
+//	deletion_completed_at    — when the last DELETE committed (NULL if error)
+//	tables_affected          — count of tables that had rows deleted
+//	rows_deleted_total       — sum of all rows deleted across tables
+//	newapi_user_id           — the NewAPI user ID that was revoked (NULL if not bound)
+//	newapi_revocation_status — 'success'|'skipped'|'failed'|NULL (not yet attempted)
+//	error_message            — first error encountered (NULL on full success)
+//	created_by               — 'cli'|'admin_ui'|'api' (always 'cli' in v1)
+//	created_at               — row insert time
+//
+// No FK to auth(id) — auth row is deleted as part of the erasure; this
+// audit row must survive to prove the deletion happened.
+func createAuditDeletionTable(db *sql.DB) error {
+	if globals.SqliteEngine {
+		if _, err := globals.ExecDb(db, `
+			CREATE TABLE IF NOT EXISTS gtk_audit_deletion (
+			  id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+			  coai_user_id             INTEGER NOT NULL,
+			  deletion_request_at      DATETIME NOT NULL,
+			  deletion_completed_at    DATETIME,
+			  tables_affected          INTEGER NOT NULL DEFAULT 0,
+			  rows_deleted_total       INTEGER NOT NULL DEFAULT 0,
+			  newapi_user_id           INTEGER,
+			  newapi_revocation_status TEXT
+			                            CHECK (newapi_revocation_status IN
+			                              ('success','skipped','failed',NULL)),
+			  error_message            TEXT,
+			  created_by               TEXT NOT NULL DEFAULT 'cli',
+			  created_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+		`); err != nil {
+			return fmt.Errorf("create gtk_audit_deletion (sqlite): %w", err)
+		}
+		_, err := globals.ExecDb(db, `
+			CREATE INDEX IF NOT EXISTS idx_gtk_audit_deletion_user_created
+			ON gtk_audit_deletion(coai_user_id, created_at);
+		`)
+		return err
+	}
+	if _, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS gtk_audit_deletion (
+		  id                       BIGINT       AUTO_INCREMENT PRIMARY KEY,
+		  coai_user_id             INT          NOT NULL,
+		  deletion_request_at      DATETIME     NOT NULL,
+		  deletion_completed_at    DATETIME     NULL,
+		  tables_affected          INT          NOT NULL DEFAULT 0,
+		  rows_deleted_total       INT          NOT NULL DEFAULT 0,
+		  newapi_user_id           INT          NULL,
+		  newapi_revocation_status VARCHAR(32)  NULL
+		                            COMMENT 'success|skipped|failed|NULL',
+		  error_message            TEXT         NULL,
+		  created_by               VARCHAR(64)  NOT NULL DEFAULT 'cli',
+		  created_at               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		  INDEX idx_gtk_audit_deletion_user_created (coai_user_id, created_at)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`); err != nil {
+		return fmt.Errorf("create gtk_audit_deletion (mysql): %w", err)
 	}
 	return nil
 }

@@ -137,3 +137,26 @@ type BillingConfig struct {
 	K string
 	V string
 }
+
+// AuditDeletionRow mirrors a row in gtk_audit_deletion. Created by
+// bin/delete-customer-data.sh at deletion-request time; updated when the
+// deletion completes (or fails). The table is never itself deleted — it is
+// the permanent GDPR erasure audit trail.
+//
+// NewapiUserID and NewapiRevocationStatus are nullable: NULL means the user
+// had no NewAPI binding (never provisioned) so revocation was skipped.
+// ErrorMessage is NULL on full success; set to the first error encountered
+// on partial or full failure.
+type AuditDeletionRow struct {
+	ID                      int64
+	CoaiUserID              int64
+	DeletionRequestAt       time.Time
+	DeletionCompletedAt     sql.NullTime
+	TablesAffected          int
+	RowsDeletedTotal        int
+	NewapiUserID            sql.NullInt64
+	NewapiRevocationStatus  sql.NullString // 'success'|'skipped'|'failed'|NULL
+	ErrorMessage            sql.NullString
+	CreatedBy               string // 'cli'|'admin_ui'|'api'
+	CreatedAt               time.Time
+}
