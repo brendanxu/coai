@@ -27,6 +27,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -262,6 +263,45 @@ func (c *Client) DisableToken(ctx context.Context, tokenID int64) error {
 		return fmt.Errorf("newapi: disable token: %s", env.Message)
 	}
 	return nil
+}
+
+// RevokeUser deletes a NewAPI user via the admin API, revoking all tokens
+// they hold. Used by bin/delete-customer-data.sh to cut external API access
+// before clearing the local gtk_newapi_binding row.
+//
+// Status semantics:
+//
+//	"success" — NewAPI confirmed the user was deleted (200 + success=true)
+//	"skipped" — user not found in NewAPI (404 or success=false "not found")
+//	            treated as idempotent OK; repeat invocations are safe
+//	"failed"  — unexpected error; caller should log and mark audit row
+//
+// NewAPI v0.13.x endpoint: DELETE /api/user/<id>  (admin scope, no body).
+// A 404 from the HTTP layer surfaces as an error from do() because do()
+// treats all 4xx as errors; we intercept that error string to detect 404.
+func (c *Client) RevokeUser(ctx context.Context, newapiUserID int64) (status string, err error) {
+	path := fmt.Sprintf("/api/user/%d", newapiUserID)
+	var env envelope[any]
+	doErr := c.do(ctx, "DELETE", path, nil, 0, &env)
+	if doErr != nil {
+		// do() includes "HTTP 404" in the error string for 404 responses.
+		// Treat 404 as "user already gone" — idempotent OK.
+		errStr := doErr.Error()
+		if strings.Contains(errStr, "HTTP 404") {
+			return "skipped", nil
+		}
+		return "failed", doErr
+	}
+	if !env.Success {
+		// NewAPI sometimes returns 200 with success=false and a "not found"
+		// message — map those to skipped too.
+		msg := env.Message
+		if strings.Contains(msg, "not found") || strings.Contains(msg, "不存在") {
+			return "skipped", nil
+		}
+		return "failed", fmt.Errorf("newapi: revoke user %d: %s", newapiUserID, msg)
+	}
+	return "success", nil
 }
 
 // truncate keeps log strings bounded so a malformed response body doesn't
