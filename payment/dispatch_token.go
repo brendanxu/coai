@@ -246,6 +246,26 @@ func activateExternalSubscription(db *sql.DB, userID int64, level int, expiredAt
 // levelStarter subscription path (no plan_code in custom_data). It creates a
 // new gtk_user_plan row per renewal cycle so the user's quota is topped up.
 //
+// Delegates to handleTokenRenewalCore with plan_code="token-99" (the legacy
+// fixed plan for the levelStarter path) after resolving user_id from
+// custom_data.
+func handleTokenRenewal(db *sql.DB, p *webhookPayload) error {
+	userID, err := userIDFromCustomData(p.Meta.CustomData)
+	if err != nil {
+		return fmt.Errorf("token_renewal: user_id: %w", err)
+	}
+	return handleTokenRenewalCore(db, p, userID, "token-99")
+}
+
+// handleTokenRenewalCore is the shared renewal implementation for the legacy
+// levelStarter path (handleTokenRenewal, plan_code="token-99").
+//
+// The legacy path has a subscription_id on gtk_user_plan rows (stamped by
+// upsertLsMapping when subscription_created fires), so the freshness check
+// can query by subscription_id. For the L2 token-plan path use
+// handleL2TokenRenewal instead — the L2 order_created handler does not stamp
+// subscription_id, so a different freshness strategy is needed.
+//
 // First-month-vs-renewal detection: LS fires subscription_payment_success
 // alongside order_created + subscription_created on the very first purchase
 // (BL-01 multi-fire pattern). To avoid a double-grant on month 1, we look up
@@ -254,19 +274,17 @@ func activateExternalSubscription(db *sql.DB, userID int64, level int, expiredAt
 // and we skip. Month 2+ rows are older than 24h → create new renewal row.
 //
 // Dedup key for the new gtk_user_plan row:
-//   "renew-" + ls_subscription_id + "-" + renews_at_date (YYYY-MM-DD)
+//
+//	"renew-" + ls_subscription_id + "-" + renews_at_date (YYYY-MM-DD)
+//
 // This is stable across LS retries of the same webhook (same renews_at) and
 // unique per billing cycle (renews_at advances monthly). The outer
 // gtk_webhook_event SHA256 provides a second dedup layer.
 //
 // Back-fill: existing gtk_user_plan rows with NULL subscription_id but
-// matching (user_id, plan_code='token-99') get back-filled on first renewal.
+// matching (user_id, product_type='token') get back-filled on first renewal.
 // This covers purchases made before PKG-M1-① deployed.
-func handleTokenRenewal(db *sql.DB, p *webhookPayload) error {
-	userID, err := userIDFromCustomData(p.Meta.CustomData)
-	if err != nil {
-		return fmt.Errorf("token_renewal: user_id: %w", err)
-	}
+func handleTokenRenewalCore(db *sql.DB, p *webhookPayload, userID int64, planCode string) error {
 	lsSubID := p.Data.ID // LS subscription id (string, e.g. "123456")
 
 	// Look up the most recent gtk_user_plan row for this subscription.
@@ -274,7 +292,7 @@ func handleTokenRenewal(db *sql.DB, p *webhookPayload) error {
 	// on user_id as a fallback so back-fill can happen.
 	var latestPurchasedAt sql.NullString
 	var latestID int64
-	err = db.QueryRow(`
+	err := db.QueryRow(`
 		SELECT id, purchased_at FROM gtk_user_plan
 		WHERE subscription_id = ? AND user_id = ?
 		ORDER BY id DESC LIMIT 1
@@ -297,7 +315,7 @@ func handleTokenRenewal(db *sql.DB, p *webhookPayload) error {
 			// Most recent row is <24h old → initial purchase already handled.
 			logf(globals.Info, "token_renewal_skipped_first_month",
 				"ls_subscription_id", lsSubID, "user_id", userID,
-				"latest_purchased_at", latestPurchasedAt.String)
+				"plan_code", planCode, "latest_purchased_at", latestPurchasedAt.String)
 			return nil
 		}
 	}
@@ -313,7 +331,7 @@ func handleTokenRenewal(db *sql.DB, p *webhookPayload) error {
 	// auth.RedeemPlanForOrder inserts gtk_user_plan + tops up quota.
 	// It is idempotent on order_id: a second call with the same renewalOrderID
 	// is a no-op, which protects against LS retry storms.
-	if err := auth.RedeemPlanForOrder(db, userID, "token-99", renewalOrderID); err != nil {
+	if err := auth.RedeemPlanForOrder(db, userID, planCode, renewalOrderID); err != nil {
 		return fmt.Errorf("token_renewal: redeem: %w", err)
 	}
 
@@ -325,7 +343,7 @@ func handleTokenRenewal(db *sql.DB, p *webhookPayload) error {
 		// Non-fatal: the row was created; subscription_id is for query
 		// efficiency, not correctness. Log and continue.
 		logf(globals.Warn, "token_renewal_sub_id_stamp_failed",
-			"order_id", renewalOrderID, "err", err)
+			"order_id", renewalOrderID, "plan_code", planCode, "err", err)
 	}
 
 	// Back-fill subscription_id on legacy NULL rows for this user so future
@@ -340,7 +358,90 @@ func handleTokenRenewal(db *sql.DB, p *webhookPayload) error {
 
 	logf(globals.Info, "token_renewal_created",
 		"ls_subscription_id", lsSubID, "user_id", userID,
-		"renewal_order_id", renewalOrderID)
+		"plan_code", planCode, "renewal_order_id", renewalOrderID)
+	return nil
+}
+
+// handleL2TokenRenewal handles subscription_payment_success for the explicit
+// L2 token-plan path (custom_data carries type=="plan" + plan_code).
+//
+// This is separate from handleTokenRenewalCore because the L2 order_created
+// handler (auth.RedeemPlanForOrder) does NOT stamp subscription_id on the
+// initial gtk_user_plan row — there is no subscription_created event in the
+// L2 flow that would trigger upsertLsMapping. Therefore the BL-01
+// first-month guard cannot rely on subscription_id; instead it queries by
+// user_id + plan_code (via plan_id join) to detect rows created within the
+// last 24h.
+//
+// First-month-vs-renewal detection (L2 variant):
+//   - Query the most recent gtk_user_plan row for this user with a plan whose
+//     code matches planCode (via gtk_plan join).
+//   - If that row was purchased within 24h → the initial order_created already
+//     covered month 1; skip (BL-01 guard for L2 path).
+//   - Month 2+ rows are older than 24h → proceed to create a new renewal row.
+//
+// Dedup key: "renew-l2-" + ls_invoice_id + "-" + renews_at_date (YYYY-MM-DD).
+// The "l2-" prefix disambiguates from legacy "renew-" keys. The invoice ID
+// (p.Data.ID on subscription_payment_success) is unique per renewal cycle.
+// The outer gtk_webhook_event SHA256 provides a second dedup layer.
+func handleL2TokenRenewal(db *sql.DB, p *webhookPayload, userID int64, planCode string) error {
+	lsInvoiceID := p.Data.ID // invoice/payment ID from subscription_payment_success
+
+	// BL-01 first-month guard (L2 variant): look up the most recent
+	// gtk_user_plan row for this user+plan by joining gtk_plan on code.
+	// This catches the BL-01 multi-fire pattern where order_created +
+	// subscription_payment_success fire within seconds on the same purchase.
+	var latestPurchasedAt sql.NullString
+	err := db.QueryRow(`
+		SELECT up.purchased_at FROM gtk_user_plan up
+		JOIN gtk_plan p ON p.id = up.plan_id
+		WHERE up.user_id = ? AND p.code = ?
+		ORDER BY up.id DESC LIMIT 1
+	`, userID, planCode).Scan(&latestPurchasedAt)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("l2_token_renewal: lookup latest row: %w", err)
+	}
+
+	// If no prior row exists, this subscription_payment_success arrived before
+	// (or without) an order_created — treat as first-month sibling and skip.
+	// Only proceed when a prior cycle row exists AND is old enough (>24h) to
+	// confirm it belongs to a previous billing period.
+	if !latestPurchasedAt.Valid {
+		logf(globals.Info, "l2_token_renewal_skipped_no_prior_row",
+			"ls_invoice_id", lsInvoiceID, "user_id", userID, "plan_code", planCode)
+		return nil
+	}
+
+	var parsed time.Time
+	for _, layout := range []string{"2006-01-02 15:04:05", time.RFC3339} {
+		if t, e := time.Parse(layout, latestPurchasedAt.String); e == nil {
+			parsed = t
+			break
+		}
+	}
+	if parsed.IsZero() || time.Since(parsed) < 24*time.Hour {
+		logf(globals.Info, "l2_token_renewal_skipped_first_month",
+			"ls_invoice_id", lsInvoiceID, "user_id", userID,
+			"plan_code", planCode, "latest_purchased_at", latestPurchasedAt.String)
+		return nil
+	}
+
+	// Build a stable, cycle-unique order_id for the new gtk_user_plan row.
+	// "renew-l2-" prefix avoids collisions with legacy "renew-" keys.
+	renewsAt := p.Data.Attributes.RenewsAt
+	renewsDate := renewsAt
+	if len(renewsAt) >= 10 {
+		renewsDate = renewsAt[:10] // YYYY-MM-DD
+	}
+	renewalOrderID := fmt.Sprintf("renew-l2-%s-%s", lsInvoiceID, renewsDate)
+
+	if err := auth.RedeemPlanForOrder(db, userID, planCode, renewalOrderID); err != nil {
+		return fmt.Errorf("l2_token_renewal: redeem: %w", err)
+	}
+
+	logf(globals.Info, "l2_token_renewal_created",
+		"ls_invoice_id", lsInvoiceID, "user_id", userID,
+		"plan_code", planCode, "renewal_order_id", renewalOrderID)
 	return nil
 }
 

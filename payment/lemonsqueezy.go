@@ -429,7 +429,18 @@ func dispatch(db *sql.DB, p *webhookPayload) error {
 				}
 			}
 			return nil
-		case eventCreated, eventSubPayment:
+		case eventSubPayment:
+			// PKG-M1-①-L2-followup: LS fires subscription_payment_success on
+			// every renewal cycle (month 2+) but does NOT re-fire order_created.
+			// Without this case the L2 token-plan path silently acked renewals
+			// — customers' credit packs would never be topped up past month 1.
+			//
+			// handleL2TokenRenewal (not handleTokenRenewalCore) is used here
+			// because the L2 order_created path does not stamp subscription_id
+			// onto gtk_user_plan rows — so the BL-01 first-month guard must
+			// query by user_id + plan_code instead of subscription_id.
+			return handleL2TokenRenewal(db, p, userID, planCode)
+		case eventCreated:
 			logf(globals.Info, "plan_sibling_event_acked_without_redeem",
 				"event", p.Meta.EventName, "plan_code", planCode, "ls_id", p.Data.ID)
 			return nil
