@@ -50,6 +50,9 @@ func Migrate(db *sql.DB) error {
 	if err := createAuditDeletionTable(db); err != nil {
 		return fmt.Errorf("create gtk_audit_deletion: %w", err)
 	}
+	if err := createAuditLogTable(db); err != nil {
+		return fmt.Errorf("create gtk_audit_log: %w", err)
+	}
 	if err := createPlanTable(db); err != nil {
 		return fmt.Errorf("create gtk_plan: %w", err)
 	}
@@ -339,6 +342,71 @@ func createAuditDeletionTable(db *sql.DB) error {
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 	`); err != nil {
 		return fmt.Errorf("create gtk_audit_deletion (mysql): %w", err)
+	}
+	return nil
+}
+
+// createAuditLogTable creates gtk_audit_log, the general-purpose event
+// audit trail for resource lifecycle actions (PKG-A-3).
+//
+// Columns:
+//
+//	resource_type — 'token' | 'user' | 'channel'
+//	resource_id   — PK of the affected resource
+//	action        — 'create' | 'rename' | 'revoke' | 'admin_force_revoke'
+//	actor_type    — 'user' | 'admin'
+//	actor_id      — coai_user_id of the actor
+//	before_state  — JSON snapshot before change; NULL for create
+//	after_state   — JSON snapshot after change; NULL for revoke/delete
+//	note          — free-text context (optional)
+//	created_at    — event timestamp
+func createAuditLogTable(db *sql.DB) error {
+	if globals.SqliteEngine {
+		if _, err := globals.ExecDb(db, `
+			CREATE TABLE IF NOT EXISTS gtk_audit_log (
+			  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+			  resource_type TEXT    NOT NULL,
+			  resource_id   INTEGER NOT NULL,
+			  action        TEXT    NOT NULL,
+			  actor_type    TEXT    NOT NULL,
+			  actor_id      INTEGER NOT NULL,
+			  before_state  TEXT,
+			  after_state   TEXT,
+			  note          TEXT,
+			  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+		`); err != nil {
+			return fmt.Errorf("create gtk_audit_log (sqlite): %w", err)
+		}
+		if _, err := globals.ExecDb(db, `
+			CREATE INDEX IF NOT EXISTS idx_gtk_audit_resource
+			ON gtk_audit_log(resource_type, resource_id, created_at);
+		`); err != nil {
+			return err
+		}
+		_, err := globals.ExecDb(db, `
+			CREATE INDEX IF NOT EXISTS idx_gtk_audit_actor
+			ON gtk_audit_log(actor_type, actor_id, created_at);
+		`)
+		return err
+	}
+	if _, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS gtk_audit_log (
+		  id            BIGINT       AUTO_INCREMENT PRIMARY KEY,
+		  resource_type VARCHAR(40)  NOT NULL,
+		  resource_id   BIGINT       NOT NULL,
+		  action        VARCHAR(40)  NOT NULL,
+		  actor_type    VARCHAR(20)  NOT NULL,
+		  actor_id      BIGINT       NOT NULL,
+		  before_state  TEXT         NULL,
+		  after_state   TEXT         NULL,
+		  note          VARCHAR(255) NULL,
+		  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		  INDEX idx_gtk_audit_resource (resource_type, resource_id, created_at),
+		  INDEX idx_gtk_audit_actor    (actor_type, actor_id, created_at)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+	`); err != nil {
+		return fmt.Errorf("create gtk_audit_log (mysql): %w", err)
 	}
 	return nil
 }

@@ -45,6 +45,7 @@ import (
 	"chat/globals"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -244,6 +245,43 @@ func (r *realNewAPIClient) fetchTokenLogsPage(ctx context.Context, tokenID int64
 }
 
 // ---------------------------------------------------------------------------
+// Audit log — writeAuditLog
+// ---------------------------------------------------------------------------
+
+// writeAuditLog inserts one row into gtk_audit_log. Failures are logged but
+// never propagated — audit writes must not fail business operations.
+//
+// actorType is "user" or "admin"; actorID is the coai_user_id of the actor.
+// beforeState / afterState are JSON-serialisable values; pass nil where not
+// applicable (e.g. beforeState=nil on create, afterState=nil on revoke).
+// note is optional free-text context.
+func writeAuditLog(db *sql.DB, resourceType string, resourceID int64, action string,
+	actorType string, actorID int64, beforeState, afterState interface{}, note string) {
+	var beforeJSON, afterJSON *string
+	if beforeState != nil {
+		if b, err := json.Marshal(beforeState); err == nil {
+			s := string(b)
+			beforeJSON = &s
+		}
+	}
+	if afterState != nil {
+		if b, err := json.Marshal(afterState); err == nil {
+			s := string(b)
+			afterJSON = &s
+		}
+	}
+	var notePtr *string
+	if note != "" {
+		notePtr = &note
+	}
+	_, _ = globals.ExecDb(db, `
+		INSERT INTO gtk_audit_log
+		  (resource_type, resource_id, action, actor_type, actor_id, before_state, after_state, note)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, resourceType, resourceID, action, actorType, actorID, beforeJSON, afterJSON, notePtr)
+}
+
+// ---------------------------------------------------------------------------
 // tokenManager — business logic layer
 // ---------------------------------------------------------------------------
 
@@ -355,6 +393,15 @@ func (m *tokenManager) CreateUserToken(ctx context.Context, coaiUserID int64, re
 	if err != nil {
 		return nil, fmt.Errorf("create token: %w", err)
 	}
+
+	// Audit: record token creation (best-effort, never fails the operation).
+	writeAuditLog(m.db, "token", tok.ID, "create", "user", coaiUserID, nil, map[string]interface{}{
+		"name":            tok.Name,
+		"expired_time":    tok.ExpiredTime,
+		"unlimited_quota": tok.UnlimitedQuota,
+		"remain_quota":    tok.RemainQuota,
+	}, "")
+
 	// Return the full plaintext token — the HTTP handler MUST forward this
 	// exactly once in the create response and never again.
 	return tok, nil
@@ -374,7 +421,17 @@ func (m *tokenManager) UpdateToken(ctx context.Context, coaiUserID, tokenID int6
 	if !owns {
 		return ErrTokenNotOwnedByUser
 	}
-	return m.cli.updateToken(ctx, tokenID, req)
+	if err := m.cli.updateToken(ctx, tokenID, req); err != nil {
+		return err
+	}
+
+	// Audit: record rename/update (best-effort).
+	writeAuditLog(m.db, "token", tokenID, "rename", "user", coaiUserID, nil, map[string]interface{}{
+		"name":         req.Name,
+		"expired_time": req.ExpiredTime,
+		"remain_quota": req.RemainQuota,
+	}, "")
+	return nil
 }
 
 // RevokeToken soft-deletes a token (status=2).
@@ -407,7 +464,21 @@ func (m *tokenManager) RevokeToken(ctx context.Context, coaiUserID, tokenID int6
 		}
 	}
 
-	return m.cli.disableToken(ctx, tokenID)
+	if err := m.cli.disableToken(ctx, tokenID); err != nil {
+		return err
+	}
+
+	// Audit: record revocation (best-effort). actor_type distinguishes
+	// user self-revoke from admin force-revoke.
+	action := "revoke"
+	actorType := "user"
+	if adminForce {
+		action = "admin_force_revoke"
+		actorType = "admin"
+	}
+	writeAuditLog(m.db, "token", tokenID, action, actorType, coaiUserID,
+		map[string]interface{}{"token_id": tokenID}, nil, "")
+	return nil
 }
 
 // GetTokenUsage returns aggregated usage for a specific token sourced from
@@ -907,35 +978,42 @@ func AdminGetTokenAuditAPI(c *gin.Context) {
 	}
 
 	// Query gtk_audit_log for entries referencing this token.
-	// The audit log schema stores resource_type + resource_id.
 	rows, err := globals.QueryDb(connection.DB, `
-		SELECT id, actor_id, action, resource_type, resource_id, detail, created_at
+		SELECT id, actor_id, actor_type, action, resource_type, resource_id,
+		       before_state, after_state, note, created_at
 		FROM gtk_audit_log
 		WHERE resource_type = 'token' AND resource_id = ?
 		ORDER BY id DESC
 		LIMIT 100
 	`, tokenID)
 	if err != nil {
-		// gtk_audit_log may not exist in all environments — return empty gracefully.
+		// Table may not exist on older deployments — return empty gracefully.
 		c.JSON(http.StatusOK, gin.H{"success": true, "data": []interface{}{}})
 		return
 	}
 	defer rows.Close()
 
 	type auditEntry struct {
-		ID           int64  `json:"id"`
-		ActorID      int64  `json:"actor_id"`
-		Action       string `json:"action"`
-		ResourceType string `json:"resource_type"`
-		ResourceID   int64  `json:"resource_id"`
-		Detail       string `json:"detail"`
-		CreatedAt    string `json:"created_at"`
+		ID           int64   `json:"id"`
+		ActorID      int64   `json:"actor_id"`
+		ActorType    string  `json:"actor_type"`
+		Action       string  `json:"action"`
+		ResourceType string  `json:"resource_type"`
+		ResourceID   int64   `json:"resource_id"`
+		BeforeState  *string `json:"before_state"`
+		AfterState   *string `json:"after_state"`
+		Note         *string `json:"note"`
+		CreatedAt    string  `json:"created_at"`
 	}
 	var entries []auditEntry
 	for rows.Next() {
 		var e auditEntry
 		var createdAt time.Time
-		if err := rows.Scan(&e.ID, &e.ActorID, &e.Action, &e.ResourceType, &e.ResourceID, &e.Detail, &createdAt); err != nil {
+		if err := rows.Scan(
+			&e.ID, &e.ActorID, &e.ActorType, &e.Action,
+			&e.ResourceType, &e.ResourceID,
+			&e.BeforeState, &e.AfterState, &e.Note, &createdAt,
+		); err != nil {
 			continue
 		}
 		e.CreatedAt = createdAt.UTC().Format(time.RFC3339)
