@@ -1,12 +1,7 @@
-import { useSelector } from "react-redux";
-import { selectMenu } from "@/store/menu.ts";
-import { cn } from "@/components/ui/lib/utils.ts";
-
-
+// PKG-A-1: sidebar excised — GtkAdmin hub (/admin/gtk) is the sole admin surface.
+// Returning null (vs empty div) so .admin-menu styles don't reserve sidebar width on /admin/users, /admin/orders etc.
 function MenuBar() {
-  const open = useSelector(selectMenu);
-  // PKG-A-1: sidebar excised — GtkAdmin hub is the sole admin surface.
-  return <div className={cn("admin-menu", open && "open")} />;
+  return null;
 }
 
 export default MenuBar;
