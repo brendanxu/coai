@@ -1,5 +1,5 @@
-// admin_tokens_test.go — TDD tests for PKG-A-3 Wave 1: personal access token
-// management wrapper functions.
+// admin_tokens_test.go — TDD tests for PKG-A-3 Wave 1 + Wave 1.5b:
+// personal access token management wrapper functions.
 //
 // Strategy:
 //   - All functions under test use a fakeClient (satisfies tokenClientIface)
@@ -10,7 +10,8 @@
 //       - max-10 limit: CreateUserToken returns ErrMaxTokensReached when
 //         user already has 10 active tokens
 //       - plaintext-leak prevention: ListUserTokens response must mask Key
-//       - GetTokenUsage returns per-token aggregation from gtk_app_usage_log
+//       - GetTokenUsage aggregates from NewAPI logs (Wave 1.5b: was
+//         gtk_app_usage_log, now fetchTokenLogs interface method)
 
 package newapi
 
@@ -47,10 +48,16 @@ type fakeNewAPIClient struct {
 	listErr    error
 	updateErr  error
 	disableErr error
+	// logEntries is keyed by tokenID; returned by fetchTokenLogs.
+	logEntries map[int64][]NewAPILogEntry
+	logsErr    error
 }
 
 func newFakeClient() *fakeNewAPIClient {
-	return &fakeNewAPIClient{nextID: 100}
+	return &fakeNewAPIClient{
+		nextID:     100,
+		logEntries: make(map[int64][]NewAPILogEntry),
+	}
 }
 
 func (f *fakeNewAPIClient) listTokensForUser(ctx context.Context, newapiUserID int64) ([]*Token, error) {
@@ -136,6 +143,20 @@ func (f *fakeNewAPIClient) disableToken(ctx context.Context, tokenID int64) erro
 	return ErrTokenNotFound
 }
 
+// fetchTokenLogs returns the pre-seeded log entries for tokenID.
+// Returns logsErr if set.
+func (f *fakeNewAPIClient) fetchTokenLogs(ctx context.Context, tokenID int64) ([]NewAPILogEntry, error) {
+	if f.logsErr != nil {
+		return nil, f.logsErr
+	}
+	return f.logEntries[tokenID], nil
+}
+
+// seedLogs adds NewAPILogEntry records for the given tokenID.
+func (f *fakeNewAPIClient) seedLogs(tokenID int64, entries []NewAPILogEntry) {
+	f.logEntries[tokenID] = append(f.logEntries[tokenID], entries...)
+}
+
 // countActive returns how many tokens in fakeClient are active for a user.
 func (f *fakeNewAPIClient) countActive(newapiUserID int64) int {
 	n := 0
@@ -171,22 +192,6 @@ func newTokenTestEnv(t *testing.T) (mgr *tokenManager, db *sql.DB, fake *fakeNew
 	t.Helper()
 	db = adminTestDB(t) // from admin_routing_test.go — creates auth + gtk_newapi_binding
 	withConnDB(t, db)
-
-	// Seed gtk_app_usage_log table for GetTokenUsage tests.
-	if _, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS gtk_app_usage_log (
-		  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-		  user_id     INTEGER NOT NULL,
-		  token_id    INTEGER NOT NULL DEFAULT 0,
-		  model_id    TEXT    NOT NULL DEFAULT '',
-		  tokens_used INTEGER NOT NULL DEFAULT 0,
-		  input_tokens  INTEGER NOT NULL DEFAULT 0,
-		  output_tokens INTEGER NOT NULL DEFAULT 0,
-		  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)
-	`); err != nil {
-		t.Fatalf("create gtk_app_usage_log: %v", err)
-	}
 
 	fake = newFakeClient()
 	mgr = &tokenManager{db: db, cli: fake}
@@ -431,23 +436,20 @@ func TestListUserTokens_doesNotLeakPlaintextAfterCreate(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Task 1.5 — GetTokenUsage
+// Task 1.5 — GetTokenUsage (Wave 1.5b: data from fetchTokenLogs, not SQL)
 // ---------------------------------------------------------------------------
 
-func TestGetTokenUsage_aggregatesFromUsageLog(t *testing.T) {
+func TestGetTokenUsage_aggregatesFromNewAPILogs(t *testing.T) {
 	mgr, db, fake := newTokenTestEnv(t)
 	seedBindingForUser(t, db, 42, 7)
 	fake.seedTokens(7, 1)
 	tokenID := fake.tokens[0].id
 
-	// Seed two usage rows for this token.
-	if _, err := db.Exec(`
-		INSERT INTO gtk_app_usage_log (user_id, token_id, model_id, tokens_used, input_tokens, output_tokens)
-		VALUES (42, ?, 'gpt-4', 100, 60, 40),
-		       (42, ?, 'gpt-4', 200, 120, 80)
-	`, tokenID, tokenID); err != nil {
-		t.Fatalf("seed usage log: %v", err)
-	}
+	// Seed two NewAPI log entries for this token.
+	fake.seedLogs(tokenID, []NewAPILogEntry{
+		{Model: "gpt-4", PromptTokens: 60, CompletionTokens: 40},
+		{Model: "gpt-4", PromptTokens: 120, CompletionTokens: 80},
+	})
 
 	usage, err := mgr.GetTokenUsage(context.Background(), 42, tokenID)
 	if err != nil {
@@ -459,17 +461,24 @@ func TestGetTokenUsage_aggregatesFromUsageLog(t *testing.T) {
 	if usage.TotalCalls != 2 {
 		t.Errorf("want TotalCalls=2, got %d", usage.TotalCalls)
 	}
+	if usage.InputTokens != 180 {
+		t.Errorf("want InputTokens=180, got %d", usage.InputTokens)
+	}
+	if usage.OutputTokens != 120 {
+		t.Errorf("want OutputTokens=120, got %d", usage.OutputTokens)
+	}
 }
 
-func TestGetTokenUsage_zeroWhenNoRows(t *testing.T) {
+func TestGetTokenUsage_zeroWhenNoLogs(t *testing.T) {
 	mgr, db, fake := newTokenTestEnv(t)
 	seedBindingForUser(t, db, 42, 7)
 	fake.seedTokens(7, 1)
 	tokenID := fake.tokens[0].id
+	// No logs seeded — fetchTokenLogs returns empty slice.
 
 	usage, err := mgr.GetTokenUsage(context.Background(), 42, tokenID)
 	if err != nil {
-		t.Fatalf("GetTokenUsage on empty log: %v", err)
+		t.Fatalf("GetTokenUsage on empty logs: %v", err)
 	}
 	if usage.TotalTokensUsed != 0 || usage.TotalCalls != 0 {
 		t.Errorf("want zeros, got %+v", usage)
@@ -485,6 +494,34 @@ func TestGetTokenUsage_tokenNotOwnedReturnsError(t *testing.T) {
 	_, err := mgr.GetTokenUsage(context.Background(), 42, 999)
 	if err == nil {
 		t.Fatal("want error when token not owned by user")
+	}
+}
+
+func TestGetTokenUsage_modelBreakdown(t *testing.T) {
+	mgr, db, fake := newTokenTestEnv(t)
+	seedBindingForUser(t, db, 42, 7)
+	fake.seedTokens(7, 1)
+	tokenID := fake.tokens[0].id
+
+	fake.seedLogs(tokenID, []NewAPILogEntry{
+		{Model: "gpt-4", PromptTokens: 100, CompletionTokens: 50},
+		{Model: "gpt-4", PromptTokens: 100, CompletionTokens: 50},
+		{Model: "claude-3-5-sonnet", PromptTokens: 200, CompletionTokens: 100},
+	})
+
+	usage, err := mgr.GetTokenUsage(context.Background(), 42, tokenID)
+	if err != nil {
+		t.Fatalf("GetTokenUsage: %v", err)
+	}
+	if len(usage.ByModel) != 2 {
+		t.Fatalf("want 2 model buckets, got %d", len(usage.ByModel))
+	}
+	// gpt-4 has 2 calls, claude has 1 — gpt-4 should be first (sorted desc by calls).
+	if usage.ByModel[0].ModelID != "gpt-4" {
+		t.Errorf("want first model=gpt-4 (highest calls), got %q", usage.ByModel[0].ModelID)
+	}
+	if usage.ByModel[0].TotalCalls != 2 {
+		t.Errorf("want gpt-4 TotalCalls=2, got %d", usage.ByModel[0].TotalCalls)
 	}
 }
 
@@ -524,13 +561,10 @@ func TestTokenLifecycle_createListUseRevoke(t *testing.T) {
 		}
 	}
 
-	// 3. Simulate usage for tok1.
-	if _, err := db.Exec(`
-		INSERT INTO gtk_app_usage_log (user_id, token_id, model_id, tokens_used, input_tokens, output_tokens)
-		VALUES (42, ?, 'claude-3-5-sonnet', 150, 100, 50)
-	`, tok1.ID); err != nil {
-		t.Fatalf("seed usage: %v", err)
-	}
+	// 3. Simulate NewAPI log entries for tok1 (replaces gtk_app_usage_log insert).
+	fake.seedLogs(tok1.ID, []NewAPILogEntry{
+		{Model: "claude-3-5-sonnet", PromptTokens: 100, CompletionTokens: 50},
+	})
 
 	// 4. GetTokenUsage for tok1.
 	usage, err := mgr.GetTokenUsage(context.Background(), 42, tok1.ID)
