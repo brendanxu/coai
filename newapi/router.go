@@ -44,6 +44,14 @@ func Register(app *gin.RouterGroup) {
 	app.GET("/gtk/v1/usage/by-model", UsageByModelAPI)
 	app.GET("/gtk/v1/usage/recent", UsageRecentAPI)
 
+	// PKG-A-3: Personal access token management — auth-gated, user-scoped.
+	// sk-xxx plaintext is returned only on POST (create); all other responses mask the key.
+	app.GET("/gtk/v1/tokens", ListUserTokensAPI)
+	app.POST("/gtk/v1/tokens", CreateUserTokenAPI)
+	app.PATCH("/gtk/v1/tokens/:id", UpdateTokenAPI)
+	app.DELETE("/gtk/v1/tokens/:id", RevokeUserTokenAPI)
+	app.GET("/gtk/v1/tokens/:id/usage", GetTokenUsageAPI)
+
 	RegisterAdminRoutes(app)
 }
 
