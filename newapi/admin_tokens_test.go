@@ -143,9 +143,11 @@ func (f *fakeNewAPIClient) disableToken(ctx context.Context, tokenID int64) erro
 	return ErrTokenNotFound
 }
 
-// fetchTokenLogs returns the pre-seeded log entries for tokenID.
+// fetchTokenLogsPage returns the pre-seeded log entries for tokenID.
+// page and size are accepted but ignored — the fake returns all seeded entries
+// as a single page (len < pageSize) so the pagination loop terminates.
 // Returns logsErr if set.
-func (f *fakeNewAPIClient) fetchTokenLogs(ctx context.Context, tokenID int64) ([]NewAPILogEntry, error) {
+func (f *fakeNewAPIClient) fetchTokenLogsPage(ctx context.Context, tokenID int64, page, size int) ([]NewAPILogEntry, error) {
 	if f.logsErr != nil {
 		return nil, f.logsErr
 	}

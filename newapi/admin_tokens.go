@@ -50,6 +50,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -73,6 +74,13 @@ var ErrMaxTokensReached = errors.New("newapi: max tokens per user reached (limit
 var ErrTokenNotOwnedByUser = errors.New("newapi: token does not belong to this user")
 
 const maxTokensPerUser = 10
+
+// createTokenMu provides per-user mutual exclusion around the count-then-create
+// pattern in CreateUserToken. Keyed by coai_user_id (int64).
+// This is sufficient for single-instance deployments. For multi-instance
+// deployments a distributed lock (e.g. Redis SETNX) would be required — add
+// that when horizontal scaling is needed.
+var createTokenMu sync.Map
 
 // ---------------------------------------------------------------------------
 // Types
@@ -155,12 +163,10 @@ type tokenClientIface interface {
 	createToken(ctx context.Context, newapiUserID int64, req CreateTokenRequest) (*Token, error)
 	updateToken(ctx context.Context, tokenID int64, req UpdateTokenRequest) error
 	disableToken(ctx context.Context, tokenID int64) error
-	// fetchTokenLogs returns all NewAPI log entries for the given token_id via
-	// GET /api/log/?p=0&size=<n>&token_id=<id>. Wave 1.5b: this is the
-	// authoritative source for chat-completion usage because NewAPI records
-	// every relay call here, while gtk_app_usage_log only captures
-	// service-order calls.
-	fetchTokenLogs(ctx context.Context, tokenID int64) ([]NewAPILogEntry, error)
+	// fetchTokenLogsPage returns one page of NewAPI log entries for the given
+	// token_id via GET /api/log/?p=<page>&size=<size>&token_id=<id>.
+	// Callers use GetTokenUsage which loops pages until exhausted.
+	fetchTokenLogsPage(ctx context.Context, tokenID int64, page, size int) ([]NewAPILogEntry, error)
 }
 
 // realNewAPIClient wraps the package Client to satisfy tokenClientIface.
@@ -217,17 +223,16 @@ func (r *realNewAPIClient) disableToken(ctx context.Context, tokenID int64) erro
 	return r.c.DisableToken(ctx, tokenID)
 }
 
-// fetchTokenLogs calls GET /api/log/?p=0&size=500&token_id=<id> on the
-// NewAPI admin API and returns the log entries. We fetch up to 500 rows
-// per call; a future pagination loop can be added if needed.
+// fetchTokenLogsPage calls GET /api/log/?p=<page>&size=<size>&token_id=<id>
+// and returns one page of log entries.
 //
 // NewAPI v0.13.x log endpoint returns a paginated list; the response shape
 // is {"success":true,"data":{"items":[...],"total":N,...}}.
-func (r *realNewAPIClient) fetchTokenLogs(ctx context.Context, tokenID int64) ([]NewAPILogEntry, error) {
-	path := fmt.Sprintf("/api/log/?p=0&size=500&token_id=%d", tokenID)
+func (r *realNewAPIClient) fetchTokenLogsPage(ctx context.Context, tokenID int64, page, size int) ([]NewAPILogEntry, error) {
+	path := fmt.Sprintf("/api/log/?p=%d&size=%d&token_id=%d", page, size, tokenID)
 	var env listEnvelope[NewAPILogEntry]
 	if err := r.c.do(ctx, "GET", path, nil, 0, &env); err != nil {
-		return nil, fmt.Errorf("newapi: fetch logs for token %d: %w", tokenID, err)
+		return nil, fmt.Errorf("newapi: fetch logs page %d for token %d: %w", page, tokenID, err)
 	}
 	if !env.Success {
 		return nil, fmt.Errorf("newapi: fetch logs: %s", env.Message)
@@ -317,7 +322,19 @@ func (m *tokenManager) ownsToken(ctx context.Context, newapiUserID, tokenID int6
 // the plaintext sk-xxx must be returned. All subsequent reads must mask.
 //
 // Returns ErrMaxTokensReached when the user already has 10 active tokens.
+//
+// A per-user mutex (createTokenMu) guards the count-then-create sequence to
+// prevent concurrent requests from racing past the max-10 check. This is
+// correct for single-instance deployments; for multi-instance a distributed
+// lock would be required (see createTokenMu declaration for details).
 func (m *tokenManager) CreateUserToken(ctx context.Context, coaiUserID int64, req CreateTokenRequest) (*Token, error) {
+	// Acquire per-user lock to prevent concurrent create requests from
+	// both reading count=9 and both succeeding, yielding 11 tokens.
+	lockAny, _ := createTokenMu.LoadOrStore(coaiUserID, &sync.Mutex{})
+	lock := lockAny.(*sync.Mutex)
+	lock.Lock()
+	defer lock.Unlock()
+
 	bind, err := m.bindingForUser(coaiUserID)
 	if err != nil {
 		return nil, fmt.Errorf("create token: load binding: %w", err)
@@ -418,9 +435,22 @@ func (m *tokenManager) GetTokenUsage(ctx context.Context, coaiUserID, tokenID in
 		return nil, ErrTokenNotOwnedByUser
 	}
 
-	entries, err := m.cli.fetchTokenLogs(ctx, tokenID)
-	if err != nil {
-		return nil, fmt.Errorf("get token usage: fetch logs: %w", err)
+	// Paginate through NewAPI logs until we get a partial page (< pageSize)
+	// or hit the safety cap of 100 pages (50 000 rows). This fixes the
+	// original single-fetch of 500 rows which silently under-counted heavy
+	// token users.
+	const pageSize = 500
+	const maxPages = 100
+	var entries []NewAPILogEntry
+	for page := 0; page < maxPages; page++ {
+		batch, err := m.cli.fetchTokenLogsPage(ctx, tokenID, page, pageSize)
+		if err != nil {
+			return nil, fmt.Errorf("get token usage: fetch logs page %d: %w", page, err)
+		}
+		entries = append(entries, batch...)
+		if len(batch) < pageSize {
+			break // last page reached
+		}
 	}
 
 	u := &TokenUsage{TokenID: tokenID}
@@ -498,9 +528,11 @@ func ListUserTokensAPI(c *gin.Context) {
 
 // createTokenBody is the JSON body for POST /api/gtk/v1/tokens.
 type createTokenBody struct {
-	Name        string `json:"name"`
-	ExpiredTime int64  `json:"expired_time"` // unix seconds; 0 or -1 = never
-	RemainQuota int64  `json:"remain_quota"` // 0 = unlimited
+	Name            string `json:"name"`
+	ExpiredTime     int64  `json:"expired_time"`     // unix seconds; 0 or -1 = never
+	RemainQuota     int64  `json:"remain_quota"`     // 0 = unlimited when unlimited_quota=true
+	UnlimitedQuota  bool   `json:"unlimited_quota"`  // when true (default), ignore remain_quota
+	HasExplicitQuota bool  `json:"has_explicit_quota"` // frontend sets true when user typed a quota
 }
 
 // CreateUserTokenAPI handles POST /api/gtk/v1/tokens
@@ -527,6 +559,16 @@ func CreateUserTokenAPI(c *gin.Context) {
 		expiredTime = -1
 	}
 
+	// Default to unlimited quota when the frontend did not explicitly set a
+	// quota value. This prevents NewAPI from treating remain_quota=0 as
+	// "limited to 0 credits" (which makes the token immediately unusable).
+	unlimitedQuota := body.UnlimitedQuota
+	remainQuota := body.RemainQuota
+	if !body.HasExplicitQuota || body.RemainQuota == 0 {
+		unlimitedQuota = true
+		remainQuota = 0
+	}
+
 	mgr, err := defaultManager()
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"success": false, "message": "newapi not configured: " + err.Error()})
@@ -534,9 +576,10 @@ func CreateUserTokenAPI(c *gin.Context) {
 	}
 
 	tok, err := mgr.CreateUserToken(c.Request.Context(), coaiUserID, CreateTokenRequest{
-		Name:        body.Name,
-		RemainQuota: body.RemainQuota,
-		ExpiredTime: expiredTime,
+		Name:           body.Name,
+		RemainQuota:    remainQuota,
+		UnlimitedQuota: unlimitedQuota,
+		ExpiredTime:    expiredTime,
 	})
 	if errors.Is(err, ErrMaxTokensReached) {
 		c.JSON(http.StatusBadRequest, gin.H{
