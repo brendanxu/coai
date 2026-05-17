@@ -20,6 +20,7 @@ import { useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, CheckCheck, Copy } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +65,8 @@ export default function CreateTokenDialog({
   // Form state
   const [name, setName] = useState("");
   const [expire, setExpire] = useState<ExpireOption>("never");
+  const [unlimited, setUnlimited] = useState(true);
+  const [quota, setQuota] = useState("");
   const [loading, setLoading] = useState(false);
 
   // One-time reveal state
@@ -81,12 +84,16 @@ export default function CreateTokenDialog({
     if (!name.trim()) return;
     setLoading(true);
     try {
+      const parsedQuota = parseInt(quota, 10);
+      const hasExplicitQuota = !unlimited && !isNaN(parsedQuota) && parsedQuota > 0;
       const resp = await axios.post<{ success: boolean; data: CreatedToken }>(
         "/gtk/v1/tokens",
         {
           name: name.trim(),
           expired_time: expireOptionToUnix(expire),
-          remain_quota: 0, // 0 = unlimited (backend interprets)
+          unlimited_quota: unlimited,
+          remain_quota: hasExplicitQuota ? parsedQuota : 0,
+          has_explicit_quota: hasExplicitQuota,
         },
       );
       if (resp.data?.success && resp.data.data) {
@@ -128,6 +135,8 @@ export default function CreateTokenDialog({
   const resetForm = () => {
     setName("");
     setExpire("never");
+    setUnlimited(true);
+    setQuota("");
     setLoading(false);
     setCreatedToken(null);
     setCopied(false);
@@ -202,6 +211,41 @@ export default function CreateTokenDialog({
                     <SelectItem value="365d">1 年</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Unlimited quota checkbox */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="token-unlimited"
+                    checked={unlimited}
+                    onCheckedChange={(v) => setUnlimited(!!v)}
+                  />
+                  <Label htmlFor="token-unlimited" className="cursor-pointer">
+                    {t("tokens.create.unlimited", "无限额度 / Unlimited")}
+                  </Label>
+                </div>
+                {!unlimited && (
+                  <div className="space-y-1">
+                    <Label htmlFor="token-quota" className="text-xs" style={{ color: "rgba(255,252,247,0.55)" }}>
+                      {t("tokens.create.quota_label", "额度 (credits)")}
+                    </Label>
+                    <input
+                      id="token-quota"
+                      type="number"
+                      min={1}
+                      value={quota}
+                      onChange={(e) => setQuota(e.target.value)}
+                      placeholder="e.g. 500000"
+                      className="w-full rounded-md border px-3 py-1.5 text-sm"
+                      style={{
+                        background: "rgba(255,252,247,0.06)",
+                        border: "1px solid rgba(255,252,247,0.15)",
+                        color: "hsl(var(--ink-foreground))",
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

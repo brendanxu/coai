@@ -120,11 +120,14 @@ type NewAPILogEntry struct {
 
 // MaskedToken is a Token with its Key field masked for list responses.
 // Only creation returns the full plaintext key.
+// CoaiUserID is populated in admin list responses via the binding reverse-lookup;
+// it is zero in user-side list responses (callers already know their own ID).
 type MaskedToken struct {
-	ID             int64 `json:"id"`
-	UserID         int64 `json:"user_id"`
+	ID             int64  `json:"id"`
+	UserID         int64  `json:"user_id"`       // newapi_user_id
+	CoaiUserID     int64  `json:"coai_user_id"`  // greentokey user id; 0 for user-side responses
 	Name           string `json:"name"`
-	Key            string `json:"key"` // masked: "sk-tnx-***-abcd"
+	Key            string `json:"key"`           // masked: "sk-tnx-***-abcd"
 	Status         int    `json:"status"`
 	RemainQuota    int64  `json:"remain_quota"`
 	UnlimitedQuota bool   `json:"unlimited_quota"`
@@ -734,7 +737,16 @@ func GetTokenUsageAPI(c *gin.Context) {
 // ---------------------------------------------------------------------------
 
 // AdminListTokensAPI handles GET /api/gtk/v1/admin/tokens
-// Returns all tokens across all users. Supports ?user_id= and ?status= filters.
+// Returns all tokens across all users.
+//
+// Filter params:
+//   ?coai_user_id=N  — preferred: looks up binding to get newapi_user_id, then
+//                      fetches tokens for that user. Returns MaskedToken[] with
+//                      coai_user_id populated.
+//   ?user_id=N       — legacy: treats N as newapi_user_id directly (no binding
+//                      lookup). coai_user_id will be 0 in the response.
+//
+// No param → global list across all bindings.
 func AdminListTokensAPI(c *gin.Context) {
 	if a := auth.RequireAdmin(c); a == nil {
 		return
@@ -747,16 +759,47 @@ func AdminListTokensAPI(c *gin.Context) {
 	}
 	rc := &realNewAPIClient{c: cli}
 
-	userIDParam := c.Query("user_id")
-	if userIDParam != "" {
+	// Preferred path: filter by coai_user_id with binding lookup.
+	if coaiIDParam := c.Query("coai_user_id"); coaiIDParam != "" {
+		coaiID, parseErr := strconv.ParseInt(coaiIDParam, 10, 64)
+		if parseErr != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "invalid coai_user_id"})
+			return
+		}
+		bind, bindErr := LoadBinding(connection.DB, coaiID)
+		if errors.Is(bindErr, sql.ErrNoRows) {
+			c.JSON(http.StatusOK, gin.H{"success": true, "data": []MaskedToken{}})
+			return
+		}
+		if bindErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "load binding: " + bindErr.Error()})
+			return
+		}
+		toks, listErr := rc.listTokensForUser(c.Request.Context(), bind.NewapiUserID)
+		if listErr != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"success": false, "message": "list tokens failed: " + listErr.Error()})
+			return
+		}
+		masked := make([]MaskedToken, 0, len(toks))
+		for _, t := range toks {
+			m := tokenFromNewAPI(t)
+			m.CoaiUserID = coaiID
+			masked = append(masked, m)
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": masked})
+		return
+	}
+
+	// Legacy path: ?user_id=<newapi_user_id> — no binding lookup.
+	if userIDParam := c.Query("user_id"); userIDParam != "" {
 		newapiUserID, parseErr := strconv.ParseInt(userIDParam, 10, 64)
 		if parseErr != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "invalid user_id"})
 			return
 		}
-		toks, err := rc.listTokensForUser(c.Request.Context(), newapiUserID)
-		if err != nil {
-			c.JSON(http.StatusBadGateway, gin.H{"success": false, "message": "list tokens failed: " + err.Error()})
+		toks, listErr := rc.listTokensForUser(c.Request.Context(), newapiUserID)
+		if listErr != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"success": false, "message": "list tokens failed: " + listErr.Error()})
 			return
 		}
 		masked := make([]MaskedToken, 0, len(toks))
@@ -767,7 +810,7 @@ func AdminListTokensAPI(c *gin.Context) {
 		return
 	}
 
-	// Global list: get all bindings, then list tokens per user.
+	// Global list: iterate all bindings and fetch tokens per user.
 	rows, err := globals.QueryDb(connection.DB, `
 		SELECT coai_user_id, newapi_user_id FROM gtk_newapi_binding ORDER BY coai_user_id
 	`)
@@ -777,12 +820,7 @@ func AdminListTokensAPI(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	type adminTokenRow struct {
-		MaskedToken
-		CoaiUserID int64 `json:"coai_user_id"`
-	}
-	var all []adminTokenRow
-
+	var all []MaskedToken
 	for rows.Next() {
 		var coaiID, newapiID int64
 		if err := rows.Scan(&coaiID, &newapiID); err != nil {
@@ -794,12 +832,17 @@ func AdminListTokensAPI(c *gin.Context) {
 			continue // skip users with failed lookups — don't abort entire list
 		}
 		for _, t := range toks {
-			all = append(all, adminTokenRow{MaskedToken: tokenFromNewAPI(t), CoaiUserID: coaiID})
+			m := tokenFromNewAPI(t)
+			m.CoaiUserID = coaiID
+			all = append(all, m)
 		}
 	}
 	if err := rows.Err(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "iterate bindings: " + err.Error()})
 		return
+	}
+	if all == nil {
+		all = []MaskedToken{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": all})
