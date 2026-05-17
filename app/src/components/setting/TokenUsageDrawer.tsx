@@ -47,7 +47,7 @@ export default function TokenUsageDrawer({
     setUsage(null);
     axios
       .get<{ success: boolean; data: TokenUsage }>(
-        `/api/gtk/v1/tokens/${tokenId}/usage`,
+        `/gtk/v1/tokens/${tokenId}/usage`,
       )
       .then((r) => {
         if (r.data?.success) {

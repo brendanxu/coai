@@ -35,7 +35,7 @@ export default function Tokens() {
   const fetchTokens = useCallback(() => {
     setLoading(true);
     axios
-      .get<{ success: boolean; data: MaskedToken[] }>("/api/gtk/v1/tokens")
+      .get<{ success: boolean; data: MaskedToken[] }>("/gtk/v1/tokens")
       .then((r) => {
         if (r.data?.success) {
           setTokens(r.data.data ?? []);

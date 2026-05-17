@@ -82,7 +82,7 @@ export default function CreateTokenDialog({
     setLoading(true);
     try {
       const resp = await axios.post<{ success: boolean; data: CreatedToken }>(
-        "/api/gtk/v1/tokens",
+        "/gtk/v1/tokens",
         {
           name: name.trim(),
           expired_time: expireOptionToUnix(expire),

@@ -69,7 +69,7 @@ function useTokenActions(onRefresh: () => void) {
 
   const revoke = async (tokenId: number) => {
     try {
-      await axios.delete(`/api/gtk/v1/tokens/${tokenId}`);
+      await axios.delete(`/gtk/v1/tokens/${tokenId}`);
       toast.success(t("tokens.revoke.success", "令牌已撤销"));
       onRefresh();
     } catch (err: unknown) {
@@ -84,7 +84,7 @@ function useTokenActions(onRefresh: () => void) {
   const rename = async (tokenId: number, newName: string) => {
     if (!newName.trim()) return;
     try {
-      await axios.patch(`/api/gtk/v1/tokens/${tokenId}`, { name: newName.trim() });
+      await axios.patch(`/gtk/v1/tokens/${tokenId}`, { name: newName.trim() });
       toast.success(t("tokens.rename.success", "已重命名"));
       onRefresh();
     } catch {

@@ -4,13 +4,13 @@
  * PKG-A-3 Wave 3, Tasks 3.2 – 3.5
  *
  * Features:
- *  - Global token list across all users (GET /api/gtk/v1/admin/tokens)
+ *  - Global token list across all users (GET /gtk/v1/admin/tokens)
  *  - Filters: user_id search, status dropdown (supported by backend)
  *  - Force-revoke any token — no last-token guard (admin responsibility)
- *  - Audit log drawer (GET /api/gtk/v1/admin/tokens/:id/audit)
+ *  - Audit log drawer (GET /gtk/v1/admin/tokens/:id/audit)
  *
  * Admin endpoint shapes (from newapi/admin_tokens.go):
- *  GET /api/gtk/v1/admin/tokens
+ *  GET /gtk/v1/admin/tokens
  *    → { success: true, data: AdminTokenRow[] }
  *    AdminTokenRow = MaskedToken + coai_user_id
  *    Supports ?user_id=<newapi_user_id> filter only.
@@ -18,10 +18,10 @@
  *    (global list fetches per-binding from NewAPI which has no server-side
  *    filter). Status filtering is done client-side here.
  *
- *  DELETE /api/gtk/v1/admin/tokens/:id?coai_user_id=<id>
+ *  DELETE /gtk/v1/admin/tokens/:id?coai_user_id=<id>
  *    → { success: true }  (requires coai_user_id query param)
  *
- *  GET /api/gtk/v1/admin/tokens/:id/audit
+ *  GET /gtk/v1/admin/tokens/:id/audit
  *    → { success: true, data: AuditEntry[] }  (may be empty if no audit rows)
  */
 
@@ -133,7 +133,7 @@ function AuditDrawer({ open, onOpenChange, tokenId, tokenName }: AuditDrawerProp
     setRecords([]);
     axios
       .get<{ success: boolean; data: AuditEntry[] }>(
-        `/api/gtk/v1/admin/tokens/${tokenId}/audit`,
+        `/gtk/v1/admin/tokens/${tokenId}/audit`,
       )
       .then((r) => {
         if (r.data?.success) {
@@ -235,7 +235,7 @@ export function TokensTab() {
       const params = uid ? `?user_id=${uid}` : "";
       axios
         .get<{ success: boolean; data: AdminTokenRow[] }>(
-          `/api/gtk/v1/admin/tokens${params}`,
+          `/gtk/v1/admin/tokens${params}`,
         )
         .then((r) => {
           if (r.data?.success) {
@@ -280,7 +280,7 @@ export function TokensTab() {
     setRevoking(true);
     try {
       await axios.delete(
-        `/api/gtk/v1/admin/tokens/${revokeTarget.id}?coai_user_id=${revokeTarget.coai_user_id}`,
+        `/gtk/v1/admin/tokens/${revokeTarget.id}?coai_user_id=${revokeTarget.coai_user_id}`,
       );
       toast.success("令牌已强制撤销");
       setRevokeTarget(null);
