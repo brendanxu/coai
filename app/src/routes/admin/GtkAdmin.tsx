@@ -1,6 +1,6 @@
 // GtkAdmin — /admin/gtk
 // Unified admin panel. Standalone full-page (NOT nested in CoAI AdminPage).
-// Six-tab sidebar: Hub / Channels / Users / Ratios / Orders / Settings
+// Eight-tab sidebar: Hub / Channels / Users / Ratios / Orders / Pricing / Settings / Tokens
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
@@ -14,9 +14,10 @@ import { listUserRouting, updateUserRouting, SUGGESTED_GROUPS } from "@/api/user
 import type { UserRoutingRow } from "@/api/userRouting.ts";
 import "./GtkAdmin.css";
 import { PricingTab } from "./PricingTab";
+import { TokensTab } from "./TokensTab";
 
 // ── Types ──────────────────────────────────────────────────────────────────
-type Tab = "hub" | "channels" | "users" | "ratios" | "orders" | "settings" | "pricing";
+type Tab = "hub" | "channels" | "users" | "ratios" | "orders" | "settings" | "pricing" | "tokens";
 
 interface Channel {
   id: number;
@@ -1375,6 +1376,14 @@ function SettingsTab() {
 }
 
 // ── Nav config ─────────────────────────────────────────────────────────────
+const IconTokens = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="5" width="20" height="14" rx="2"/>
+    <path d="M2 10h20"/>
+    <path d="M7 15h.01M11 15h2"/>
+  </svg>
+);
+
 const NAV: { id: Tab; label: string; Icon: React.FC }[] = [
   { id: "hub", label: "仪表盘", Icon: IconHub },
   { id: "channels", label: "渠道管理", Icon: IconChannels },
@@ -1382,6 +1391,7 @@ const NAV: { id: Tab; label: string; Icon: React.FC }[] = [
   { id: "ratios", label: "模型计费", Icon: IconRatios },
   { id: "orders", label: "订单", Icon: IconOrders },
   { id: "pricing", label: "套餐定价", Icon: IconPricing },
+  { id: "tokens", label: "令牌审计", Icon: IconTokens },
   { id: "settings", label: "系统设置", Icon: IconSettings },
 ];
 
@@ -1392,6 +1402,7 @@ const TAB_TITLES: Record<Tab, string> = {
   ratios: "模型计费",
   orders: "订单",
   pricing: "套餐定价",
+  tokens: "令牌审计",
   settings: "系统设置",
 };
 
@@ -1479,6 +1490,7 @@ function GtkAdmin() {
           {tab === "ratios" && <RatiosTab />}
           {tab === "orders" && <OrdersTab />}
           {tab === "pricing" && <PricingTab />}
+          {tab === "tokens" && <TokensTab />}
           {tab === "settings" && <SettingsTab />}
         </main>
       </div>
