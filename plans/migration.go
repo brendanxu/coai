@@ -638,6 +638,11 @@ var usageLogV2Columns = []usageLogV2Column{
 	{"upstream_cost_micro", "BIGINT NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
 	{"client_charge_micro", "BIGINT NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
 	{"markup_multiplier", "DECIMAL(4,3) NOT NULL DEFAULT 1.300", "REAL NOT NULL DEFAULT 1.300"},
+	// Wave 1.5 (PKG-A-3): per-token usage attribution. DEFAULT 0 = "no token
+	// context" (legacy rows, or calls where no sk-tnx-xxx was parsed from the
+	// Authorization header). New rows written via WriteUsageCost carry the
+	// NewAPI token ID extracted from the middleware.
+	{"token_id", "BIGINT NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
 }
 
 // upgradeAppUsageLogV2 brings an existing gtk_app_usage_log up to the V2
@@ -665,32 +670,30 @@ func upgradeAppUsageLogV2(db *sql.DB) error {
 	// billing audits and cache-hit-rate reports without touching the
 	// existing two indexes.
 	if globals.SqliteEngine {
-		_, err := globals.ExecDb(db, `
+		if _, err := globals.ExecDb(db, `
 			CREATE INDEX IF NOT EXISTS idx_gtk_usage_provider_model_created
 			ON gtk_app_usage_log(provider, model_id, created_at);
+		`); err != nil {
+			return err
+		}
+		// Wave 1.5: per-token usage GROUP BY idx (used by GetTokenUsage).
+		_, err := globals.ExecDb(db, `
+			CREATE INDEX IF NOT EXISTS idx_gtk_usage_token_id
+			ON gtk_app_usage_log(token_id, created_at);
 		`)
 		return err
 	}
 	// MySQL has no IF NOT EXISTS for CREATE INDEX; check INFORMATION_SCHEMA
 	// just like service/migration.go does for cross-table indexes.
-	var count int
-	row := globals.QueryRowDb(db, `
-		SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
-		WHERE TABLE_SCHEMA = DATABASE()
-		  AND TABLE_NAME   = 'gtk_app_usage_log'
-		  AND INDEX_NAME   = 'idx_gtk_usage_provider_model_created'
-	`)
-	if err := row.Scan(&count); err != nil {
-		return fmt.Errorf("check provider+model index: %w", err)
+	if err := addIndexIfMissing(db, "gtk_app_usage_log",
+		"idx_gtk_usage_provider_model_created",
+		"(provider, model_id, created_at)"); err != nil {
+		return fmt.Errorf("add provider+model index: %w", err)
 	}
-	if count > 0 {
-		return nil
-	}
-	_, err := globals.ExecDb(db, `
-		ALTER TABLE gtk_app_usage_log
-		  ADD INDEX idx_gtk_usage_provider_model_created (provider, model_id, created_at);
-	`)
-	return err
+	// Wave 1.5: per-token usage GROUP BY idx.
+	return addIndexIfMissing(db, "gtk_app_usage_log",
+		"idx_gtk_usage_token_id",
+		"(token_id, created_at)")
 }
 
 // createProviderPricingTable defines the operations-owned price book.

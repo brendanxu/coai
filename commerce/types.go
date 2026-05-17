@@ -238,6 +238,12 @@ type UsageCostEntry struct {
 	// (documented behavior, not bug — see pricing.go). NULL model =
 	// 0 cost + warning log.
 	CostCents int64
+
+	// TokenID is the NewAPI token ID (gtk_tokens.id) used for this call.
+	// 0 means "no token context" (legacy rows, or calls made without an
+	// sk-tnx-xxx Authorization header). Set by the middleware-to-context
+	// pipeline; WriteUsageCost writes this into gtk_app_usage_log.token_id.
+	TokenID int64
 }
 
 // EntitlementGrant is the post-payment provisioning request handed to
