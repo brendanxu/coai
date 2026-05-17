@@ -64,6 +64,9 @@ const AdminOrders = lazyFactor(() => import("@/routes/admin/AdminOrders.tsx"));
 // Unified GTK admin panel (users + model-ratios + settings + sub2api hub).
 const GtkAdmin = lazyFactor(() => import("@/routes/admin/GtkAdmin.tsx"));
 
+// PKG-A-3 Wave 2 — user-side personal API token management
+const TokensPage = lazyFactor(() => import("@/routes/setting/Tokens.tsx"));
+
 // Phase 3+4 — checkout / payment-success / usage / live
 const Checkout = lazyFactor(() => import("@/routes/Checkout.tsx"));
 const PaymentSuccess = lazyFactor(() => import("@/routes/PaymentSuccess.tsx"));
@@ -205,6 +208,18 @@ const router = createBrowserRouter([
           <AuthRequired>
             <Suspense>
               <LivePage />
+            </Suspense>
+          </AuthRequired>
+        ),
+      },
+      // PKG-A-3 — /setting/tokens (personal API token management)
+      {
+        id: "setting-tokens",
+        path: "setting/tokens",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <TokensPage />
             </Suspense>
           </AuthRequired>
         ),
