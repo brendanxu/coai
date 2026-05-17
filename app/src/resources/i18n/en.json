@@ -984,6 +984,26 @@
     "used-at": "Collection time",
     "used-username": "Claim User",
     "payment": "Orders",
+    "tokens": {
+      "title": "Tokens Audit",
+      "user_col": "User",
+      "actions": {
+        "force_revoke": "Force Revoke",
+        "view_audit": "View Audit"
+      },
+      "filter": {
+        "user": "Search user",
+        "status_all": "All status"
+      },
+      "audit": {
+        "title": "Audit log",
+        "empty": "No audit records yet"
+      },
+      "confirm": {
+        "force_revoke_title": "Force revoke token?",
+        "force_revoke_body": "Token \"{{name}}\" of user {{user}} will be invalidated immediately"
+      }
+    },
     "pricing": {
       "tab": "Plans & Pricing",
       "section-plans": "Plan Management",

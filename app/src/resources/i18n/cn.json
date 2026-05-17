@@ -756,6 +756,26 @@
       "retire-conflict": "该套餐有活跃订阅，无法停用"
     },
     "subscription": "订阅管理",
+    "tokens": {
+      "title": "令牌审计",
+      "user_col": "用户",
+      "actions": {
+        "force_revoke": "强制撤销",
+        "view_audit": "查看审计"
+      },
+      "filter": {
+        "user": "用户搜索",
+        "status_all": "全部状态"
+      },
+      "audit": {
+        "title": "操作审计",
+        "empty": "暂无审计记录"
+      },
+      "confirm": {
+        "force_revoke_title": "强制撤销 token？",
+        "force_revoke_body": "用户 {{user}} 的 token \"{{name}}\" 将立即失效"
+      }
+    },
     "exit": "退出后台",
     "billing": "收入",
     "billing-today": "今日入账",
