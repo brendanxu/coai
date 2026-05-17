@@ -2547,5 +2547,74 @@
     "session_hit_rate": "Cache Hit Rate",
     "session_cost": "Session Cost",
     "empty": "Waiting for API calls…"
+  },
+  "tokens": {
+    "eyebrow": "API Access",
+    "title": "My API Tokens",
+    "subtitle": "Manage your sk-tnx-xxx API keys, up to 10 tokens",
+    "create": {
+      "title": "Create API Token",
+      "name_label": "Name",
+      "name_too_long": "Name must be 64 characters or fewer",
+      "expire_label": "Expiration",
+      "never": "Never",
+      "plaintext_warning": "This key is shown only once. Copy and save it now — you won't be able to see it again.",
+      "success_action": "I've saved it",
+      "creating": "Creating…"
+    },
+    "unnamed": "Unnamed",
+    "name_placeholder": "e.g. Production",
+    "copy": {
+      "success": "Copied",
+      "failed": "Copy failed, please select manually"
+    },
+    "rename": {
+      "title": "Rename Token",
+      "save": "Save",
+      "saving": "Saving…",
+      "success": "Renamed"
+    },
+    "revoke": {
+      "confirm": "Revoke this token?",
+      "description": "API calls using this key will return 401. This action cannot be undone.",
+      "last_token_warn": "This is your last active token. Revoking it will prevent all API access. Create a new token first.",
+      "success": "Token revoked"
+    },
+    "usage": {
+      "drawer_title": "Token Usage",
+      "total_calls": "Total Calls",
+      "total_tokens": "Total Tokens Used",
+      "input_tokens": "Input Tokens",
+      "output_tokens": "Output Tokens",
+      "by_model": "By Model",
+      "no_data": "No usage data yet",
+      "load_failed": "Failed to load usage data"
+    },
+    "status": {
+      "active": "Active",
+      "revoked": "Revoked",
+      "expired": "Expired"
+    },
+    "quota": {
+      "unlimited": "Unlimited"
+    },
+    "expire": {
+      "never": "Never expires"
+    },
+    "created": {
+      "title": "Token Created",
+      "name_label": "Token name"
+    },
+    "empty": {
+      "title": "No tokens yet",
+      "cta": "Create your first token to get started"
+    },
+    "errors": {
+      "load_failed": "Failed to load tokens",
+      "create_failed": "Create failed, please try again",
+      "max_reached": "Maximum 10 tokens reached",
+      "revoke_failed": "Revoke failed, please try again",
+      "rename_failed": "Rename failed, please try again"
+    }
   }
 }
