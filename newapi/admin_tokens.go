@@ -5,6 +5,17 @@
 // wrapper (no direct DB reads of NewAPI's own tables — that would violate
 // 三条隔离原则).
 //
+// Wave 1.5b data-source correction (GetTokenUsage):
+// Why query NewAPI logs via REST API (not gtk_app_usage_log):
+// chat completion writes usage to NewAPI's native logs table (via NewAPI's
+// own relay path); greentokey gtk_app_usage_log only captures service-order
+// calls via commerce.WriteUsageCost. The usage/WriteUsageLog path (chat
+// handler) does not set token_id, so querying gtk_app_usage_log WHERE
+// token_id=X always returns 0 for chat-completion traffic.
+// Until a future PKG migrates chat completion to commerce.WriteUsageCost
+// with token_id populated, NewAPI REST API (GET /api/log/?token_id=<id>)
+// is the source of truth for per-token chat usage.
+//
 // Architecture invariants respected:
 //   - L23: binding is 1:1 (coai_user ↔ newapi_user), tokens are 1:N under binding
 //   - No gtk_user_tokens mirror table — we read/write NewAPI tokens directly
@@ -75,7 +86,8 @@ type UpdateTokenRequest struct {
 	RemainQuota int64  `json:"remain_quota,omitempty"`
 }
 
-// TokenUsage is the per-token usage aggregation from gtk_app_usage_log.
+// TokenUsage is the per-token usage aggregation sourced from NewAPI's
+// native logs (fetched via GET /api/log/?token_id=<id>).
 type TokenUsage struct {
 	TokenID         int64          `json:"token_id"`
 	TotalCalls      int64          `json:"total_calls"`
@@ -85,17 +97,30 @@ type TokenUsage struct {
 	ByModel         []UsageByModel `json:"by_model"`
 }
 
+// NewAPILogEntry is one row from NewAPI's GET /api/log/ endpoint.
+// Only the fields greentokey needs for usage aggregation are mapped; the
+// full NewAPI log record has additional fields (channel_id, type, etc.)
+// that we discard.
+type NewAPILogEntry struct {
+	Model            string `json:"model_name"`
+	PromptTokens     int64  `json:"prompt_tokens"`
+	CompletionTokens int64  `json:"completion_tokens"`
+	// Quota is NewAPI's internal cost unit for this call (not directly
+	// used in aggregation but available for future billing attribution).
+	Quota int64 `json:"quota"`
+}
+
 // MaskedToken is a Token with its Key field masked for list responses.
 // Only creation returns the full plaintext key.
 type MaskedToken struct {
-	ID              int64     `json:"id"`
-	UserID          int64     `json:"user_id"`
-	Name            string    `json:"name"`
-	Key             string    `json:"key"` // masked: "sk-tnx-***-abcd"
-	Status          int       `json:"status"`
-	RemainQuota     int64     `json:"remain_quota"`
-	UnlimitedQuota  bool      `json:"unlimited_quota"`
-	ExpiredTime     int64     `json:"expired_time"`
+	ID             int64 `json:"id"`
+	UserID         int64 `json:"user_id"`
+	Name           string `json:"name"`
+	Key            string `json:"key"` // masked: "sk-tnx-***-abcd"
+	Status         int    `json:"status"`
+	RemainQuota    int64  `json:"remain_quota"`
+	UnlimitedQuota bool   `json:"unlimited_quota"`
+	ExpiredTime    int64  `json:"expired_time"`
 }
 
 // maskKey returns a partially-redacted form of an sk-xxx key.
@@ -130,6 +155,12 @@ type tokenClientIface interface {
 	createToken(ctx context.Context, newapiUserID int64, req CreateTokenRequest) (*Token, error)
 	updateToken(ctx context.Context, tokenID int64, req UpdateTokenRequest) error
 	disableToken(ctx context.Context, tokenID int64) error
+	// fetchTokenLogs returns all NewAPI log entries for the given token_id via
+	// GET /api/log/?p=0&size=<n>&token_id=<id>. Wave 1.5b: this is the
+	// authoritative source for chat-completion usage because NewAPI records
+	// every relay call here, while gtk_app_usage_log only captures
+	// service-order calls.
+	fetchTokenLogs(ctx context.Context, tokenID int64) ([]NewAPILogEntry, error)
 }
 
 // realNewAPIClient wraps the package Client to satisfy tokenClientIface.
@@ -184,6 +215,24 @@ func (r *realNewAPIClient) updateToken(ctx context.Context, tokenID int64, req U
 
 func (r *realNewAPIClient) disableToken(ctx context.Context, tokenID int64) error {
 	return r.c.DisableToken(ctx, tokenID)
+}
+
+// fetchTokenLogs calls GET /api/log/?p=0&size=500&token_id=<id> on the
+// NewAPI admin API and returns the log entries. We fetch up to 500 rows
+// per call; a future pagination loop can be added if needed.
+//
+// NewAPI v0.13.x log endpoint returns a paginated list; the response shape
+// is {"success":true,"data":{"items":[...],"total":N,...}}.
+func (r *realNewAPIClient) fetchTokenLogs(ctx context.Context, tokenID int64) ([]NewAPILogEntry, error) {
+	path := fmt.Sprintf("/api/log/?p=0&size=500&token_id=%d", tokenID)
+	var env listEnvelope[NewAPILogEntry]
+	if err := r.c.do(ctx, "GET", path, nil, 0, &env); err != nil {
+		return nil, fmt.Errorf("newapi: fetch logs for token %d: %w", tokenID, err)
+	}
+	if !env.Success {
+		return nil, fmt.Errorf("newapi: fetch logs: %s", env.Message)
+	}
+	return env.Data.Items, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -341,8 +390,21 @@ func (m *tokenManager) RevokeToken(ctx context.Context, coaiUserID, tokenID int6
 	return m.cli.disableToken(ctx, tokenID)
 }
 
-// GetTokenUsage returns aggregated usage from gtk_app_usage_log for a
-// specific token. Ownership is verified before querying.
+// GetTokenUsage returns aggregated usage for a specific token sourced from
+// NewAPI's native log endpoint (GET /api/log/?token_id=<id>).
+//
+// Ownership is verified before querying. The aggregation is done in-process
+// over the fetched log entries; model breakdown is built by grouping on
+// model_name.
+//
+// Why NewAPI logs (not gtk_app_usage_log):
+// gtk_app_usage_log.token_id is only populated by the service-order path
+// (commerce.WriteUsageCost). Chat-completion calls go through the
+// usage.WriteUsageLog path which does not record token_id, so a SQL query
+// on that table always returns 0 for chat-completion traffic. NewAPI records
+// every relay call in its own logs table keyed by token_id, making it the
+// authoritative source for per-token usage until a future PKG unifies the
+// write paths.
 func (m *tokenManager) GetTokenUsage(ctx context.Context, coaiUserID, tokenID int64) (*TokenUsage, error) {
 	bind, err := m.bindingForUser(coaiUserID)
 	if err != nil {
@@ -356,52 +418,52 @@ func (m *tokenManager) GetTokenUsage(ctx context.Context, coaiUserID, tokenID in
 		return nil, ErrTokenNotOwnedByUser
 	}
 
-	var u TokenUsage
-	u.TokenID = tokenID
-	err = globals.QueryRowDb(m.db, `
-		SELECT
-			COUNT(*),
-			COALESCE(SUM(COALESCE(tokens_used, 0)), 0),
-			COALESCE(SUM(COALESCE(input_tokens, 0)), 0),
-			COALESCE(SUM(COALESCE(output_tokens, 0)), 0)
-		FROM gtk_app_usage_log
-		WHERE token_id = ?
-	`, tokenID).Scan(&u.TotalCalls, &u.TotalTokensUsed, &u.InputTokens, &u.OutputTokens)
+	entries, err := m.cli.fetchTokenLogs(ctx, tokenID)
 	if err != nil {
-		return nil, fmt.Errorf("get token usage: query: %w", err)
+		return nil, fmt.Errorf("get token usage: fetch logs: %w", err)
 	}
 
-	// Per-model breakdown.
-	rows, err := globals.QueryDb(m.db, `
-		SELECT
-			COALESCE(model_id, ''),
-			COUNT(*),
-			COALESCE(SUM(COALESCE(input_tokens, 0)), 0),
-			COALESCE(SUM(COALESCE(output_tokens, 0)), 0),
-			0,
-			COALESCE(SUM(COALESCE(tokens_used, 0)), 0),
-			0
-		FROM gtk_app_usage_log
-		WHERE token_id = ?
-		GROUP BY model_id
-		ORDER BY COUNT(*) DESC
-	`, tokenID)
-	if err != nil {
-		return nil, fmt.Errorf("get token usage: model breakdown: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var m UsageByModel
-		if err := rows.Scan(&m.ModelID, &m.TotalCalls, &m.InputTokens,
-			&m.OutputTokens, &m.CacheSavedMicro, &m.CreditsUsed, &m.ActualSpentMicro); err != nil {
-			return nil, err
+	u := &TokenUsage{TokenID: tokenID}
+
+	// Aggregate totals and build per-model breakdown map.
+	byModel := make(map[string]*UsageByModel)
+	for _, e := range entries {
+		totalTokens := e.PromptTokens + e.CompletionTokens
+		u.TotalCalls++
+		u.TotalTokensUsed += totalTokens
+		u.InputTokens += e.PromptTokens
+		u.OutputTokens += e.CompletionTokens
+
+		bm, ok := byModel[e.Model]
+		if !ok {
+			bm = &UsageByModel{ModelID: e.Model}
+			byModel[e.Model] = bm
 		}
-		u.ByModel = append(u.ByModel, m)
+		bm.TotalCalls++
+		bm.InputTokens += e.PromptTokens
+		bm.OutputTokens += e.CompletionTokens
+		bm.CreditsUsed += totalTokens
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+
+	// Flatten map into slice, ordered by total_calls desc.
+	// Simple insertion sort is fine for small model counts (<20).
+	u.ByModel = make([]UsageByModel, 0, len(byModel))
+	for _, bm := range byModel {
+		u.ByModel = append(u.ByModel, *bm)
 	}
-	return &u, nil
+	sortByModelByCallsDesc(u.ByModel)
+
+	return u, nil
+}
+
+// sortByModelByCallsDesc sorts in place, highest TotalCalls first.
+// Insertion sort — model count is always small (<20).
+func sortByModelByCallsDesc(s []UsageByModel) {
+	for i := 1; i < len(s); i++ {
+		for j := i; j > 0 && s[j].TotalCalls > s[j-1].TotalCalls; j-- {
+			s[j], s[j-1] = s[j-1], s[j]
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------
