@@ -16,8 +16,6 @@ import { lazyFactor } from "@/utils/loader.tsx";
 import { useSelector } from "react-redux";
 import { selectAdmin, selectAuthenticated, selectInit } from "@/store/auth.ts";
 import Index from "@/routes/Index.tsx";
-import License from "@/routes/admin/License.tsx";
-
 const Account = lazyFactor(() => import("@/routes/Account.tsx"));
 const Pricing = lazyFactor(() => import("@/routes/Pricing.tsx"));
 const Contact = lazyFactor(() => import("@/routes/Contact.tsx"));
@@ -52,15 +50,11 @@ const OrderDetail = lazyFactor(() => import("@/routes/OrderDetail.tsx"));
 
 const AdminPage = lazyFactor(() => import("@/routes/Admin.tsx"));
 const AdminSystem = lazyFactor(() => import("@/routes/admin/System.tsx"));
-const AdminLicense = lazyFactor(() => import("@/routes/admin/License.tsx"));
 const AdminUsers = lazyFactor(() => import("@/routes/admin/Users.tsx"));
 const AdminLogger = lazyFactor(() => import("@/routes/admin/Logger.tsx"));
 // v0.12 Tier 1 block 5 — founder concierge workspace for 民宿 wedge
 const AdminMansu = lazyFactor(() => import("@/routes/admin/Mansu.tsx"));
-// PKG-4 (architecture §19) — per-user channel routing admin pages.
-const AdminUserRouting = lazyFactor(
-  () => import("@/routes/admin/UserRouting.tsx"),
-);
+// PKG-4 (architecture §19) — per-channel routing admin pages (per-user routing merged into GtkAdmin).
 const AdminChannelsRouting = lazyFactor(
   () => import("@/routes/admin/AdminChannels.tsx"),
 );
@@ -360,42 +354,6 @@ const router = createBrowserRouter([
             ),
           },
           {
-            id: "admin-warm-up",
-            path: "warmup",
-            element: (
-              <Suspense>
-                <License />
-              </Suspense>
-            ),
-          },
-          {
-            id: "admin-license",
-            path: "license",
-            element: (
-              <Suspense>
-                <AdminLicense />
-              </Suspense>
-            ),
-          },
-          {
-            id: "admin-record",
-            path: "record",
-            element: (
-              <Suspense>
-                <License />
-              </Suspense>
-            ),
-          },
-          {
-            id: "admin-payment",
-            path: "pay",
-            element: (
-              <Suspense>
-                <License />
-              </Suspense>
-            ),
-          },
-          {
             id: "admin-logger",
             path: "logger",
             element: (
@@ -411,16 +369,6 @@ const router = createBrowserRouter([
             element: (
               <Suspense>
                 <AdminMansu />
-              </Suspense>
-            ),
-          },
-          // PKG-4 (architecture §19): per-user channel routing admin.
-          {
-            id: "admin-user-routing",
-            path: "user-routing",
-            element: (
-              <Suspense>
-                <AdminUserRouting />
               </Suspense>
             ),
           },
