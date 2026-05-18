@@ -1283,3 +1283,153 @@ func TestAdminForceRevoke_AuditAttributesAdminActor(t *testing.T) {
 		t.Errorf("audit action: want 'admin_force_revoke', got %q", action)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// R5-2 — fetchTokenLogsPage uses page_size param (not size)
+// ---------------------------------------------------------------------------
+
+// pageSizeCapturingClient overrides fetchTokenLogsPage to record the raw URL
+// query params used, so we can assert page_size is sent instead of size.
+type pageSizeCapturingClient struct {
+	*fakeNewAPIClient
+	capturedURLs []string
+}
+
+func (p *pageSizeCapturingClient) fetchTokenLogsPage(_ context.Context, tokenID int64, page, size int) ([]NewAPILogEntry, error) {
+	// Record the URL that realNewAPIClient would construct.
+	p.capturedURLs = append(p.capturedURLs, fmt.Sprintf("p=%d&page_size=%d&token_id=%d", page, size, tokenID))
+	// Delegate to the base fake (returns empty → terminates loop).
+	return p.fakeNewAPIClient.fetchTokenLogsPage(context.Background(), tokenID, page, size)
+}
+
+// TestFetchTokenLogs_UsesPageSizeParam verifies via httptest that the real
+// realNewAPIClient.fetchTokenLogsPage sends page_size=N (not size=N).
+func TestFetchTokenLogs_UsesPageSizeParam(t *testing.T) {
+	var capturedQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		// Return one non-full page so the caller terminates.
+		fmt.Fprint(w, `{"success":true,"message":"","data":{"items":[],"total":0,"page":0,"page_size":500}}`)
+	}))
+	defer srv.Close()
+
+	cli := &Client{
+		baseURL:     srv.URL,
+		adminUserID: 2,
+		adminToken:  "test-token",
+		httpClient:  &http.Client{Timeout: 5 * time.Second},
+	}
+	rc := &realNewAPIClient{c: cli}
+
+	_, err := rc.fetchTokenLogsPage(context.Background(), 42, 0, 500)
+	if err != nil {
+		t.Fatalf("fetchTokenLogsPage: %v", err)
+	}
+	// Must use page_size, NOT size.
+	if !strings.Contains(capturedQuery, "page_size=500") {
+		t.Errorf("want page_size=500 in query, got %q", capturedQuery)
+	}
+	if strings.Contains(capturedQuery, "size=500") && !strings.Contains(capturedQuery, "page_size=500") {
+		t.Errorf("must NOT use bare size= param, got %q", capturedQuery)
+	}
+}
+
+// TestGetTokenUsage_TotalBasedPagination verifies that GetTokenUsage reads all
+// pages when total > pageSize. Uses a multiPageFakeClient with 3 pages of 500
+// entries each (total = 1500).
+func TestGetTokenUsage_TotalBasedPagination(t *testing.T) {
+	db := adminTestDB(t)
+	withConnDB(t, db)
+	seedBindingForUser(t, db, 42, 7)
+
+	base := newFakeClient()
+	base.seedTokens(7, 1)
+	tokenID := base.tokens[0].id
+
+	// 3 full pages of 500 → total 1500 entries.
+	makeEntries := func(n int, prompt, completion int64) []NewAPILogEntry {
+		es := make([]NewAPILogEntry, n)
+		for i := range es {
+			es[i] = NewAPILogEntry{Model: "gpt-4", PromptTokens: prompt, CompletionTokens: completion}
+		}
+		return es
+	}
+	cli := &multiPageFakeClient{
+		fakeNewAPIClient: base,
+		pages: [][]NewAPILogEntry{
+			makeEntries(500, 1, 1), // page 0: 500 × 2 = 1000 tokens
+			makeEntries(500, 1, 1), // page 1: 500 × 2 = 1000 tokens
+			makeEntries(500, 1, 1), // page 2: 500 × 2 = 1000 tokens
+			// page 3: empty → loop terminates
+		},
+	}
+	mgr := &tokenManager{db: db, cli: cli}
+
+	usage, err := mgr.GetTokenUsage(context.Background(), 42, tokenID)
+	if err != nil {
+		t.Fatalf("GetTokenUsage: %v", err)
+	}
+	if usage.TotalCalls != 1500 {
+		t.Errorf("want TotalCalls=1500, got %d", usage.TotalCalls)
+	}
+	if usage.TotalTokensUsed != 3000 {
+		t.Errorf("want TotalTokensUsed=3000, got %d", usage.TotalTokensUsed)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// R5-3 — computeEffectiveStatus + tokenFromNewAPI.EffectiveStatus
+// ---------------------------------------------------------------------------
+
+func TestComputeEffectiveStatus(t *testing.T) {
+	now := time.Now().Unix()
+	cases := []struct {
+		name   string
+		tok    Token
+		want   string
+	}{
+		{"status=2 revoked, future expiry", Token{Status: 2, ExpiredTime: now + 3600}, "revoked"},
+		{"status=2 revoked, no expiry", Token{Status: 2, ExpiredTime: -1}, "revoked"},
+		{"status=1 expired (past expiry)", Token{Status: 1, ExpiredTime: now - 3600}, "expired"},
+		{"status=1 active (future expiry)", Token{Status: 1, ExpiredTime: now + 3600}, "active"},
+		{"status=1 never-expire (-1)", Token{Status: 1, ExpiredTime: -1}, "active"},
+		{"status=1 never-expire (0)", Token{Status: 1, ExpiredTime: 0}, "active"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := computeEffectiveStatus(&tc.tok)
+			if got != tc.want {
+				t.Errorf("computeEffectiveStatus: want %q, got %q", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestTokenFromNewAPI_EffectiveStatusPopulated(t *testing.T) {
+	now := time.Now().Unix()
+
+	// status=1, expired → effective_status="expired"
+	t1 := &Token{ID: 1, Status: 1, ExpiredTime: now - 100, Key: "sk-abc123def456"}
+	m1 := tokenFromNewAPI(t1)
+	if m1.EffectiveStatus != "expired" {
+		t.Errorf("want effective_status=expired, got %q", m1.EffectiveStatus)
+	}
+	if m1.Status != 1 {
+		t.Errorf("raw status must remain 1 (backward compat), got %d", m1.Status)
+	}
+
+	// status=2 → effective_status="revoked"
+	t2 := &Token{ID: 2, Status: 2, ExpiredTime: now + 9999, Key: "sk-xyz789uvw012"}
+	m2 := tokenFromNewAPI(t2)
+	if m2.EffectiveStatus != "revoked" {
+		t.Errorf("want effective_status=revoked, got %q", m2.EffectiveStatus)
+	}
+
+	// status=1, never-expire → effective_status="active"
+	t3 := &Token{ID: 3, Status: 1, ExpiredTime: 0, Key: "sk-aaabbbcccddd"}
+	m3 := tokenFromNewAPI(t3)
+	if m3.EffectiveStatus != "active" {
+		t.Errorf("want effective_status=active, got %q", m3.EffectiveStatus)
+	}
+}
