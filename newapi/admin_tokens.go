@@ -127,16 +127,41 @@ type NewAPILogEntry struct {
 // Only creation returns the full plaintext key.
 // CoaiUserID is populated in admin list responses via the binding reverse-lookup;
 // it is zero in user-side list responses (callers already know their own ID).
+//
+// R5-3: EffectiveStatus is a computed string that correctly reflects whether a
+// token is "active", "revoked", or "expired". NewAPI's raw Status field stays 1
+// even for expired tokens (since expiry is time-based, not a status update), so
+// the frontend must not rely on Status==1 to mean "active". EffectiveStatus is
+// an additive field — old frontends that ignore it continue to work.
 type MaskedToken struct {
-	ID             int64  `json:"id"`
-	UserID         int64  `json:"user_id"`       // newapi_user_id
-	CoaiUserID     int64  `json:"coai_user_id"`  // greentokey user id; 0 for user-side responses
-	Name           string `json:"name"`
-	Key            string `json:"key"`           // masked: "sk-tnx-***-abcd"
-	Status         int    `json:"status"`
-	RemainQuota    int64  `json:"remain_quota"`
-	UnlimitedQuota bool   `json:"unlimited_quota"`
-	ExpiredTime    int64  `json:"expired_time"`
+	ID              int64  `json:"id"`
+	UserID          int64  `json:"user_id"`          // newapi_user_id
+	CoaiUserID      int64  `json:"coai_user_id"`     // greentokey user id; 0 for user-side responses
+	Name            string `json:"name"`
+	Key             string `json:"key"`              // masked: "sk-tnx-***-abcd"
+	Status          int    `json:"status"`           // raw NewAPI status: 1=enabled, 2=disabled
+	EffectiveStatus string `json:"effective_status"` // computed: "active" | "revoked" | "expired"
+	RemainQuota     int64  `json:"remain_quota"`
+	UnlimitedQuota  bool   `json:"unlimited_quota"`
+	ExpiredTime     int64  `json:"expired_time"`
+}
+
+// computeEffectiveStatus returns the human-meaningful status of a token:
+//   - "revoked"  — NewAPI status==2 (disabled regardless of expiry)
+//   - "expired"  — status==1 but expired_time is in the past
+//   - "active"   — status==1 and not yet expired (or never-expire)
+//
+// This corrects the visual bug where an expired-but-not-revoked token shows
+// "active" in the UI because its raw NewAPI status is still 1.
+func computeEffectiveStatus(t *Token) string {
+	if t.Status == 2 {
+		return "revoked"
+	}
+	// ExpiredTime <= 0 means "never expires" — treat as active.
+	if t.ExpiredTime > 0 && time.Now().Unix() >= t.ExpiredTime {
+		return "expired"
+	}
+	return "active"
 }
 
 // maskKey returns a partially-redacted form of an sk-xxx key.
@@ -149,16 +174,19 @@ func maskKey(key string) string {
 }
 
 // tokenFromNewAPI converts a NewAPI Token into a MaskedToken for list/get responses.
+// R5-3: populates EffectiveStatus so the frontend can display the correct badge
+// without having to re-implement expiry logic in JS.
 func tokenFromNewAPI(t *Token) MaskedToken {
 	return MaskedToken{
-		ID:             t.ID,
-		UserID:         t.UserID,
-		Name:           t.Name,
-		Key:            maskKey(t.Key),
-		Status:         t.Status,
-		RemainQuota:    t.RemainQuota,
-		UnlimitedQuota: t.UnlimitedQuota,
-		ExpiredTime:    t.ExpiredTime,
+		ID:              t.ID,
+		UserID:          t.UserID,
+		Name:            t.Name,
+		Key:             maskKey(t.Key),
+		Status:          t.Status,
+		EffectiveStatus: computeEffectiveStatus(t),
+		RemainQuota:     t.RemainQuota,
+		UnlimitedQuota:  t.UnlimitedQuota,
+		ExpiredTime:     t.ExpiredTime,
 	}
 }
 
@@ -248,13 +276,17 @@ func (r *realNewAPIClient) disableToken(ctx context.Context, tokenID int64) erro
 	return r.c.DisableToken(ctx, tokenID)
 }
 
-// fetchTokenLogsPage calls GET /api/log/?p=<page>&size=<size>&token_id=<id>
+// fetchTokenLogsPage calls GET /api/log/?p=<page>&page_size=<size>&token_id=<id>
 // and returns one page of log entries.
 //
 // NewAPI v0.13.x log endpoint returns a paginated list; the response shape
 // is {"success":true,"data":{"items":[...],"total":N,...}}.
+//
+// R5-2: Use page_size (not size) consistent with all other NewAPI paginated
+// endpoints. Using `size` was silently ignored, causing the endpoint to return
+// the default page size and under-sample usage logs.
 func (r *realNewAPIClient) fetchTokenLogsPage(ctx context.Context, tokenID int64, page, size int) ([]NewAPILogEntry, error) {
-	path := fmt.Sprintf("/api/log/?p=%d&size=%d&token_id=%d", page, size, tokenID)
+	path := fmt.Sprintf("/api/log/?p=%d&page_size=%d&token_id=%d", page, size, tokenID)
 	var env listEnvelope[NewAPILogEntry]
 	if err := r.c.do(ctx, "GET", path, nil, 0, &env); err != nil {
 		return nil, fmt.Errorf("newapi: fetch logs page %d for token %d: %w", page, tokenID, err)
