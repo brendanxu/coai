@@ -441,7 +441,13 @@ func (m *tokenManager) UpdateToken(ctx context.Context, coaiUserID, tokenID int6
 // If adminForce is true, the guard is bypassed (admin use only).
 //
 // Ownership check is always performed regardless of adminForce.
-func (m *tokenManager) RevokeToken(ctx context.Context, coaiUserID, tokenID int64, adminForce bool) error {
+//
+// actorCoaiUserID is the coai_user_id written to the audit row's actor_id field.
+// For user self-revoke (adminForce=false), pass 0 — the function uses coaiUserID
+// (the token owner) as the actor. For admin force-revoke (adminForce=true), pass
+// the admin's own coai_user_id so the audit row correctly attributes the action to
+// the admin, not the token owner.
+func (m *tokenManager) RevokeToken(ctx context.Context, coaiUserID, tokenID int64, adminForce bool, actorCoaiUserID int64) error {
 	bind, err := m.bindingForUser(coaiUserID)
 	if err != nil {
 		return fmt.Errorf("revoke token: load binding: %w", err)
@@ -470,13 +476,19 @@ func (m *tokenManager) RevokeToken(ctx context.Context, coaiUserID, tokenID int6
 
 	// Audit: record revocation (best-effort). actor_type distinguishes
 	// user self-revoke from admin force-revoke.
+	// For user self-revoke: actor = token owner (coaiUserID).
+	// For admin force-revoke: actor = the admin (actorCoaiUserID), NOT the owner.
 	action := "revoke"
 	actorType := "user"
+	auditActorID := coaiUserID // default: owner is the actor
 	if adminForce {
 		action = "admin_force_revoke"
 		actorType = "admin"
+		if actorCoaiUserID != 0 {
+			auditActorID = actorCoaiUserID
+		}
 	}
-	writeAuditLog(m.db, "token", tokenID, action, actorType, coaiUserID,
+	writeAuditLog(m.db, "token", tokenID, action, actorType, auditActorID,
 		map[string]interface{}{"token_id": tokenID}, nil, "")
 	return nil
 }
@@ -754,7 +766,7 @@ func RevokeUserTokenAPI(c *gin.Context) {
 		return
 	}
 
-	if err := mgr.RevokeToken(c.Request.Context(), coaiUserID, tokenID, false); errors.Is(err, ErrCannotRevokeLastToken) {
+	if err := mgr.RevokeToken(c.Request.Context(), coaiUserID, tokenID, false, 0); errors.Is(err, ErrCannotRevokeLastToken) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": "CANNOT_REVOKE_LAST_TOKEN",
@@ -923,9 +935,12 @@ func AdminListTokensAPI(c *gin.Context) {
 // Admin can force-revoke any token, including the user's last active one.
 // Requires coai_user_id as a query param to verify the binding exists.
 func AdminRevokeTokenAPI(c *gin.Context) {
-	if a := auth.RequireAdmin(c); a == nil {
+	admin := auth.RequireAdmin(c)
+	if admin == nil {
 		return
 	}
+	// actor = the admin performing the revoke (not the token owner)
+	adminCoaiUserID := int64(admin.GetID(connection.DB))
 
 	tokenID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -938,7 +953,7 @@ func AdminRevokeTokenAPI(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "coai_user_id query param required"})
 		return
 	}
-	coaiUserID, parseErr := strconv.ParseInt(coaiUserIDParam, 10, 64)
+	targetCoaiUserID, parseErr := strconv.ParseInt(coaiUserIDParam, 10, 64)
 	if parseErr != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "invalid coai_user_id"})
 		return
@@ -951,7 +966,7 @@ func AdminRevokeTokenAPI(c *gin.Context) {
 	}
 	mgr := &tokenManager{db: connection.DB, cli: &realNewAPIClient{c: cli}}
 
-	if err := mgr.RevokeToken(c.Request.Context(), coaiUserID, tokenID, true /*adminForce*/); errors.Is(err, ErrTokenNotOwnedByUser) {
+	if err := mgr.RevokeToken(c.Request.Context(), targetCoaiUserID, tokenID, true /*adminForce*/, adminCoaiUserID); errors.Is(err, ErrTokenNotOwnedByUser) {
 		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": "token does not belong to the specified user"})
 		return
 	} else if errors.Is(err, ErrTokenNotFound) {

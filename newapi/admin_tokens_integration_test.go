@@ -82,7 +82,7 @@ func TestIntegration_FullTokenLifecycle(t *testing.T) {
 	// Revoke the 9 seeded tokens (they're at indices [1..9] in fake.tokens after primary).
 	// fake.tokens[0] = primary (tok1); [1..9] = seeded.
 	for i := 1; i <= 9; i++ {
-		if err := mgr.RevokeToken(ctx, 42, fake.tokens[i].id, false); err != nil {
+		if err := mgr.RevokeToken(ctx, 42, fake.tokens[i].id, false, 0); err != nil {
 			t.Fatalf("step4 revoke seeded[%d]: %v", i, err)
 		}
 	}
@@ -90,7 +90,7 @@ func TestIntegration_FullTokenLifecycle(t *testing.T) {
 		t.Fatalf("step4 precondition: want 1 active after revoking 9 seeded, got %d", fake.countActive(7))
 	}
 	// Now try to revoke the last token — should be blocked.
-	err = mgr.RevokeToken(ctx, 42, primaryID, false)
+	err = mgr.RevokeToken(ctx, 42, primaryID, false, 0)
 	if !errors.Is(err, ErrCannotRevokeLastToken) {
 		t.Fatalf("step4: want ErrCannotRevokeLastToken, got %v", err)
 	}
@@ -108,7 +108,7 @@ func TestIntegration_FullTokenLifecycle(t *testing.T) {
 	}
 
 	// ── Step 6: Revoke primary (user-side, non-forced) ────────────────────────
-	if err := mgr.RevokeToken(ctx, 42, primaryID, false); err != nil {
+	if err := mgr.RevokeToken(ctx, 42, primaryID, false, 0); err != nil {
 		t.Fatalf("step6 revoke primary: %v", err)
 	}
 	if fake.countActive(7) != 1 {
@@ -134,7 +134,7 @@ func TestIntegration_FullTokenLifecycle(t *testing.T) {
 	}
 
 	// ── Step 8: Admin force-revoke last active token (no last-token guard) ────
-	if err := mgr.RevokeToken(ctx, 42, secondaryID, true /*adminForce*/); err != nil {
+	if err := mgr.RevokeToken(ctx, 42, secondaryID, true /*adminForce*/, 0); err != nil {
 		t.Fatalf("step8 admin force-revoke secondary: %v", err)
 	}
 	if fake.countActive(7) != 0 {
@@ -187,13 +187,13 @@ func TestIntegration_LastTokenGuard_AdminBypass(t *testing.T) {
 	lastID := fake.tokens[0].id
 
 	// User attempt — blocked.
-	err := mgr.RevokeToken(ctx, 55, lastID, false)
+	err := mgr.RevokeToken(ctx, 55, lastID, false, 0)
 	if !errors.Is(err, ErrCannotRevokeLastToken) {
 		t.Fatalf("user revoke of last token: want ErrCannotRevokeLastToken, got %v", err)
 	}
 
 	// Admin force — succeeds.
-	if err := mgr.RevokeToken(ctx, 55, lastID, true); err != nil {
+	if err := mgr.RevokeToken(ctx, 55, lastID, true, 0); err != nil {
 		t.Fatalf("admin force-revoke of last token: %v", err)
 	}
 	if fake.countActive(88) != 0 {

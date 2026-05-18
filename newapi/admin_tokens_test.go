@@ -315,7 +315,7 @@ func TestRevokeToken_successWhenMultipleActive(t *testing.T) {
 	fake.seedTokens(7, 2)
 	tokenID := fake.tokens[0].id
 
-	if err := mgr.RevokeToken(context.Background(), 42, tokenID, false); err != nil {
+	if err := mgr.RevokeToken(context.Background(), 42, tokenID, false, 0); err != nil {
 		t.Fatalf("RevokeToken: %v", err)
 	}
 	if fake.tokens[0].status != 2 {
@@ -329,7 +329,7 @@ func TestRevokeToken_lastTokenGuard(t *testing.T) {
 	fake.seedTokens(7, 1)
 	tokenID := fake.tokens[0].id
 
-	err := mgr.RevokeToken(context.Background(), 42, tokenID, false)
+	err := mgr.RevokeToken(context.Background(), 42, tokenID, false, 0)
 	if !errors.Is(err, ErrCannotRevokeLastToken) {
 		t.Fatalf("want ErrCannotRevokeLastToken, got %v", err)
 	}
@@ -342,7 +342,7 @@ func TestRevokeToken_adminForceRevokeBypasses(t *testing.T) {
 	tokenID := fake.tokens[0].id
 
 	// adminForce=true should bypass last-token guard.
-	if err := mgr.RevokeToken(context.Background(), 42, tokenID, true); err != nil {
+	if err := mgr.RevokeToken(context.Background(), 42, tokenID, true, 0); err != nil {
 		t.Fatalf("admin force revoke should succeed: %v", err)
 	}
 }
@@ -353,11 +353,11 @@ func TestRevokeToken_twoTokensRevokeOneThenBlock(t *testing.T) {
 	fake.seedTokens(7, 2)
 
 	// Revoke first: should succeed.
-	if err := mgr.RevokeToken(context.Background(), 42, fake.tokens[0].id, false); err != nil {
+	if err := mgr.RevokeToken(context.Background(), 42, fake.tokens[0].id, false, 0); err != nil {
 		t.Fatalf("revoke first token: %v", err)
 	}
 	// Revoke second: last-token guard should fire.
-	err := mgr.RevokeToken(context.Background(), 42, fake.tokens[1].id, false)
+	err := mgr.RevokeToken(context.Background(), 42, fake.tokens[1].id, false, 0)
 	if !errors.Is(err, ErrCannotRevokeLastToken) {
 		t.Fatalf("want ErrCannotRevokeLastToken after revoking to 1, got %v", err)
 	}
@@ -579,12 +579,12 @@ func TestTokenLifecycle_createListUseRevoke(t *testing.T) {
 	}
 
 	// 5. Revoke tok1 — should succeed (tok2 remains active).
-	if err := mgr.RevokeToken(context.Background(), 42, tok1.ID, false); err != nil {
+	if err := mgr.RevokeToken(context.Background(), 42, tok1.ID, false, 0); err != nil {
 		t.Fatalf("revoke tok1: %v", err)
 	}
 
 	// 6. Try to revoke tok2 — last-token guard.
-	err = mgr.RevokeToken(context.Background(), 42, tok2.ID, false)
+	err = mgr.RevokeToken(context.Background(), 42, tok2.ID, false, 0)
 	if !errors.Is(err, ErrCannotRevokeLastToken) {
 		t.Fatalf("want ErrCannotRevokeLastToken, got %v", err)
 	}
@@ -794,7 +794,7 @@ func TestAuditLog_RevokeWritesRow(t *testing.T) {
 	}
 
 	tokenID := fake.tokens[0].id
-	if err := mgr.RevokeToken(context.Background(), 42, tokenID, false); err != nil {
+	if err := mgr.RevokeToken(context.Background(), 42, tokenID, false, 0); err != nil {
 		t.Fatalf("RevokeToken: %v", err)
 	}
 
@@ -826,7 +826,7 @@ func TestAuditLog_AdminRevokeWritesAdminActorType(t *testing.T) {
 
 	tokenID := fake.tokens[0].id
 	// adminForce=true — should record actor_type='admin' + action='admin_force_revoke'
-	if err := mgr.RevokeToken(context.Background(), 42, tokenID, true); err != nil {
+	if err := mgr.RevokeToken(context.Background(), 42, tokenID, true, 0); err != nil {
 		t.Fatalf("RevokeToken adminForce: %v", err)
 	}
 
@@ -872,5 +872,55 @@ func TestAuditLog_UpdateWritesRow(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("want 1 audit row for rename action, got %d", count)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// P2 R2-2 regression — admin force-revoke audit attributes admin actor
+// ---------------------------------------------------------------------------
+
+// TestAdminForceRevoke_AuditAttributesAdminActor verifies that when admin
+// alice (coai_user_id=10) force-revokes bob's (coai_user_id=20) token,
+// the audit row's actor_id=10 (alice) and actor_type='admin', NOT bob's id.
+func TestAdminForceRevoke_AuditAttributesAdminActor(t *testing.T) {
+	mgr, db, fake := newTokenTestEnv(t)
+	// bob: coaiUserID=20 → newapiUserID=30
+	seedBindingForUser(t, db, 20, 30)
+	fake.seedTokens(30, 1)
+
+	if _, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS gtk_audit_log (
+		  id INTEGER PRIMARY KEY AUTOINCREMENT,
+		  resource_type TEXT NOT NULL, resource_id INTEGER NOT NULL,
+		  action TEXT NOT NULL, actor_type TEXT NOT NULL, actor_id INTEGER NOT NULL,
+		  before_state TEXT, after_state TEXT, note TEXT,
+		  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`); err != nil {
+		t.Fatalf("create gtk_audit_log: %v", err)
+	}
+
+	tokenID := fake.tokens[0].id
+	// admin alice (coai_user_id=10) force-revokes bob's token
+	const aliceCoaiUserID int64 = 10
+	if err := mgr.RevokeToken(context.Background(), 20 /*target=bob*/, tokenID, true /*adminForce*/, aliceCoaiUserID); err != nil {
+		t.Fatalf("admin force-revoke: %v", err)
+	}
+
+	var actorID int64
+	var actorType, action string
+	if err := db.QueryRow(
+		`SELECT actor_id, actor_type, action FROM gtk_audit_log WHERE resource_id=? LIMIT 1`, tokenID,
+	).Scan(&actorID, &actorType, &action); err != nil {
+		t.Fatalf("query audit_log: %v", err)
+	}
+	if actorID != aliceCoaiUserID {
+		t.Errorf("audit actor_id: want %d (admin/alice), got %d (wrong — should not be bob's id)", aliceCoaiUserID, actorID)
+	}
+	if actorType != "admin" {
+		t.Errorf("audit actor_type: want 'admin', got %q", actorType)
+	}
+	if action != "admin_force_revoke" {
+		t.Errorf("audit action: want 'admin_force_revoke', got %q", action)
 	}
 }
