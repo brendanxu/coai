@@ -259,7 +259,7 @@ export default function CreateTokenDialog({
               >
                 {loading
                   ? t("tokens.create.creating", "创建中…")
-                  : t("tokens.create", "新建令牌")}
+                  : t("tokens.create.label", "新建令牌")}
               </Button>
             </DialogFooter>
           </>
@@ -329,7 +329,7 @@ export default function CreateTokenDialog({
                       ? "hsl(var(--ink-accent))"
                       : "rgba(255,252,247,0.55)",
                   }}
-                  aria-label={t("tokens.copy", "复制")}
+                  aria-label={t("tokens.copy.label", "复制")}
                 >
                   {copied ? (
                     <CheckCheck className="w-4 h-4" />

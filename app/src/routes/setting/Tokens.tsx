@@ -91,7 +91,7 @@ export default function Tokens() {
             }}
           >
             <Plus className="w-4 h-4 mr-2" />
-            {t("tokens.create", "新建令牌")}
+            {t("tokens.create.label", "新建令牌")}
           </Button>
         </div>
 
@@ -168,7 +168,7 @@ function TokenEmptyState({ onCreateClick }: { onCreateClick: () => void }) {
         }}
       >
         <Plus className="w-4 h-4 mr-2" />
-        {t("tokens.create", "新建令牌")}
+        {t("tokens.create.label", "新建令牌")}
       </Button>
     </div>
   );

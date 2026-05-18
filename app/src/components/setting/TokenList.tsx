@@ -188,7 +188,7 @@ function TokenRow({
               onClick={copyKey}
               className="p-0.5 rounded transition-colors hover:opacity-80"
               style={{ color: copied ? "hsl(var(--ink-accent))" : "rgba(255,252,247,0.35)" }}
-              aria-label={t("tokens.copy", "复制")}
+              aria-label={t("tokens.copy.label", "复制")}
             >
               {copied ? (
                 <CheckCheck className="w-3 h-3" />
@@ -235,7 +235,7 @@ function TokenRow({
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={copyKey}>
               <Copy className="w-3.5 h-3.5 mr-2" />
-              {t("tokens.copy", "复制")}
+              {t("tokens.copy.label", "复制")}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
@@ -245,11 +245,11 @@ function TokenRow({
               disabled={token.status !== STATUS_ACTIVE}
             >
               <Edit2 className="w-3.5 h-3.5 mr-2" />
-              {t("tokens.rename", "改名")}
+              {t("tokens.rename.label", "改名")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setUsageOpen(true)}>
               <BarChart2 className="w-3.5 h-3.5 mr-2" />
-              {t("tokens.usage", "用量")}
+              {t("tokens.usage.label", "用量")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -258,7 +258,7 @@ function TokenRow({
               className="text-red-400 focus:text-red-400"
             >
               <Trash2 className="w-3.5 h-3.5 mr-2" />
-              {t("tokens.revoke", "撤销")}
+              {t("tokens.revoke.label", "撤销")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -294,7 +294,7 @@ function TokenRow({
                 onClick={handleRevoke}
                 className="bg-red-600 hover:bg-red-700"
               >
-                {t("tokens.revoke", "撤销")}
+                {t("tokens.revoke.label", "撤销")}
               </AlertDialogAction>
             )}
           </AlertDialogFooter>

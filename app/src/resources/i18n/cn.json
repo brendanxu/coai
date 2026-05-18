@@ -2653,10 +2653,12 @@
       "never": "永不过期"
     },
     "copy": {
+      "label": "复制",
       "success": "已复制",
       "failed": "复制失败，请手动选择"
     },
     "create": {
+      "label": "新建令牌",
       "title": "新建 API 令牌",
       "name_label": "名称",
       "name_too_long": "名称不超过 64 字符",
@@ -2671,12 +2673,14 @@
       "name_label": "令牌名称"
     },
     "rename": {
+      "label": "改名",
       "title": "重命名令牌",
       "save": "保存",
       "saving": "保存中…",
       "success": "已重命名"
     },
     "revoke": {
+      "label": "撤销",
       "confirm": "确定要撤销此 token？",
       "description": "撤销后使用此 key 的 API 调用将返回 401。此操作无法撤销。",
       "last_token_warn": "这是您最后一个活跃令牌，撤销后将无法使用 API。请先创建新令牌再撤销此令牌。",
@@ -2694,6 +2698,7 @@
       "rename_failed": "重命名失败，请稍后重试"
     },
     "usage": {
+      "label": "用量",
       "drawer_title": "令牌用量",
       "total_calls": "总调用次数",
       "total_tokens": "总 Token 用量",
