@@ -73,10 +73,13 @@ interface AdminTokenRow {
 interface AuditEntry {
   id: number;
   actor_id: number;
-  action: string;
+  actor_type: string;    // 'user' | 'admin'
+  action: string;        // 'create' | 'rename' | 'revoke' | 'admin_force_revoke'
   resource_type: string;
   resource_id: number;
-  detail: string;
+  before_state: string | null;  // JSON string or null
+  after_state: string | null;   // JSON string or null
+  note: string | null;
   created_at: string; // RFC3339
 }
 
@@ -110,6 +113,60 @@ function formatTs(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+// ── Audit helpers ──────────────────────────────────────────────────────────
+
+const ACTION_LABELS: Record<string, string> = {
+  create: "创建",
+  rename: "改名",
+  revoke: "撤销",
+  admin_force_revoke: "管理员强制撤销",
+};
+
+function actionLabel(action: string): string {
+  return ACTION_LABELS[action] ?? action;
+}
+
+function actorLabel(actorType: string, actorId: number): string {
+  const typeStr = actorType === "admin" ? "管理员" : "用户";
+  return `${typeStr} #${actorId}`;
+}
+
+// parseState tries JSON.parse; returns the parsed object or the raw string on
+// failure, or null when the input is null/empty.
+function parseState(raw: string | null): Record<string, unknown> | string | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return raw;
+  }
+}
+
+// StateBlock renders a before or after state object as key=value lines.
+function StateBlock({ label, raw }: { label: string; raw: string | null }) {
+  const parsed = parseState(raw);
+  if (parsed === null) return null;
+
+  const content =
+    typeof parsed === "string"
+      ? parsed
+      : Object.entries(parsed)
+          .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+          .join("\n");
+
+  return (
+    <div className="mt-1.5">
+      <div className="text-xs text-muted-foreground mb-0.5">{label}</div>
+      <div
+        className="text-xs font-mono whitespace-pre-wrap break-all rounded px-2 py-1.5"
+        style={{ background: "rgba(255,252,247,0.04)" }}
+      >
+        {content}
+      </div>
+    </div>
+  );
 }
 
 // ── Audit Drawer ───────────────────────────────────────────────────────────
@@ -177,27 +234,57 @@ function AuditDrawer({ open, onOpenChange, tokenId, tokenName }: AuditDrawerProp
                   className="rounded-lg border px-4 py-3 text-sm"
                   style={{ borderColor: "rgba(255,252,247,0.09)" }}
                 >
+                  {/* Row 1: action chip + timestamp */}
                   <div className="flex items-center justify-between mb-1">
                     <span
                       className="font-medium font-mono text-xs px-2 py-0.5 rounded"
                       style={{ background: "rgba(255,252,247,0.07)" }}
                     >
-                      {rec.action}
+                      {actionLabel(rec.action)}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {formatTs(rec.created_at)}
                     </span>
                   </div>
+
+                  {/* Row 2: actor */}
                   <div className="text-xs text-muted-foreground mt-1">
-                    操作人 ID: {rec.actor_id}
+                    操作人: {actorLabel(rec.actor_type, rec.actor_id)}
                   </div>
-                  {rec.detail && (
-                    <div
-                      className="mt-2 text-xs font-mono whitespace-pre-wrap break-all rounded px-2 py-1.5"
-                      style={{ background: "rgba(255,252,247,0.04)" }}
-                    >
-                      {rec.detail}
+
+                  {/* Row 3: note (if present) */}
+                  {rec.note && (
+                    <div className="text-xs text-muted-foreground mt-1 italic">
+                      备注: {rec.note}
                     </div>
+                  )}
+
+                  {/* Rows 4+: before/after state, context-aware by action */}
+                  {rec.action === "create" && (
+                    <StateBlock label="创建参数" raw={rec.after_state} />
+                  )}
+                  {rec.action === "revoke" && (
+                    <StateBlock label="撤销前状态" raw={rec.before_state} />
+                  )}
+                  {rec.action === "admin_force_revoke" && (
+                    <StateBlock label="撤销前状态" raw={rec.before_state} />
+                  )}
+                  {(rec.action === "rename" || rec.action === "update") && (
+                    <>
+                      <StateBlock label="修改前" raw={rec.before_state} />
+                      <StateBlock label="修改后" raw={rec.after_state} />
+                    </>
+                  )}
+                  {/* Fallback: show both if action is unknown */}
+                  {!["create", "revoke", "admin_force_revoke", "rename", "update"].includes(rec.action) && (
+                    <>
+                      {rec.before_state && (
+                        <StateBlock label="变更前" raw={rec.before_state} />
+                      )}
+                      {rec.after_state && (
+                        <StateBlock label="变更后" raw={rec.after_state} />
+                      )}
+                    </>
                   )}
                 </li>
               ))}
