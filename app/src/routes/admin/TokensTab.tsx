@@ -13,7 +13,7 @@
  *  GET /gtk/v1/admin/tokens
  *    → { success: true, data: AdminTokenRow[] }
  *    AdminTokenRow = MaskedToken + coai_user_id
- *    Supports ?user_id=<newapi_user_id> filter only.
+ *    Supports ?coai_user_id=<coai_user_id> filter (binding lookup on backend).
  *    Note: backend does NOT support ?status= or ?created_after= filters
  *    (global list fetches per-binding from NewAPI which has no server-side
  *    filter). Status filtering is done client-side here.
@@ -232,7 +232,7 @@ export function TokensTab() {
     (uid?: string) => {
       setLoading(true);
       setError(null);
-      const params = uid ? `?user_id=${uid}` : "";
+      const params = uid ? `?coai_user_id=${uid}` : "";
       axios
         .get<{ success: boolean; data: AdminTokenRow[] }>(
           `/gtk/v1/admin/tokens${params}`,
