@@ -60,9 +60,19 @@ interface TokenListProps {
   onRefresh: () => void;
 }
 
-/** Token.status constants */
-const STATUS_ACTIVE = 1;
+/** Raw NewAPI disabled status — used only as fallback in resolveDisplayStatus */
 const STATUS_REVOKED = 2;
+
+/**
+ * R5-3: derive the display status from effective_status when present,
+ * falling back to the raw status number for older API responses.
+ * Returns "active" | "revoked" | "expired".
+ */
+function resolveDisplayStatus(token: { status: number; effective_status?: string }): string {
+  if (token.effective_status) return token.effective_status;
+  if (token.status === STATUS_REVOKED) return "revoked";
+  return "active";
+}
 
 function useTokenActions(onRefresh: () => void) {
   const { t } = useTranslation();
@@ -96,7 +106,9 @@ function useTokenActions(onRefresh: () => void) {
 }
 
 export default function TokenList({ tokens, onRefresh }: TokenListProps) {
-  const activeCount = tokens.filter((t) => t.status === STATUS_ACTIVE).length;
+  // R5-3: use resolveDisplayStatus so expired tokens (status==1 but past expiry)
+  // are not counted as active.
+  const activeCount = tokens.filter((t) => resolveDisplayStatus(t) === "active").length;
 
   return (
     <div className="space-y-3">
@@ -131,7 +143,8 @@ function TokenRow({
 
   const { revoke, rename } = useTokenActions(onRefresh);
 
-  const isLast = activeCount === 1 && token.status === STATUS_ACTIVE;
+  const displayStatus = resolveDisplayStatus(token);
+  const isLast = activeCount === 1 && displayStatus === "active";
 
   const copyKey = async () => {
     try {
@@ -174,7 +187,7 @@ function TokenRow({
             >
               {token.name || t("tokens.unnamed", "未命名")}
             </span>
-            <TokenStatusBadge status={token.status} />
+            <TokenStatusBadge displayStatus={displayStatus} />
           </div>
           <div className="flex items-center gap-1.5">
             <span
@@ -242,7 +255,7 @@ function TokenRow({
                 setRenameValue(token.name);
                 setRenameOpen(true);
               }}
-              disabled={token.status !== STATUS_ACTIVE}
+              disabled={displayStatus !== "active"}
             >
               <Edit2 className="w-3.5 h-3.5 mr-2" />
               {t("tokens.rename.label", "改名")}
@@ -254,7 +267,7 @@ function TokenRow({
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => setRevokeOpen(true)}
-              disabled={token.status !== STATUS_ACTIVE}
+              disabled={displayStatus !== "active"}
               className="text-red-400 focus:text-red-400"
             >
               <Trash2 className="w-3.5 h-3.5 mr-2" />
@@ -347,9 +360,13 @@ function TokenRow({
   );
 }
 
-function TokenStatusBadge({ status }: { status: number }) {
+// R5-3: TokenStatusBadge now accepts the computed displayStatus string
+// ("active" | "revoked" | "expired") instead of the raw numeric status.
+// This ensures expired tokens (status==1 but past expiry_time) show the
+// correct "已过期" badge rather than the misleading "活跃" badge.
+function TokenStatusBadge({ displayStatus }: { displayStatus: string }) {
   const { t } = useTranslation();
-  if (status === STATUS_ACTIVE) {
+  if (displayStatus === "active") {
     return (
       <Badge
         className="text-[10px] py-0 px-1.5"
@@ -363,7 +380,7 @@ function TokenStatusBadge({ status }: { status: number }) {
       </Badge>
     );
   }
-  if (status === STATUS_REVOKED) {
+  if (displayStatus === "revoked") {
     return (
       <Badge
         className="text-[10px] py-0 px-1.5"
@@ -377,7 +394,7 @@ function TokenStatusBadge({ status }: { status: number }) {
       </Badge>
     );
   }
-  // status 3 = expired
+  // "expired" (or any unknown future status)
   return (
     <Badge
       className="text-[10px] py-0 px-1.5"

@@ -12,8 +12,13 @@ export interface MaskedToken {
   name: string;
   /** Masked form: "sk-tnx-..." or similar prefix + "***" + last4 */
   key: string;
-  /** 1 = active, 2 = revoked/disabled, 3 = expired */
+  /** Raw NewAPI status: 1 = enabled, 2 = disabled. Do NOT use for display —
+   *  status==1 includes expired tokens. Use effective_status instead. */
   status: number;
+  /** Computed by backend (R5-3): "active" | "revoked" | "expired".
+   *  Correctly reflects expiry; old clients that omit this field see undefined
+   *  and can fall back to the legacy status-number logic. */
+  effective_status?: string;
   remain_quota: number;
   unlimited_quota: boolean;
   expired_time: number; // unix seconds; -1 = never
