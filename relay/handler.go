@@ -297,6 +297,10 @@ func Register(engine *gin.Engine) {
 		"/v1/audio/translations",
 		"/v1/audio/speech",
 		"/v1/moderations",
+		// Anthropic-native endpoint (aidesk uses Anthropic SDK):
+		// NewAPI v0.13.x supports /v1/messages natively when an Anthropic
+		// channel is configured. Format is Anthropic native (not OpenAI).
+		"/v1/messages",
 	}
 	for _, path := range openAIEndpoints {
 		engine.Any(path, HandleRelay)
