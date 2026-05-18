@@ -80,11 +80,21 @@ export default function CreateTokenDialog({
     ? t("tokens.create.name_too_long", "名称不超过 64 字符")
     : "";
 
+  // R5-1: quota validation — only relevant when Unlimited is unchecked.
+  const parsedQuotaValue = parseInt(quota, 10);
+  const quotaInvalid = !unlimited && (quota.trim() === "" || isNaN(parsedQuotaValue) || parsedQuotaValue <= 0);
+  const quotaError = quotaInvalid
+    ? t("tokens.errors.invalid_quota", "请输入大于 0 的额度数字")
+    : "";
+
   const handleCreate = async () => {
+    if (loading) return; // R5-4: guard against duplicate submit (double-Enter / rapid clicks)
     if (!name.trim()) return;
+    // R5-1: block submission when quota field is invalid.
+    if (quotaInvalid) return;
     setLoading(true);
     try {
-      const parsedQuota = parseInt(quota, 10);
+      const parsedQuota = parsedQuotaValue; // already computed above
       const hasExplicitQuota = !unlimited && !isNaN(parsedQuota) && parsedQuota > 0;
       const resp = await axios.post<{ success: boolean; data: CreatedToken }>(
         "/gtk/v1/tokens",
@@ -240,10 +250,16 @@ export default function CreateTokenDialog({
                       className="w-full rounded-md border px-3 py-1.5 text-sm"
                       style={{
                         background: "rgba(255,252,247,0.06)",
-                        border: "1px solid rgba(255,252,247,0.15)",
+                        border: quotaError
+                          ? "1px solid rgba(248,113,113,0.60)"
+                          : "1px solid rgba(255,252,247,0.15)",
                         color: "hsl(var(--ink-foreground))",
                       }}
                     />
+                    {/* R5-1: inline error when quota is blank / zero / non-numeric */}
+                    {quotaError && (
+                      <p className="text-xs text-red-400">{quotaError}</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -255,7 +271,7 @@ export default function CreateTokenDialog({
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={!name.trim() || !!nameError || loading}
+                disabled={!name.trim() || !!nameError || quotaInvalid || loading}
               >
                 {loading
                   ? t("tokens.create.creating", "创建中…")
