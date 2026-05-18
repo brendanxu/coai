@@ -20,6 +20,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -872,6 +874,139 @@ func TestAuditLog_UpdateWritesRow(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("want 1 audit row for rename action, got %d", count)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// P2 R2-2 regression — admin force-revoke audit attributes admin actor
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// PKG-A-3 R3-1 — paginated envelope (realNewAPIClient via httptest)
+// ---------------------------------------------------------------------------
+
+// TestFetchUserTokens_PaginatedEnvelope verifies that listTokensForUser
+// correctly decodes the NewAPI paginated envelope and loops pages until
+// collected >= total.
+//
+// The httptest server returns 2 pages (10 items each, total=20).
+// After both pages are fetched the method must return all 20 tokens.
+func TestFetchUserTokens_PaginatedEnvelope(t *testing.T) {
+	// Build token fixtures for 2 pages.
+	makePageJSON := func(pageIdx, count, total int) string {
+		items := ""
+		for i := 0; i < count; i++ {
+			if i > 0 {
+				items += ","
+			}
+			id := pageIdx*100 + i + 1
+			items += fmt.Sprintf(
+				`{"id":%d,"user_id":7,"name":"tok-%d","key":"sk-x","status":1,"remain_quota":1000,"unlimited_quota":false,"expired_time":-1}`,
+				id, id,
+			)
+		}
+		return fmt.Sprintf(
+			`{"success":true,"message":"","data":{"items":[%s],"total":%d,"page":%d,"page_size":10}}`,
+			items, total, pageIdx,
+		)
+	}
+
+	var reqCount int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		p := r.URL.Query().Get("p")
+		if p == "0" {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, makePageJSON(0, 10, 20))
+		} else {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, makePageJSON(1, 10, 20))
+		}
+		reqCount++
+	}))
+	defer srv.Close()
+
+	cli := &Client{
+		baseURL:     srv.URL,
+		adminUserID: 2,
+		adminToken:  "test-token",
+		httpClient:  &http.Client{Timeout: 5 * time.Second},
+	}
+	rc := &realNewAPIClient{c: cli}
+
+	tokens, err := rc.listTokensForUser(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("listTokensForUser: %v", err)
+	}
+	if len(tokens) != 20 {
+		t.Errorf("want 20 tokens (2 pages × 10), got %d", len(tokens))
+	}
+	if reqCount != 2 {
+		t.Errorf("want 2 HTTP requests (one per page), got %d", reqCount)
+	}
+	// Verify first and last token IDs to confirm both pages were merged.
+	if tokens[0].ID != 1 {
+		t.Errorf("first token ID: want 1, got %d", tokens[0].ID)
+	}
+	if tokens[19].ID != 110 {
+		t.Errorf("last token ID: want 110 (page1[9]), got %d", tokens[19].ID)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// PKG-A-3 R3-2 — concurrent revoke last-token race protection
+// ---------------------------------------------------------------------------
+
+// TestRevokeToken_ConcurrentRevokeProtectsLastToken verifies that concurrent
+// revoke calls for a user with 2 active tokens cannot both succeed and leave
+// the user with 0 active tokens (last-token invariant violation).
+//
+// Setup: alice has 2 active tokens. 5 goroutines concurrently attempt to
+// revoke them. After all goroutines finish, alice must still have ≥1 active.
+func TestRevokeToken_ConcurrentRevokeProtectsLastToken(t *testing.T) {
+	mgr, db, fake := newTokenTestEnv(t)
+	seedBindingForUser(t, db, 42, 7)
+	fake.seedTokens(7, 2) // exactly 2 active tokens
+
+	tok0 := fake.tokens[0].id
+	tok1 := fake.tokens[1].id
+
+	// 5 goroutines: some revoke tok0, some revoke tok1, all non-admin.
+	type result struct{ err error }
+	results := make(chan result, 5)
+	for i := 0; i < 5; i++ {
+		targetID := tok0
+		if i%2 == 1 {
+			targetID = tok1
+		}
+		go func(id int64) {
+			err := mgr.RevokeToken(context.Background(), 42, id, false, 0)
+			results <- result{err}
+		}(targetID)
+	}
+
+	var successes int
+	for i := 0; i < 5; i++ {
+		r := <-results
+		if r.err == nil {
+			successes++
+		}
+		// Allowed errors: ErrCannotRevokeLastToken (last-token guard),
+		// ErrTokenNotOwnedByUser (token already disabled ≠ active in list),
+		// or ErrTokenNotFound from fakeClient when token was already disabled.
+		// Any other error is unexpected.
+		if r.err != nil &&
+			!errors.Is(r.err, ErrCannotRevokeLastToken) &&
+			!errors.Is(r.err, ErrTokenNotOwnedByUser) &&
+			!strings.Contains(r.err.Error(), "token not found") {
+			t.Errorf("unexpected error: %v", r.err)
+		}
+	}
+
+	// Invariant: at least 1 active token must remain.
+	active := fake.countActive(7)
+	if active < 1 {
+		t.Errorf("last-token invariant violated: 0 active tokens after concurrent revoke (successes=%d)", successes)
 	}
 }
 

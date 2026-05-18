@@ -76,12 +76,16 @@ var ErrTokenNotOwnedByUser = errors.New("newapi: token does not belong to this u
 
 const maxTokensPerUser = 10
 
-// createTokenMu provides per-user mutual exclusion around the count-then-create
-// pattern in CreateUserToken. Keyed by coai_user_id (int64).
-// This is sufficient for single-instance deployments. For multi-instance
+// tokenMu provides per-user mutual exclusion around the count-then-create and
+// count-then-revoke patterns in CreateUserToken and RevokeToken. Keyed by
+// coai_user_id (int64). Using a single sync.Map for both operations ensures
+// that a concurrent create + revoke on the same user account cannot race past
+// the max-10 and last-token invariants simultaneously.
+//
+// This is correct for single-instance deployments. For multi-instance
 // deployments a distributed lock (e.g. Redis SETNX) would be required — add
 // that when horizontal scaling is needed.
-var createTokenMu sync.Map
+var tokenMu sync.Map
 
 // ---------------------------------------------------------------------------
 // Types
@@ -178,20 +182,37 @@ type realNewAPIClient struct {
 	c *Client
 }
 
+// listTokensForUser fetches all tokens for newapiUserID from NewAPI's
+// paginated endpoint GET /api/token/?user_id=X&p=<page>&page_size=100.
+//
+// NewAPI v0.13.x returns a paginated envelope:
+//
+//	{"success":true,"data":{"items":[...],"total":N,"page":P,"page_size":100}}
+//
+// We loop pages until collected >= total or the page is empty, with a safety
+// cap of 50 pages (5 000 tokens max — well above the per-user max-10 limit).
 func (r *realNewAPIClient) listTokensForUser(ctx context.Context, newapiUserID int64) ([]*Token, error) {
-	path := fmt.Sprintf("/api/token/?user_id=%d", newapiUserID)
-	var env struct {
-		Success bool     `json:"success"`
-		Message string   `json:"message,omitempty"`
-		Data    []*Token `json:"data"`
+	const pageSize = 100
+	const maxPages = 50
+
+	var allTokens []*Token
+	for page := 0; page < maxPages; page++ {
+		path := fmt.Sprintf("/api/token/?user_id=%d&p=%d&page_size=%d", newapiUserID, page, pageSize)
+		var env listEnvelope[Token]
+		if err := r.c.do(ctx, "GET", path, nil, newapiUserID, &env); err != nil {
+			return nil, fmt.Errorf("newapi: list tokens for user %d page %d: %w", newapiUserID, page, err)
+		}
+		if !env.Success {
+			return nil, fmt.Errorf("newapi: list tokens: %s", env.Message)
+		}
+		for i := range env.Data.Items {
+			allTokens = append(allTokens, &env.Data.Items[i])
+		}
+		if int64(len(allTokens)) >= env.Data.Total || len(env.Data.Items) == 0 {
+			break
+		}
 	}
-	if err := r.c.do(ctx, "GET", path, nil, newapiUserID, &env); err != nil {
-		return nil, fmt.Errorf("newapi: list tokens for user %d: %w", newapiUserID, err)
-	}
-	if !env.Success {
-		return nil, fmt.Errorf("newapi: list tokens: %s", env.Message)
-	}
-	return env.Data, nil
+	return allTokens, nil
 }
 
 func (r *realNewAPIClient) createToken(ctx context.Context, newapiUserID int64, req CreateTokenRequest) (*Token, error) {
@@ -371,7 +392,7 @@ func (m *tokenManager) ownsToken(ctx context.Context, newapiUserID, tokenID int6
 func (m *tokenManager) CreateUserToken(ctx context.Context, coaiUserID int64, req CreateTokenRequest) (*Token, error) {
 	// Acquire per-user lock to prevent concurrent create requests from
 	// both reading count=9 and both succeeding, yielding 11 tokens.
-	lockAny, _ := createTokenMu.LoadOrStore(coaiUserID, &sync.Mutex{})
+	lockAny, _ := tokenMu.LoadOrStore(coaiUserID, &sync.Mutex{})
 	lock := lockAny.(*sync.Mutex)
 	lock.Lock()
 	defer lock.Unlock()
@@ -448,6 +469,16 @@ func (m *tokenManager) UpdateToken(ctx context.Context, coaiUserID, tokenID int6
 // the admin's own coai_user_id so the audit row correctly attributes the action to
 // the admin, not the token owner.
 func (m *tokenManager) RevokeToken(ctx context.Context, coaiUserID, tokenID int64, adminForce bool, actorCoaiUserID int64) error {
+	// PKG-A-3 R3-2: serialize revoke per user to prevent last-token race.
+	// Two concurrent DELETE requests for a user with 2 active tokens could
+	// both pass the active==2 guard and both succeed, leaving 0 active tokens.
+	// Using the same tokenMu as CreateUserToken also prevents a concurrent
+	// create+revoke from bypassing both the max-10 and last-token invariants.
+	lockAny, _ := tokenMu.LoadOrStore(coaiUserID, &sync.Mutex{})
+	lock := lockAny.(*sync.Mutex)
+	lock.Lock()
+	defer lock.Unlock()
+
 	bind, err := m.bindingForUser(coaiUserID)
 	if err != nil {
 		return fmt.Errorf("revoke token: load binding: %w", err)
