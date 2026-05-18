@@ -277,10 +277,28 @@ func copyResponseHeaders(src, dst http.Header) {
 	}
 }
 
-// Register mounts /v1/* on the engine root (NOT under /api group).
-// Matches aidesk expectation: POST https://www.greentokey.com/v1/chat/completions
+// Register mounts OpenAI-compatible /v1/* endpoints on the engine root
+// (NOT under /api group). Matches aidesk expectation:
+// POST https://www.greentokey.com/v1/chat/completions
+//
+// We register specific endpoints (not a /v1/*path wildcard) to avoid
+// conflicting with /v1/usage/me which usage/handler.go owns. Add new
+// OpenAI endpoints here as aidesk / other clients need them.
 //
 // Must be called AFTER middleware.RegisterMiddleware (which sets up AuthMiddleware).
 func Register(engine *gin.Engine) {
-	engine.Any("/v1/*path", HandleRelay)
+	openAIEndpoints := []string{
+		"/v1/chat/completions",
+		"/v1/completions",
+		"/v1/embeddings",
+		"/v1/models",
+		"/v1/images/generations",
+		"/v1/audio/transcriptions",
+		"/v1/audio/translations",
+		"/v1/audio/speech",
+		"/v1/moderations",
+	}
+	for _, path := range openAIEndpoints {
+		engine.Any(path, HandleRelay)
+	}
 }
