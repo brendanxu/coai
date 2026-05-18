@@ -18,6 +18,19 @@ serve_static: true
 
 server:
   port: 8094
+
+# NewAPI integration (greentokey 3-layer gateway)
+newapi:
+  base_url: "http://newapi:3000"         # internal Docker service name; never exposed publicly
+  admin_access_token: ""                 # 32-char token from NewAPI users.access_token (REQUIRED for provisioning)
+  admin_user_id: 2                       # NewAPI bootstrap admin user id
+  timeout_seconds: 10                    # admin REST API call timeout
+  # PKG-A-4: relay_token is the sk-xxx used for /v1/* reverse-proxy calls.
+  # NewAPI /v1 endpoints authenticate with sk-xxx (Bearer prefix), NOT the admin token.
+  # Set this to a NewAPI token with sufficient quota for all relay traffic.
+  # If empty, falls back to admin_access_token with a warning (may be rejected by NewAPI /v1).
+  # Production value: sk-EZKyGzC1r2Dxves1Q0wlpSNAjFiyZg79jCHYl4oYuibhJof9 (token id=6, unlimited quota)
+  relay_token: ""
 system:
   general:
     backend: ""
