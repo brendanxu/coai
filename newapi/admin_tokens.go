@@ -349,8 +349,29 @@ func (m *tokenManager) ListUserTokens(ctx context.Context, coaiUserID int64) ([]
 	return out, nil
 }
 
-// activeTokenCount returns how many active (status=1) tokens the NewAPI user
-// currently holds. Used for max-10 enforcement and last-token guard.
+// isActiveToken returns true when the token is both enabled (status=1) AND not
+// yet expired. Expired tokens retain status=1 in NewAPI but can no longer be
+// used for API calls, so they must not count toward the active-token limit or
+// the last-token guard.
+//
+// ExpiredTime semantics (per NewAPI Token struct comment):
+//   -1 = never expires (always active if status=1)
+//    0 = treat as never expires (legacy default)
+//   >0 = Unix timestamp; active only while time.Now().Unix() < ExpiredTime
+func isActiveToken(t *Token) bool {
+	if t.Status != 1 {
+		return false
+	}
+	// -1 and 0 both mean "never expires".
+	if t.ExpiredTime <= 0 {
+		return true
+	}
+	return time.Now().Unix() < t.ExpiredTime
+}
+
+// activeTokenCount returns how many strictly-active (status=1 AND not expired)
+// tokens the NewAPI user currently holds. Used for max-10 enforcement and
+// last-token guard.
 func (m *tokenManager) activeTokenCount(ctx context.Context, newapiUserID int64) (int, error) {
 	toks, err := m.cli.listTokensForUser(ctx, newapiUserID)
 	if err != nil {
@@ -358,7 +379,7 @@ func (m *tokenManager) activeTokenCount(ctx context.Context, newapiUserID int64)
 	}
 	n := 0
 	for _, t := range toks {
-		if t.Status == 1 {
+		if isActiveToken(t) {
 			n++
 		}
 	}
@@ -603,6 +624,30 @@ func (m *tokenManager) GetTokenUsage(ctx context.Context, coaiUserID, tokenID in
 	return u, nil
 }
 
+// resolveQuota determines the final unlimited/quota values to send to NewAPI
+// from the three request fields that influence quota behaviour.
+//
+// Resolution rules (R4-1):
+//  1. unlimitedQuota=true              → unlimited, ignore remainQuota
+//  2. hasExplicitQuota=true            → limited, use remainQuota verbatim (0 = 0 credits)
+//  3. remainQuota > 0                  → limited (API-client path, no UI flag needed)
+//  4. remainQuota=0, no explicit flag  → unlimited (UI default: checkbox not ticked)
+//
+// The old inline logic silently forced unlimited whenever hasExplicitQuota was
+// absent, breaking API clients that send {remain_quota:100, unlimited_quota:false}.
+func resolveQuota(unlimitedQuota bool, hasExplicitQuota bool, remainQuota int64) (unlimited bool, quota int64) {
+	switch {
+	case unlimitedQuota:
+		return true, 0
+	case hasExplicitQuota:
+		return false, remainQuota
+	case remainQuota > 0:
+		return false, remainQuota
+	default:
+		return true, 0
+	}
+}
+
 // sortByModelByCallsDesc sorts in place, highest TotalCalls first.
 // Insertion sort — model count is always small (<20).
 func sortByModelByCallsDesc(s []UsageByModel) {
@@ -676,15 +721,7 @@ func CreateUserTokenAPI(c *gin.Context) {
 		expiredTime = -1
 	}
 
-	// Default to unlimited quota when the frontend did not explicitly set a
-	// quota value. This prevents NewAPI from treating remain_quota=0 as
-	// "limited to 0 credits" (which makes the token immediately unusable).
-	unlimitedQuota := body.UnlimitedQuota
-	remainQuota := body.RemainQuota
-	if !body.HasExplicitQuota || body.RemainQuota == 0 {
-		unlimitedQuota = true
-		remainQuota = 0
-	}
+	unlimitedQuota, remainQuota := resolveQuota(body.UnlimitedQuota, body.HasExplicitQuota, body.RemainQuota)
 
 	mgr, err := defaultManager()
 	if err != nil {
@@ -1051,18 +1088,50 @@ func AdminGetTokenAuditAPI(c *gin.Context) {
 		Note         *string `json:"note"`
 		CreatedAt    string  `json:"created_at"`
 	}
+	// R4-3 fix: scan created_at as a string to handle both MySQL (no
+	// parseTime=true in DSN) and SQLite (TEXT column from migration).
+	// Both drivers return the timestamp as []byte or string, not time.Time,
+	// so scanning directly into time.Time fails with a type-mismatch error
+	// that was silently swallowed by the previous `continue`, causing the
+	// audit drawer to always appear empty.
 	var entries []auditEntry
 	for rows.Next() {
 		var e auditEntry
-		var createdAt time.Time
+		var createdAtStr sql.NullString
 		if err := rows.Scan(
 			&e.ID, &e.ActorID, &e.ActorType, &e.Action,
 			&e.ResourceType, &e.ResourceID,
-			&e.BeforeState, &e.AfterState, &e.Note, &createdAt,
+			&e.BeforeState, &e.AfterState, &e.Note, &createdAtStr,
 		); err != nil {
+			// True scan error (wrong column count, type the driver cannot
+			// convert to string, etc.) — log and skip this row rather than
+			// aborting the whole response.
+			globals.Logger.Warnf("audit scan row failed token_id=%d: %v", tokenID, err)
 			continue
 		}
-		e.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		// Parse the timestamp string into RFC3339 for the JSON response.
+		// Try common formats emitted by MySQL (no parseTime) and SQLite.
+		var createdAt time.Time
+		if createdAtStr.Valid && createdAtStr.String != "" {
+			for _, layout := range []string{
+				"2006-01-02 15:04:05",
+				time.RFC3339,
+				time.RFC3339Nano,
+			} {
+				if t, parseErr := time.Parse(layout, createdAtStr.String); parseErr == nil {
+					createdAt = t
+					break
+				}
+			}
+			if createdAt.IsZero() {
+				globals.Logger.Warnf("audit created_at unparseable token_id=%d raw=%q", tokenID, createdAtStr.String)
+			}
+		}
+		if createdAt.IsZero() {
+			e.CreatedAt = ""
+		} else {
+			e.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		}
 		entries = append(entries, e)
 	}
 	_ = rows.Err()
