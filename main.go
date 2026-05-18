@@ -15,6 +15,7 @@ import (
 	"chat/newapi"
 	"chat/payment"
 	"chat/plans"
+	"chat/relay"
 	"chat/service"
 	"chat/usage"
 	"chat/utils"
@@ -209,6 +210,11 @@ func main() {
 
 	utils.RegisterStaticRoute(app)
 	registerApiRouter(app)
+	// PKG-A-4: OpenAI-compatible /v1/* relay proxy.
+	// Mounts at engine root (NOT under /api group) so aidesk can call
+	// POST https://www.greentokey.com/v1/chat/completions directly.
+	// NewAPI :3000 remains hidden; this handler is the only bridge.
+	relay.Register(app)
 	readCorsOrigins()
 
 	if err := app.Run(fmt.Sprintf(":%s", viper.GetString("server.port"))); err != nil {
