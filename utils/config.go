@@ -18,8 +18,12 @@ var configBackupFile = "config/config.bak.yaml"
 var configExampleFile = "config.example.yaml"
 var configMutex sync.Mutex
 
+// redirectRoutes — CoAI legacy redirect: /v1/* and /mj/* used to be aliases
+// for /api/v1/* and /api/mj/* respectively (back when CoAI hosted its own
+// OpenAI-compat chat handler under /api/v1). PKG-A-4 reclaims /v1/* for the
+// relay handler (specific endpoints registered in relay/Register), so /v1
+// must NOT also register a wildcard here — gin's tree refuses both.
 var redirectRoutes = []string{
-	"/v1",
 	"/mj",
 	"/attachments",
 }
