@@ -155,12 +155,12 @@ func HandleRelay(c *gin.Context) {
 	}
 	_ = bind // bind.NewapiUserID available for future usage logging
 
-	// 4. Build the upstream URL: <newapi_base>/v1/<path>
-	path := c.Param("path") // includes leading slash: "/chat/completions"
-	if path == "" {
-		path = "/"
-	}
-	upstreamURL := newAPIBase() + "/v1" + path
+	// 4. Build the upstream URL: <newapi_base>/<full path>
+	// Register() uses specific endpoints (not /v1/*path wildcard) to avoid
+	// collision with utils/config.go redirectRoutes; that means c.Param("path")
+	// would be empty here. Use c.Request.URL.Path which always carries the full
+	// "/v1/chat/completions" etc. as the caller saw it.
+	upstreamURL := newAPIBase() + c.Request.URL.Path
 
 	// Preserve query string (e.g. ?model=xxx)
 	if rawQuery := c.Request.URL.RawQuery; rawQuery != "" {
@@ -189,7 +189,7 @@ func HandleRelay(c *gin.Context) {
 	// 7. Execute upstream request.
 	upstreamResp, err := getRelayHTTPClient().Do(upstreamReq)
 	if err != nil {
-		log.Printf("[relay] upstream error (user=%d, path=%s): %v", coaiUserID, path, err)
+		log.Printf("[relay] upstream error (user=%d, path=%s): %v", coaiUserID, c.Request.URL.Path, err)
 		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{
 			"error": gin.H{
 				"message": "Upstream gateway error.",
@@ -222,14 +222,14 @@ func HandleRelay(c *gin.Context) {
 			}
 			if readErr != nil {
 				if readErr != io.EOF {
-					log.Printf("[relay] stream read error (user=%d, path=%s): %v", coaiUserID, path, readErr)
+					log.Printf("[relay] stream read error (user=%d, path=%s): %v", coaiUserID, c.Request.URL.Path, readErr)
 				}
 				break
 			}
 		}
 	} else {
 		if _, copyErr := io.Copy(c.Writer, upstreamResp.Body); copyErr != nil {
-			log.Printf("[relay] copy response error (user=%d, path=%s): %v", coaiUserID, path, copyErr)
+			log.Printf("[relay] copy response error (user=%d, path=%s): %v", coaiUserID, c.Request.URL.Path, copyErr)
 		}
 	}
 }
