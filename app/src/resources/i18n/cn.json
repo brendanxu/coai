@@ -756,6 +756,26 @@
       "retire-conflict": "该套餐有活跃订阅，无法停用"
     },
     "subscription": "订阅管理",
+    "tokens": {
+      "title": "令牌审计",
+      "user_col": "用户",
+      "actions": {
+        "force_revoke": "强制撤销",
+        "view_audit": "查看审计"
+      },
+      "filter": {
+        "user": "用户搜索",
+        "status_all": "全部状态"
+      },
+      "audit": {
+        "title": "操作审计",
+        "empty": "暂无审计记录"
+      },
+      "confirm": {
+        "force_revoke_title": "强制撤销 token？",
+        "force_revoke_body": "用户 {{user}} 的 token \"{{name}}\" 将立即失效"
+      }
+    },
     "exit": "退出后台",
     "billing": "收入",
     "billing-today": "今日入账",
@@ -2609,5 +2629,84 @@
     "session_hit_rate": "Cache 命中率",
     "session_cost": "本会话花费",
     "empty": "等待 API 调用…"
+  },
+  "tokens": {
+    "eyebrow": "API 访问",
+    "title": "我的令牌",
+    "subtitle": "管理您的 sk-tnx-xxx API 密钥，最多 10 个",
+    "create": "新建令牌",
+    "unnamed": "未命名",
+    "name_placeholder": "例如：生产环境",
+    "copy": "复制",
+    "rename": "改名",
+    "revoke": "撤销",
+    "usage": "用量",
+    "status": {
+      "active": "活跃",
+      "revoked": "已撤销",
+      "expired": "已过期"
+    },
+    "quota": {
+      "unlimited": "无限额度"
+    },
+    "expire": {
+      "never": "永不过期"
+    },
+    "copy": {
+      "label": "复制",
+      "success": "已复制",
+      "failed": "复制失败，请手动选择"
+    },
+    "create": {
+      "label": "新建令牌",
+      "title": "新建 API 令牌",
+      "name_label": "名称",
+      "name_too_long": "名称不超过 64 字符",
+      "expire_label": "过期时间",
+      "never": "永不过期",
+      "plaintext_warning": "此 key 只显示一次，请立即复制保存。关闭后将无法再看到。",
+      "success_action": "我已保存",
+      "creating": "创建中…"
+    },
+    "created": {
+      "title": "令牌已创建",
+      "name_label": "令牌名称"
+    },
+    "rename": {
+      "label": "改名",
+      "title": "重命名令牌",
+      "save": "保存",
+      "saving": "保存中…",
+      "success": "已重命名"
+    },
+    "revoke": {
+      "label": "撤销",
+      "confirm": "确定要撤销此 token？",
+      "description": "撤销后使用此 key 的 API 调用将返回 401。此操作无法撤销。",
+      "last_token_warn": "这是您最后一个活跃令牌，撤销后将无法使用 API。请先创建新令牌再撤销此令牌。",
+      "success": "令牌已撤销"
+    },
+    "empty": {
+      "title": "还没有令牌",
+      "cta": "创建第一个令牌开始使用 API"
+    },
+    "errors": {
+      "load_failed": "加载令牌列表失败",
+      "create_failed": "创建失败，请稍后重试",
+      "max_reached": "已达上限 10 个 token",
+      "revoke_failed": "撤销失败，请稍后重试",
+      "rename_failed": "重命名失败，请稍后重试"
+    },
+    "usage": {
+      "label": "用量",
+      "drawer_title": "令牌用量",
+      "total_calls": "总调用次数",
+      "total_tokens": "总 Token 用量",
+      "input_tokens": "输入 Tokens",
+      "output_tokens": "输出 Tokens",
+      "by_model": "按模型分布",
+      "no_data": "暂无调用记录",
+      "load_failed": "加载用量数据失败"
+    }
   }
 }

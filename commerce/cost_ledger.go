@@ -67,9 +67,9 @@ import (
 func WriteUsageCost(db *sql.DB, entry UsageCostEntry) error {
 	_, err := globals.ExecDb(db, `
 		INSERT INTO gtk_app_usage_log
-		  (user_id, plan_id, service, source, order_id, provider, tokens_used, cost_cents)
+		  (user_id, plan_id, service, source, order_id, provider, tokens_used, cost_cents, token_id)
 		VALUES
-		  (?, ?, ?, ?, ?, ?, ?, ?)
+		  (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
 		entry.UserID,
 		entry.PlanID,
@@ -79,6 +79,7 @@ func WriteUsageCost(db *sql.DB, entry UsageCostEntry) error {
 		entry.Provider,
 		entry.TokensUsed,
 		entry.CostCents,
+		entry.TokenID,
 	)
 	if err != nil {
 		return fmt.Errorf("insert gtk_app_usage_log: %w", err)

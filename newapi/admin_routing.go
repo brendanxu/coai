@@ -102,6 +102,10 @@ func RegisterAdminRoutes(app *gin.RouterGroup) {
 	// Provider pricing (admin_plans.go)
 	app.GET("/gtk/v1/admin/provider-pricing", ListProviderPricingAPI)
 	app.POST("/gtk/v1/admin/provider-pricing", CreateProviderPricingAPI)
+	// PKG-A-3: Token management admin routes (admin_tokens.go)
+	app.GET("/gtk/v1/admin/tokens", AdminListTokensAPI)
+	app.DELETE("/gtk/v1/admin/tokens/:id", AdminRevokeTokenAPI)
+	app.GET("/gtk/v1/admin/tokens/:id/audit", AdminGetTokenAuditAPI)
 }
 
 // UserRoutingRow is the JSON shape returned by the list + detail endpoints.

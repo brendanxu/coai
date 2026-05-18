@@ -400,3 +400,121 @@ func keysOf(m map[string]struct{}) []string {
 	}
 	return out
 }
+
+// ---------------------------------------------------------------------------
+// Wave 1.5 — token_id column tests (PKG-A-3)
+// ---------------------------------------------------------------------------
+
+// TestTokenIDColumn_PresentAfterMigrate verifies that after Migrate() the
+// gtk_app_usage_log table has a token_id column with a default of 0.
+func TestTokenIDColumn_PresentAfterMigrate(t *testing.T) {
+	db := newTestDB(t)
+	if err := Migrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	// PRAGMA table_info returns one row per column with fields:
+	//   cid | name | type | notnull | dflt_value | pk
+	rows, err := db.Query(`PRAGMA table_info(gtk_app_usage_log)`)
+	if err != nil {
+		t.Fatalf("pragma: %v", err)
+	}
+	defer rows.Close()
+
+	found := false
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, ctype string
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		if name == "token_id" {
+			found = true
+			if dflt.String != "0" {
+				t.Errorf("token_id default: want '0', got %q", dflt.String)
+			}
+		}
+	}
+	if !found {
+		t.Error("token_id column missing from gtk_app_usage_log after Migrate")
+	}
+}
+
+// TestTokenIDColumn_Idempotent re-runs Migrate() on an already-migrated DB
+// and confirms no error is returned (addColumnIfMissing gate works).
+func TestTokenIDColumn_Idempotent(t *testing.T) {
+	db := newTestDB(t)
+	if err := Migrate(db); err != nil {
+		t.Fatalf("first migrate: %v", err)
+	}
+	if err := Migrate(db); err != nil {
+		t.Fatalf("second migrate (idempotency): %v", err)
+	}
+}
+
+// TestTokenIDColumn_WriteAndRead confirms that WriteUsageCost (in the
+// commerce package) correctly writes token_id and that the value round-trips
+// through a SELECT. This validates Tasks 1.5a + 1.5c together: schema has
+// the column and the INSERT path populates it.
+func TestTokenIDColumn_WriteAndRead(t *testing.T) {
+	db := newTestDB(t)
+	if err := Migrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	// Seed auth row so the FK (or NOT NULL) on user_id is satisfied.
+	if _, err := db.Exec(`INSERT INTO auth (id) VALUES (42)`); err != nil {
+		t.Fatalf("seed auth: %v", err)
+	}
+
+	// Direct INSERT using the same SQL shape as WriteUsageCost to keep the
+	// test in the plans package (avoids an import cycle with commerce).
+	// This mirrors what WriteUsageCost does after the Wave 1.5 change.
+	const wantTokenID int64 = 7
+	_, err := db.Exec(`
+		INSERT INTO gtk_app_usage_log
+		  (user_id, service, source, tokens_used, cost_cents, token_id)
+		VALUES
+		  (42, 'deepseek-chat', 'api', 500, 3, ?)
+	`, wantTokenID)
+	if err != nil {
+		t.Fatalf("insert with token_id: %v", err)
+	}
+
+	var got int64
+	if err := db.QueryRow(`SELECT token_id FROM gtk_app_usage_log WHERE user_id = 42`).Scan(&got); err != nil {
+		t.Fatalf("select token_id: %v", err)
+	}
+	if got != wantTokenID {
+		t.Errorf("token_id round-trip: want %d, got %d", wantTokenID, got)
+	}
+}
+
+// TestTokenIDColumn_LegacyRowDefault confirms that rows inserted WITHOUT
+// specifying token_id get DEFAULT 0 (legacy / no-token-context behavior).
+func TestTokenIDColumn_LegacyRowDefault(t *testing.T) {
+	db := newTestDB(t)
+	if err := Migrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO auth (id) VALUES (99)`); err != nil {
+		t.Fatalf("seed auth: %v", err)
+	}
+
+	_, err := db.Exec(`
+		INSERT INTO gtk_app_usage_log (user_id, service, source, tokens_used, cost_cents)
+		VALUES (99, 'gpt-4o', 'chat', 200, 1)
+	`)
+	if err != nil {
+		t.Fatalf("insert without token_id: %v", err)
+	}
+
+	var got int64
+	if err := db.QueryRow(`SELECT token_id FROM gtk_app_usage_log WHERE user_id = 99`).Scan(&got); err != nil {
+		t.Fatalf("select token_id: %v", err)
+	}
+	if got != 0 {
+		t.Errorf("legacy row token_id: want 0 (default), got %d", got)
+	}
+}

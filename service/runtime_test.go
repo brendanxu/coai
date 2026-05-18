@@ -224,6 +224,7 @@ func ensureUsageLogTable(t *testing.T, db *sql.DB) {
 		  provider     TEXT,
 		  tokens_used  INTEGER NOT NULL DEFAULT 0,
 		  cost_cents   INTEGER NOT NULL DEFAULT 0,
+		  token_id     INTEGER,
 		  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 	`); err != nil {
