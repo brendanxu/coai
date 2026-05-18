@@ -64,7 +64,8 @@ interface AdminTokenRow {
   coai_user_id: number;
   name: string;
   key: string; // masked
-  status: number; // 1=active 2=revoked
+  status: number; // raw NewAPI status: 1=enabled 2=disabled
+  effective_status?: string; // R5-3: "active" | "revoked" | "expired"
   remain_quota: number;
   unlimited_quota: boolean;
   expired_time: number; // unix seconds; -1=never
@@ -83,22 +84,35 @@ interface AuditEntry {
   created_at: string; // RFC3339
 }
 
-type StatusFilter = "all" | "active" | "revoked";
+type StatusFilter = "all" | "active" | "revoked" | "expired";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const STATUS_ACTIVE = 1;
 const STATUS_REVOKED = 2;
 
-function statusLabel(s: number): string {
-  if (s === STATUS_ACTIVE) return "活跃";
-  if (s === STATUS_REVOKED) return "已撤销";
+// R5-3 follow-up: prefer effective_status (backend marks expired correctly)
+// over raw NewAPI status int. effective_status is the source of truth for UI;
+// raw status fallback for backward compat if backend omits the field.
+function effectiveStatus(t: AdminTokenRow): "active" | "revoked" | "expired" {
+  if (t.effective_status === "active" || t.effective_status === "revoked" || t.effective_status === "expired") {
+    return t.effective_status;
+  }
+  if (t.status === STATUS_REVOKED) return "revoked";
+  if (t.expired_time > 0 && t.expired_time < Math.floor(Date.now() / 1000)) return "expired";
+  return "active";
+}
+
+function statusLabel(t: AdminTokenRow): string {
+  const s = effectiveStatus(t);
+  if (s === "active") return "活跃";
+  if (s === "revoked") return "已撤销";
   return "已过期";
 }
 
-function statusVariant(s: number): "default" | "secondary" | "destructive" {
-  if (s === STATUS_ACTIVE) return "default";
-  if (s === STATUS_REVOKED) return "destructive";
+function statusVariant(t: AdminTokenRow): "default" | "secondary" | "destructive" {
+  const s = effectiveStatus(t);
+  if (s === "active") return "default";
+  if (s === "revoked") return "destructive";
   return "secondary";
 }
 
@@ -341,12 +355,10 @@ export function TokensTab() {
     load();
   }, [load]);
 
-  // Client-side status filter
+  // Client-side status filter (R5-3: use effective_status to include expired)
   const visibleTokens = allTokens.filter((t) => {
     if (statusFilter === "all") return true;
-    if (statusFilter === "active") return t.status === STATUS_ACTIVE;
-    if (statusFilter === "revoked") return t.status === STATUS_REVOKED;
-    return true;
+    return effectiveStatus(t) === statusFilter;
   });
 
   const handleUserSearch = () => {
@@ -436,6 +448,7 @@ export function TokensTab() {
             <SelectItem value="all">全部状态</SelectItem>
             <SelectItem value="active">活跃</SelectItem>
             <SelectItem value="revoked">已撤销</SelectItem>
+            <SelectItem value="expired">已过期</SelectItem>
           </SelectContent>
         </Select>
 
@@ -496,8 +509,8 @@ export function TokensTab() {
                     {tok.key}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={statusVariant(tok.status)}>
-                      {statusLabel(tok.status)}
+                    <Badge variant={statusVariant(tok)}>
+                      {statusLabel(tok)}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
@@ -524,7 +537,7 @@ export function TokensTab() {
                         variant="ghost"
                         size="sm"
                         className="h-7 gap-1.5 text-xs text-red-400 hover:text-red-400"
-                        disabled={tok.status !== STATUS_ACTIVE}
+                        disabled={effectiveStatus(tok) !== "active"}
                         onClick={() => setRevokeTarget(tok)}
                         title="强制撤销"
                       >
