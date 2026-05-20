@@ -1653,6 +1653,8 @@
     "pricing-full": "套餐",
     "orders": "订单",
     "orders-full": "我的订单",
+    "tokens": "令牌",
+    "tokens-full": "我的令牌",
     "usage": "用量",
     "live": "实时"
   },

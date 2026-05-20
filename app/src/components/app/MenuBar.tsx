@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button.tsx";
 import router from "@/router.tsx";
 import React from "react";
 import {
+  KeyRound,
   LibraryBig,
   MessageCircle,
   PackageCheck,
@@ -80,6 +81,7 @@ function MenuBar({ children, className }: MenuBarProps) {
             {/* PKG-N4 — /orders is auth-gated; this whole branch is already
                 gated on `auth`, so no extra check needed here. */}
             <BarItem icon={<PackageCheck />} path={`/orders`} name={"orders"} />
+            <BarItem icon={<KeyRound />} path={`/setting/tokens`} name={"tokens"} />
             <BarItem icon={<User />} path={`/account`} name={"account"} />
             {/* <BarItem icon={<PieChart />} path={`/log`} name={"log"} /> */}
             {admin && (
