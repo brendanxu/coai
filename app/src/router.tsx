@@ -49,18 +49,8 @@ const MyOrders = lazyFactor(() => import("@/routes/MyOrders.tsx"));
 const OrderDetail = lazyFactor(() => import("@/routes/OrderDetail.tsx"));
 
 const AdminPage = lazyFactor(() => import("@/routes/Admin.tsx"));
-const AdminSystem = lazyFactor(() => import("@/routes/admin/System.tsx"));
-const AdminUsers = lazyFactor(() => import("@/routes/admin/Users.tsx"));
-const AdminLogger = lazyFactor(() => import("@/routes/admin/Logger.tsx"));
 // v0.12 Tier 1 block 5 — founder concierge workspace for 民宿 wedge
 const AdminMansu = lazyFactor(() => import("@/routes/admin/Mansu.tsx"));
-// PKG-4 (architecture §19) — per-channel routing admin pages (per-user routing merged into GtkAdmin).
-const AdminChannelsRouting = lazyFactor(
-  () => import("@/routes/admin/AdminChannels.tsx"),
-);
-// PKG-N1 — admin order management (/admin/orders). Closes the
-// "founder uses curl to mark concierge orders paid" gap from the audit.
-const AdminOrders = lazyFactor(() => import("@/routes/admin/AdminOrders.tsx"));
 // Unified GTK admin panel (users + model-ratios + settings + sub2api hub).
 const GtkAdmin = lazyFactor(() => import("@/routes/admin/GtkAdmin.tsx"));
 
@@ -350,33 +340,6 @@ const router = createBrowserRouter([
             path: "",
             element: <Navigate to="/admin/gtk" replace />,
           },
-          {
-            id: "admin-users",
-            path: "users",
-            element: (
-              <Suspense>
-                <AdminUsers />
-              </Suspense>
-            ),
-          },
-          {
-            id: "admin-system",
-            path: "system",
-            element: (
-              <Suspense>
-                <AdminSystem />
-              </Suspense>
-            ),
-          },
-          {
-            id: "admin-logger",
-            path: "logger",
-            element: (
-              <Suspense>
-                <AdminLogger />
-              </Suspense>
-            ),
-          },
           // v0.12 Tier 1 block 5 — 民宿 concierge workspace (founder-only)
           {
             id: "admin-mansu",
@@ -384,26 +347,6 @@ const router = createBrowserRouter([
             element: (
               <Suspense>
                 <AdminMansu />
-              </Suspense>
-            ),
-          },
-          // /admin/channels-routing — PKG-4 per-channel routing admin.
-          {
-            id: "admin-channels-routing",
-            path: "channels-routing",
-            element: (
-              <Suspense>
-                <AdminChannelsRouting />
-              </Suspense>
-            ),
-          },
-          // PKG-N1 — service order management (mark-paid / refund) UI.
-          {
-            id: "admin-orders",
-            path: "orders",
-            element: (
-              <Suspense>
-                <AdminOrders />
               </Suspense>
             ),
           },
