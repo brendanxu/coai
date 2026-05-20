@@ -10,7 +10,7 @@ func Register(app *gin.RouterGroup) {
 	app.POST("/admin/channel/create", CreateChannel)
 	app.GET("/admin/channel/get/:id", GetChannel)
 	app.POST("/admin/channel/update/:id", UpdateChannel)
-	app.GET("/admin/channel/delete/:id", DeleteChannel)
+	app.DELETE("/admin/channel/delete/:id", DeleteChannel)
 	app.GET("/admin/channel/activate/:id", ActivateChannel)
 	app.GET("/admin/channel/deactivate/:id", DeactivateChannel)
 

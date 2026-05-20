@@ -1437,6 +1437,8 @@
     "pricing-full": "Pricing",
     "orders": "Orders",
     "orders-full": "My orders",
+    "tokens": "Tokens",
+    "tokens-full": "My Tokens",
     "usage": "Usage",
     "live": "Live"
   },
