@@ -350,6 +350,14 @@ const router = createBrowserRouter([
               </Suspense>
             ),
           },
+          // Legacy /admin/* subpaths (users/system/logger/channel/charge...) were
+          // removed in PKG-WEBSITE-CLEANUP and unified into /admin/gtk. Catch any
+          // remaining old links / bookmarks and redirect instead of 404.
+          {
+            id: "admin-legacy-catchall",
+            path: "*",
+            element: <Navigate to="/admin/gtk" replace />,
+          },
         ],
         ErrorBoundary: NotFound,
       },
