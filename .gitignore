@@ -33,3 +33,6 @@ key/*
 # for https://github.com/di-sukharev/opencommit
 .env
 .gstack/
+
+# macOS
+.DS_Store
