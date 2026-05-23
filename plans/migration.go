@@ -98,6 +98,9 @@ func Migrate(db *sql.DB) error {
 	if err := seedDisplayPricing(db); err != nil {
 		return fmt.Errorf("seed gtk_provider_pricing display rows: %w", err)
 	}
+	if err := dedupeDisplayPricingRows(db); err != nil {
+		return fmt.Errorf("dedupe gtk_provider_pricing display rows: %w", err)
+	}
 	return nil
 }
 
@@ -988,26 +991,24 @@ var displayPricingSeed = []struct {
 }
 
 // seedDisplayPricing populates the 7 display_* columns for the 8 baseline
-// models. Idempotent: for each seed row it tries to UPDATE the existing
-// (provider, model_id, token_type='input') row first; if no row matches it
-// INSERTs a new one with both upstream_per_m (estimated from display_in) and
-// all display fields populated.
+// models. Idempotent: for each seed row it explicitly looks up the latest
+// existing (provider, model_id, token_type='input') row first; if no row
+// matches it INSERTs a new one with both upstream_per_m (estimated from
+// display_in) and all display fields populated.
 //
-// Re-running this function is safe: the UPDATE is a no-op when the display
-// fields are already set to the same values; the INSERT path guards with
-// INSERT IGNORE / INSERT OR IGNORE so duplicate unique-key violations are
-// silently skipped.
+// Do not infer existence from UPDATE RowsAffected. MySQL reports changed rows,
+// not matched rows, so an UPDATE that writes identical display values returns
+// 0 and would incorrectly fall through to INSERT on every boot.
 //
 // SQLite note: unlike seedTokenPlans, this seed DOES run under SQLite because
 // plans/migration_test.go exercises the display-pricing seed and we want
 // idempotency to be exercised in unit tests too.
 func seedDisplayPricing(db *sql.DB) error {
 	for _, r := range displayPricingSeed {
-		// Try to UPDATE an existing input row first.
-		var res sql.Result
-		var err error
-		if globals.SqliteEngine {
-			res, err = globals.ExecDb(db, `
+		if id, found, err := latestProviderPricingInputID(db, r.provider, r.modelID); err != nil {
+			return fmt.Errorf("lookup display seed %s/%s: %w", r.provider, r.modelID, err)
+		} else if found {
+			if _, err := globals.ExecDb(db, `
 				UPDATE gtk_provider_pricing
 				SET display_in_cny_per_m  = ?,
 				    display_out_cny_per_m = ?,
@@ -1016,31 +1017,13 @@ func seedDisplayPricing(db *sql.DB) error {
 				    vendor_label          = ?,
 				    context_size          = ?,
 				    cache_flag            = ?
-				WHERE provider = ? AND model_id = ? AND token_type = 'input'
+				WHERE id = ?
 			`, r.priceIn, r.priceOut, r.creditsPerM,
 				r.displayName, r.vendorLabel, r.contextSize, r.cacheFlag,
-				r.provider, r.modelID)
-		} else {
-			res, err = globals.ExecDb(db, `
-				UPDATE gtk_provider_pricing
-				SET display_in_cny_per_m  = ?,
-				    display_out_cny_per_m = ?,
-				    display_credits_per_m = ?,
-				    display_name          = ?,
-				    vendor_label          = ?,
-				    context_size          = ?,
-				    cache_flag            = ?
-				WHERE provider = ? AND model_id = ? AND token_type = 'input'
-			`, r.priceIn, r.priceOut, r.creditsPerM,
-				r.displayName, r.vendorLabel, r.contextSize, r.cacheFlag,
-				r.provider, r.modelID)
-		}
-		if err != nil {
-			return fmt.Errorf("update display seed %s/%s: %w", r.provider, r.modelID, err)
-		}
-		n, _ := res.RowsAffected()
-		if n > 0 {
-			continue // existing upstream row updated — done for this model
+				id); err != nil {
+				return fmt.Errorf("update display seed %s/%s: %w", r.provider, r.modelID, err)
+			}
+			continue
 		}
 
 		// No upstream row exists for this (provider, model_id, input) tuple.
@@ -1048,6 +1031,7 @@ func seedDisplayPricing(db *sql.DB) error {
 		// (approximate CNY→USD at 7.27 rate) as a placeholder that ops can
 		// correct later via the admin UI.
 		estimatedUpstreamPerM := r.priceIn / 7.27
+		var err error
 		if globals.SqliteEngine {
 			_, err = globals.ExecDb(db, `
 				INSERT OR IGNORE INTO gtk_provider_pricing
@@ -1071,6 +1055,128 @@ func seedDisplayPricing(db *sql.DB) error {
 		}
 		if err != nil {
 			return fmt.Errorf("insert display seed %s/%s: %w", r.provider, r.modelID, err)
+		}
+	}
+	return nil
+}
+
+func latestProviderPricingInputID(db *sql.DB, provider, modelID string) (int64, bool, error) {
+	var id int64
+	err := globals.QueryRowDb(db, `
+		SELECT id
+		FROM gtk_provider_pricing
+		WHERE provider = ?
+		  AND model_id = ?
+		  AND token_type = 'input'
+		ORDER BY effective_from DESC, id DESC
+		LIMIT 1
+	`, provider, modelID).Scan(&id)
+	if err == sql.ErrNoRows {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return id, true, nil
+}
+
+func latestCompleteDisplayPricingInputID(db *sql.DB, provider, modelID string) (int64, bool, error) {
+	var id int64
+	err := globals.QueryRowDb(db, `
+		SELECT id
+		FROM gtk_provider_pricing
+		WHERE provider = ?
+		  AND model_id = ?
+		  AND token_type = 'input'
+		  AND display_in_cny_per_m  IS NOT NULL
+		  AND display_out_cny_per_m IS NOT NULL
+		  AND display_credits_per_m IS NOT NULL
+		  AND display_name          IS NOT NULL
+		  AND vendor_label          IS NOT NULL
+		  AND context_size          IS NOT NULL
+		  AND cache_flag            IS NOT NULL
+		ORDER BY effective_from DESC, id DESC
+		LIMIT 1
+	`, provider, modelID).Scan(&id)
+	if err == sql.ErrNoRows {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return id, true, nil
+}
+
+// dedupeDisplayPricingRows keeps gtk_provider_pricing append-only while
+// ensuring the public Pricing page has only one display-complete row for each
+// provider/model pair. Older price-history rows are retained but unpublished by
+// clearing their nullable display columns.
+func dedupeDisplayPricingRows(db *sql.DB) error {
+	rows, err := globals.QueryDb(db, `
+		SELECT provider, model_id
+		FROM gtk_provider_pricing
+		WHERE token_type = 'input'
+		  AND display_in_cny_per_m  IS NOT NULL
+		  AND display_out_cny_per_m IS NOT NULL
+		  AND display_credits_per_m IS NOT NULL
+		  AND display_name          IS NOT NULL
+		  AND vendor_label          IS NOT NULL
+		  AND context_size          IS NOT NULL
+		  AND cache_flag            IS NOT NULL
+		GROUP BY provider, model_id
+		HAVING COUNT(*) > 1
+	`)
+	if err != nil {
+		return fmt.Errorf("query duplicate display rows: %w", err)
+	}
+	defer rows.Close()
+
+	type key struct {
+		provider string
+		modelID  string
+	}
+	keys := make([]key, 0)
+	for rows.Next() {
+		var k key
+		if err := rows.Scan(&k.provider, &k.modelID); err != nil {
+			return fmt.Errorf("scan duplicate display row key: %w", err)
+		}
+		keys = append(keys, k)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate duplicate display rows: %w", err)
+	}
+
+	for _, k := range keys {
+		keepID, found, err := latestCompleteDisplayPricingInputID(db, k.provider, k.modelID)
+		if err != nil {
+			return fmt.Errorf("lookup latest display row %s/%s: %w", k.provider, k.modelID, err)
+		}
+		if !found {
+			continue
+		}
+		if _, err := globals.ExecDb(db, `
+			UPDATE gtk_provider_pricing
+			SET display_in_cny_per_m  = NULL,
+			    display_out_cny_per_m = NULL,
+			    display_credits_per_m = NULL,
+			    display_name          = NULL,
+			    vendor_label          = NULL,
+			    context_size          = NULL,
+			    cache_flag            = NULL
+			WHERE provider = ?
+			  AND model_id = ?
+			  AND token_type = 'input'
+			  AND id <> ?
+			  AND display_in_cny_per_m  IS NOT NULL
+			  AND display_out_cny_per_m IS NOT NULL
+			  AND display_credits_per_m IS NOT NULL
+			  AND display_name          IS NOT NULL
+			  AND vendor_label          IS NOT NULL
+			  AND context_size          IS NOT NULL
+			  AND cache_flag            IS NOT NULL
+		`, k.provider, k.modelID, keepID); err != nil {
+			return fmt.Errorf("clear duplicate display rows %s/%s: %w", k.provider, k.modelID, err)
 		}
 	}
 	return nil

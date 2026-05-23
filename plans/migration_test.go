@@ -212,6 +212,76 @@ func TestSeedProviderPricing_OnlyOnce(t *testing.T) {
 	}
 }
 
+func TestDedupeDisplayPricingRows_ClearsOlderDuplicateDisplayRows(t *testing.T) {
+	db := newTestDB(t)
+	if err := createProviderPricingTable(db); err != nil {
+		t.Fatalf("create pricing table: %v", err)
+	}
+	if err := addProviderPricingDisplayColumns(db); err != nil {
+		t.Fatalf("add display columns: %v", err)
+	}
+
+	insertRow := func(effectiveFrom, displayName string, credits int64) int64 {
+		t.Helper()
+		res, err := db.Exec(`
+			INSERT INTO gtk_provider_pricing
+			  (provider, model_id, token_type, upstream_per_m, effective_from,
+			   display_in_cny_per_m, display_out_cny_per_m, display_credits_per_m,
+			   display_name, vendor_label, context_size, cache_flag)
+			VALUES ('openai', 'gpt-4o', 'input', 2.5, ?, 18.20, 72.80, ?, ?, 'openai', '128k', 'true')
+		`, effectiveFrom, credits, displayName)
+		if err != nil {
+			t.Fatalf("insert display row %s: %v", effectiveFrom, err)
+		}
+		id, _ := res.LastInsertId()
+		return id
+	}
+
+	staleID := insertRow("2026-05-20 00:00:00", "GPT-4o stale", 3640)
+	latestID := insertRow("2026-05-21 00:00:00", "GPT-4o latest", 3650)
+
+	if err := dedupeDisplayPricingRows(db); err != nil {
+		t.Fatalf("dedupe display rows: %v", err)
+	}
+
+	var completeRows int
+	if err := db.QueryRow(`
+		SELECT COUNT(*)
+		FROM gtk_provider_pricing
+		WHERE provider = 'openai'
+		  AND model_id = 'gpt-4o'
+		  AND token_type = 'input'
+		  AND display_in_cny_per_m  IS NOT NULL
+		  AND display_out_cny_per_m IS NOT NULL
+		  AND display_credits_per_m IS NOT NULL
+		  AND display_name          IS NOT NULL
+		  AND vendor_label          IS NOT NULL
+		  AND context_size          IS NOT NULL
+		  AND cache_flag            IS NOT NULL
+	`).Scan(&completeRows); err != nil {
+		t.Fatalf("count complete display rows: %v", err)
+	}
+	if completeRows != 1 {
+		t.Fatalf("complete display rows = %d, want 1", completeRows)
+	}
+
+	var staleName sql.NullString
+	if err := db.QueryRow(`SELECT display_name FROM gtk_provider_pricing WHERE id = ?`, staleID).Scan(&staleName); err != nil {
+		t.Fatalf("scan stale display_name: %v", err)
+	}
+	if staleName.Valid {
+		t.Fatalf("stale row display_name still public: %q", staleName.String)
+	}
+
+	var latestName string
+	if err := db.QueryRow(`SELECT display_name FROM gtk_provider_pricing WHERE id = ?`, latestID).Scan(&latestName); err != nil {
+		t.Fatalf("scan latest display_name: %v", err)
+	}
+	if latestName != "GPT-4o latest" {
+		t.Fatalf("latest row display_name = %q, want GPT-4o latest", latestName)
+	}
+}
+
 // TestProviderPricingSeed_Sonnet45 confirms the Sonnet 4.5 row set follows
 // Anthropic's canonical 1.25x write / 0.1x read structure. Catches arithmetic
 // fat-finger in the seed slice before it ever reaches a billing path.

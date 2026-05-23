@@ -29,13 +29,13 @@ import (
 // PublicModelRow is the JSON shape returned by GET /gtk/v1/pricing.
 // Field names and types mirror Pricing.tsx ModelRow exactly.
 type PublicModelRow struct {
-	Model         string `json:"model"`
-	Vendor        string `json:"vendor"`
-	Context       string `json:"context"`
-	PriceIn       string `json:"priceIn"`
-	PriceOut      string `json:"priceOut"`
+	Model          string `json:"model"`
+	Vendor         string `json:"vendor"`
+	Context        string `json:"context"`
+	PriceIn        string `json:"priceIn"`
+	PriceOut       string `json:"priceOut"`
 	CreditsPerMOut string `json:"creditsPerMOut"`
-	Cache         string `json:"cache"` // "true" | "cache_control" | "false"
+	Cache          string `json:"cache"` // "true" | "cache_control" | "false"
 }
 
 // GetPublicPricingAPI handles GET /api/gtk/v1/pricing.
@@ -64,24 +64,41 @@ func GetPublicPricingAPI(c *gin.Context) {
 	})
 }
 
-// loadPublicPricingRows queries gtk_provider_pricing for all rows with a
-// complete display column set (all 7 NOT NULL). Returns an empty slice (not
-// nil) when no rows qualify so the JSON response is [] rather than null.
+// loadPublicPricingRows queries gtk_provider_pricing for the latest row per
+// provider/model with a complete display column set (all 7 NOT NULL). Returns
+// an empty slice (not nil) when no rows qualify so the JSON response is []
+// rather than null.
 func loadPublicPricingRows(db *sql.DB) ([]PublicModelRow, error) {
 	rows, err := globals.QueryDb(db, `
-		SELECT display_name, vendor_label, context_size,
-		       display_in_cny_per_m, display_out_cny_per_m,
-		       display_credits_per_m, cache_flag
-		FROM gtk_provider_pricing
-		WHERE token_type = 'input'
-		  AND display_in_cny_per_m  IS NOT NULL
-		  AND display_out_cny_per_m IS NOT NULL
-		  AND display_credits_per_m IS NOT NULL
-		  AND display_name          IS NOT NULL
-		  AND vendor_label          IS NOT NULL
-		  AND context_size          IS NOT NULL
-		  AND cache_flag            IS NOT NULL
-		ORDER BY display_credits_per_m DESC
+		SELECT p.display_name, p.vendor_label, p.context_size,
+		       p.display_in_cny_per_m, p.display_out_cny_per_m,
+		       p.display_credits_per_m, p.cache_flag
+		FROM gtk_provider_pricing p
+		WHERE p.token_type = 'input'
+		  AND p.display_in_cny_per_m  IS NOT NULL
+		  AND p.display_out_cny_per_m IS NOT NULL
+		  AND p.display_credits_per_m IS NOT NULL
+		  AND p.display_name          IS NOT NULL
+		  AND p.vendor_label          IS NOT NULL
+		  AND p.context_size          IS NOT NULL
+		  AND p.cache_flag            IS NOT NULL
+		  AND p.id = (
+		    SELECT p2.id
+		    FROM gtk_provider_pricing p2
+		    WHERE p2.provider = p.provider
+		      AND p2.model_id = p.model_id
+		      AND p2.token_type = 'input'
+		      AND p2.display_in_cny_per_m  IS NOT NULL
+		      AND p2.display_out_cny_per_m IS NOT NULL
+		      AND p2.display_credits_per_m IS NOT NULL
+		      AND p2.display_name          IS NOT NULL
+		      AND p2.vendor_label          IS NOT NULL
+		      AND p2.context_size          IS NOT NULL
+		      AND p2.cache_flag            IS NOT NULL
+		    ORDER BY p2.effective_from DESC, p2.id DESC
+		    LIMIT 1
+		  )
+		ORDER BY p.display_credits_per_m DESC
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("query public pricing: %w", err)
