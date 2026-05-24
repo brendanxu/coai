@@ -1410,7 +1410,7 @@ func TestTokenFromNewAPI_EffectiveStatusPopulated(t *testing.T) {
 	now := time.Now().Unix()
 
 	// status=1, expired → effective_status="expired"
-	t1 := &Token{ID: 1, Status: 1, ExpiredTime: now - 100, Key: "sk-abc123def456"}
+	t1 := &Token{ID: 1, Status: 1, ExpiredTime: now - 100, Key: "test-token-expired"}
 	m1 := tokenFromNewAPI(t1)
 	if m1.EffectiveStatus != "expired" {
 		t.Errorf("want effective_status=expired, got %q", m1.EffectiveStatus)
@@ -1420,7 +1420,7 @@ func TestTokenFromNewAPI_EffectiveStatusPopulated(t *testing.T) {
 	}
 
 	// status=2 → effective_status="revoked"
-	t2 := &Token{ID: 2, Status: 2, ExpiredTime: now + 9999, Key: "sk-xyz789uvw012"}
+	t2 := &Token{ID: 2, Status: 2, ExpiredTime: now + 9999, Key: "test-token-revoked"}
 	m2 := tokenFromNewAPI(t2)
 	if m2.EffectiveStatus != "revoked" {
 		t.Errorf("want effective_status=revoked, got %q", m2.EffectiveStatus)

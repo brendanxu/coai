@@ -33,7 +33,7 @@ gt_require_clean_tree "$ROOT" "$ALLOW_DIRTY"
 gt_require_deploy_window "$ALLOW_OUTSIDE_WINDOW"
 
 if command -v gitleaks >/dev/null 2>&1; then
-  gt_run gitleaks detect --no-banner --source "$ROOT"
+  gt_run gitleaks dir "$ROOT" --no-banner
 else
   echo "WARN: gitleaks not found; skipping local secret scan"
 fi

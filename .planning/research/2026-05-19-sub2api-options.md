@@ -272,7 +272,7 @@ curl -X POST http://localhost:8091/v1/chat/completions \
 # 在NewAPI后台创建完channel后
 curl -X POST http://api.greentokey.com:3000/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sk-xxx-newapi-key" \
+  -H "Authorization: Bearer ${NEWAPI_TEST_TOKEN}" \
   -d '{
     "model": "claude-3-5-sonnet-20241022",
     "messages": [{"role": "user", "content": "test"}],
@@ -381,4 +381,3 @@ print(msg.content[0].text)
 
 **报告完成日期**: 2026-05-19  
 **下一步**: founder review本报告 → 决定是立即deploy yushangxiao/claude2api 还是先探索openrouter → tana执行部署或集成
-

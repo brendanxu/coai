@@ -208,7 +208,7 @@ curl https://www.greentokey.com/api/admin/charge/list \
 # 期望响应 cache_creation_input_tokens > 0
 SYSTEM_PROMPT=$(printf "Lorem ipsum dolor sit amet. %.0s" {1..200})
 curl -X POST https://api.greentokey.com/v1/chat/completions \
-  -H "Authorization: Bearer sk-tnx-customer" \
+  -H "Authorization: Bearer ${GTK_CUSTOMER_TOKEN}" \
   -H "Content-Type: application/json" \
   -d "$(jq -n --arg s "$SYSTEM_PROMPT" '{
     model: "claude-sonnet-4-5",
@@ -221,7 +221,7 @@ curl -X POST https://api.greentokey.com/v1/chat/completions \
 # 第 2 次:同 system prompt,不同 user message
 # 期望响应 cache_read_input_tokens > 0
 curl -X POST https://api.greentokey.com/v1/chat/completions \
-  -H "Authorization: Bearer sk-tnx-customer" \
+  -H "Authorization: Bearer ${GTK_CUSTOMER_TOKEN}" \
   -H "Content-Type: application/json" \
   -d "$(jq -n --arg s "$SYSTEM_PROMPT" '{
     model: "claude-sonnet-4-5",

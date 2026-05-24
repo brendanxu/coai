@@ -29,7 +29,7 @@ func computeHMAC(body []byte, secret string) string {
 // --- verifySignature ---
 
 func TestVerifySignature_ValidSignature(t *testing.T) {
-	secret := "test-secret-1234567890"
+	secret := "unit-test-webhook-fixture"
 	body := []byte(`{"meta":{"event_name":"subscription_created"}}`)
 	sig := computeHMAC(body, secret)
 	if !verifySignature(body, sig, secret) {
