@@ -31,6 +31,20 @@ test_orchestrator_dry_run_lists_ordered_steps() {
   assert_contains "$out" "canary.sh 60 --dry-run"
 }
 
+test_orchestrator_non_dry_run_reaches_window_guard() {
+  local tmp out
+  tmp="$(mktemp)"
+  if GT_DEPLOY_NOW_HOUR=18 GT_DEPLOY_ALLOW_DIRTY=1 bash "$ROOT/bin/deploy.sh" coai --coai-version v9.9.9 >"$tmp" 2>&1; then
+    echo "Expected non-dry-run orchestrator to fail outside the deploy window" >&2
+    cat "$tmp" >&2
+    rm -f "$tmp"
+    exit 1
+  fi
+  out="$(cat "$tmp")"
+  rm -f "$tmp"
+  assert_contains "$out" "outside deploy window"
+}
+
 test_deploy_coai_dry_run_uses_version_tag() {
   local out
   out="$(bash "$ROOT/bin/deploy-coai.sh" v9.9.9 --dry-run)"
@@ -64,6 +78,7 @@ test_deploy_config_dry_run_backs_up_and_restarts_service() {
 }
 
 run_test "orchestrator dry-run" test_orchestrator_dry_run_lists_ordered_steps
+run_test "orchestrator non-dry-run window guard" test_orchestrator_non_dry_run_reaches_window_guard
 run_test "deploy coai dry-run" test_deploy_coai_dry_run_uses_version_tag
 run_test "deploy window guard" test_pre_deploy_check_outside_window_blocks_without_override
 run_test "deploy config dry-run" test_deploy_config_dry_run_backs_up_and_restarts_service

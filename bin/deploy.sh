@@ -49,7 +49,10 @@ if gt_is_true "$GT_DEPLOY_DRY_RUN"; then
   common_flags+=(--dry-run)
 fi
 
-preflight_flags=("${common_flags[@]}")
+preflight_flags=()
+if gt_is_true "$GT_DEPLOY_DRY_RUN"; then
+  preflight_flags+=(--dry-run)
+fi
 if gt_is_true "$ALLOW_DIRTY"; then
   preflight_flags+=(--allow-dirty)
 fi
@@ -65,9 +68,9 @@ run_step() {
 }
 
 gt_script_header "deploy coai orchestration"
-run_step pre-deploy-check.sh "${preflight_flags[@]}"
-run_step pre-deploy-dump.sh "${common_flags[@]}"
-run_step deploy-coai.sh "$VERSION_TAG" "${common_flags[@]}"
-run_step post-deploy-smoke.sh "${common_flags[@]}"
-run_step canary.sh "$CANARY_MINUTES" "${common_flags[@]}"
+run_step pre-deploy-check.sh ${preflight_flags[@]+"${preflight_flags[@]}"}
+run_step pre-deploy-dump.sh ${common_flags[@]+"${common_flags[@]}"}
+run_step deploy-coai.sh "$VERSION_TAG" ${common_flags[@]+"${common_flags[@]}"}
+run_step post-deploy-smoke.sh ${common_flags[@]+"${common_flags[@]}"}
+run_step canary.sh "$CANARY_MINUTES" ${common_flags[@]+"${common_flags[@]}"}
 echo "deploy orchestration complete"
