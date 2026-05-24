@@ -1247,6 +1247,26 @@
       "page-of": "ページ{{page}}/{{total}}",
       "prev": "前のページへ",
       "next": "次のページへ"
+    },
+    "tokens": {
+      "title": "トークン監査",
+      "user_col": "顧客",
+      "actions": {
+        "force_revoke": "強制的に元に戻す",
+        "view_audit": "監査を表示"
+      },
+      "filter": {
+        "user": "ユーザー検索",
+        "status_all": "全てのステータス"
+      },
+      "audit": {
+        "title": "オペレーション監査",
+        "empty": "監査記録はまだありません"
+      },
+      "confirm": {
+        "force_revoke_title": "トークンを強制的に取り消しますか？",
+        "force_revoke_body": "ユーザー{{user}}のトークン「{{ name }}」はすぐに期限切れになります"
+      }
     }
   },
   "mask": {
@@ -1494,7 +1514,9 @@
     "orders": "オーダー",
     "orders-full": "私の注文",
     "usage": "使用:",
-    "live": "リアルタイム"
+    "live": "リアルタイム",
+    "tokens": "バトルパス",
+    "tokens-full": "マイトークン"
   },
   "notify": "お知らせ",
   "new-notify": "新しい通知",
@@ -2623,5 +2645,79 @@
     "session_hit_rate": "キャッシュヒット率",
     "session_cost": "このセッションの費用",
     "empty": "API呼び出しを待っています..."
+  },
+  "tokens": {
+    "eyebrow": "APIアクセス",
+    "title": "マイトークン",
+    "subtitle": "sk - tnx - xxx APIキーを最大10個まで管理",
+    "create": {
+      "label": "新しいトークン",
+      "title": "新しいAPIトークン",
+      "name_label": "名称",
+      "name_too_long": "名前は64文字を超えることはできません",
+      "expire_label": "失効時間",
+      "never": "有効期限なし",
+      "plaintext_warning": "このキーは一度だけ表示されます。今すぐコピーして保存してください。閉じると再度表示されなくなります。",
+      "success_action": "節約しました",
+      "creating": "作成しています..."
+    },
+    "unnamed": "無名",
+    "name_placeholder": "例：プロダクション環境",
+    "copy": {
+      "label": "複製",
+      "success": "コピーしました",
+      "failed": "コピーに失敗しました。手動で選択してください"
+    },
+    "rename": {
+      "label": "改名",
+      "title": "トークンの名前を変更",
+      "save": "保存",
+      "saving": "保存",
+      "success": "名前を変更"
+    },
+    "revoke": {
+      "label": "元に戻す",
+      "confirm": "このトークンを取り消してもよろしいですか？",
+      "description": "失効後にこのキーを使用するAPI呼び出しは、401を返します。この操作は元に戻せません。",
+      "last_token_warn": "これは最後のアクティブなトークンであり、失効後にAPIを使用することはできません。このトークンを取り消す前に、新しいトークンを作成してください。",
+      "success": "トークンが取り消されました"
+    },
+    "usage": {
+      "label": "使用:",
+      "drawer_title": "トークンの使用状況",
+      "total_calls": "総通話数",
+      "total_tokens": "トークンの総使用量",
+      "input_tokens": "トークンを入力",
+      "output_tokens": "出力トークン",
+      "by_model": "モデル別分布",
+      "no_data": "通話履歴なし",
+      "load_failed": "投与量データの読み込みに失敗しました"
+    },
+    "status": {
+      "active": "アクティビティ",
+      "revoked": "取り消されました",
+      "expired": "期限切れ"
+    },
+    "quota": {
+      "unlimited": "無制限のクレジット"
+    },
+    "expire": {
+      "never": "有効期限なし"
+    },
+    "created": {
+      "title": "トークンが作成されました",
+      "name_label": "トークン名"
+    },
+    "empty": {
+      "title": "まだトークンはありません",
+      "cta": "最初のトークンを作成するAPIを使い始める"
+    },
+    "errors": {
+      "load_failed": "トークンリストの読み込みに失敗しました",
+      "create_failed": "作成に失敗しました。しばらくしてからもう一度お試しください",
+      "max_reached": "トークンの上限に達しました",
+      "revoke_failed": "元に戻すことができませんでした。しばらくしてからもう一度お試し",
+      "rename_failed": "名前の変更に失敗しました。しばらくしてからもう一度お試しください"
+    }
   }
 }

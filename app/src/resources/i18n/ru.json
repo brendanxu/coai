@@ -1247,6 +1247,26 @@
       "page-of": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN  16 HOURS 20 MINUTES 03 SECONDS VISIT HTTPS://MYMEMORY.TRANSLATED.NET/DOC/USAGELIMITS.PHP TO TRANSLATE MORE",
       "prev": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN  16 HOURS 20 MINUTES 03 SECONDS VISIT HTTPS://MYMEMORY.TRANSLATED.NET/DOC/USAGELIMITS.PHP TO TRANSLATE MORE",
       "next": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN  16 HOURS 20 MINUTES 02 SECONDS VISIT HTTPS://MYMEMORY.TRANSLATED.NET/DOC/USAGELIMITS.PHP TO TRANSLATE MORE"
+    },
+    "tokens": {
+      "title": "Аудит токенов",
+      "user_col": "Пользователь:",
+      "actions": {
+        "force_revoke": "Принудительная отмена",
+        "view_audit": "Просмотр аудита"
+      },
+      "filter": {
+        "user": "Поиск пользователя",
+        "status_all": "Все состояния"
+      },
+      "audit": {
+        "title": "Операционный аудит",
+        "empty": "Аудиторских записей пока нет"
+      },
+      "confirm": {
+        "force_revoke_title": "Принудительно отозвать токен?",
+        "force_revoke_body": "Срок действия токена пользователя {{user}} \"{{name}}\" истекает немедленно"
+      }
     }
   },
   "mask": {
@@ -1494,7 +1514,9 @@
     "orders": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN  16 HOURS 20 MINUTES 01 SECONDS VISIT HTTPS://MYMEMORY.TRANSLATED.NET/DOC/USAGELIMITS.PHP TO TRANSLATE MORE",
     "orders-full": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN  16 HOURS 20 MINUTES 01 SECONDS VISIT HTTPS://MYMEMORY.TRANSLATED.NET/DOC/USAGELIMITS.PHP TO TRANSLATE MORE",
     "usage": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN  16 HOURS 20 MINUTES 00 SECONDS VISIT HTTPS://MYMEMORY.TRANSLATED.NET/DOC/USAGELIMITS.PHP TO TRANSLATE MORE",
-    "live": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN  16 HOURS 20 MINUTES 00 SECONDS VISIT HTTPS://MYMEMORY.TRANSLATED.NET/DOC/USAGELIMITS.PHP TO TRANSLATE MORE"
+    "live": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN  16 HOURS 20 MINUTES 00 SECONDS VISIT HTTPS://MYMEMORY.TRANSLATED.NET/DOC/USAGELIMITS.PHP TO TRANSLATE MORE",
+    "tokens": "Токен",
+    "tokens-full": "Мои токены"
   },
   "notify": "Уведомления",
   "new-notify": "Новое уведомление",
@@ -2623,5 +2645,79 @@
     "session_hit_rate": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN  16 HOURS 15 MINUTES 09 SECONDS VISIT HTTPS://MYMEMORY.TRANSLATED.NET/DOC/USAGELIMITS.PHP TO TRANSLATE MORE",
     "session_cost": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN  16 HOURS 15 MINUTES 09 SECONDS VISIT HTTPS://MYMEMORY.TRANSLATED.NET/DOC/USAGELIMITS.PHP TO TRANSLATE MORE",
     "empty": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN  16 HOURS 15 MINUTES 08 SECONDS VISIT HTTPS://MYMEMORY.TRANSLATED.NET/DOC/USAGELIMITS.PHP TO TRANSLATE MORE"
+  },
+  "tokens": {
+    "eyebrow": "Доступ к API",
+    "title": "Мои токены",
+    "subtitle": "Управляйте ключами API sk-tnx-xxx до 10",
+    "create": {
+      "label": "Новый токен",
+      "title": "Токен нового API",
+      "name_label": "НАИМЕНОВАНИЕ",
+      "name_too_long": "Имя не может содержать более 64 символов",
+      "expire_label": "Время истечения срока действия",
+      "never": "Срок действия никогда не истекает",
+      "plaintext_warning": "Этот ключ отображается только один раз, скопируйте и сохраните его сейчас. Вы не сможете увидеть его снова, когда закроете его.",
+      "success_action": "Я сохранил (-а)",
+      "creating": "Создание..."
+    },
+    "unnamed": "Без названия",
+    "name_placeholder": "Пример: производственная среда",
+    "copy": {
+      "label": "копировать",
+      "success": "Скопировано",
+      "failed": "Не удалось скопировать, выберите вручную"
+    },
+    "rename": {
+      "label": "Изменение имени",
+      "title": "Переименовать маркер",
+      "save": "Сохранить",
+      "saving": "Сохранение",
+      "success": "Переименовано"
+    },
+    "revoke": {
+      "label": "Отмена",
+      "confirm": "Вы уверены, что хотите отозвать этот токен?",
+      "description": "Вызовы API, которые используют этот ключ после отзыва, возвратят 401. Это действие нельзя отменить.",
+      "last_token_warn": "Это ваш последний активный токен, и вы не сможете использовать API после отзыва. Пожалуйста, создайте новый токен, прежде чем отозвать этот токен.",
+      "success": "Токен отозван"
+    },
+    "usage": {
+      "label": "Количество",
+      "drawer_title": "Использование токенов",
+      "total_calls": "Всего звонков",
+      "total_tokens": "Общее использование токенов",
+      "input_tokens": "Введите токены",
+      "output_tokens": "Вывод токенов",
+      "by_model": "Распределение по моделям",
+      "no_data": "Нет истории звонков",
+      "load_failed": "Не удалось загрузить данные о дозировке"
+    },
+    "status": {
+      "active": "Активно",
+      "revoked": "Отозвано",
+      "expired": "Просрочено"
+    },
+    "quota": {
+      "unlimited": "Неограниченное количество кредитов"
+    },
+    "expire": {
+      "never": "Срок действия никогда не истекает"
+    },
+    "created": {
+      "title": "Токен создан",
+      "name_label": "Название токена"
+    },
+    "empty": {
+      "title": "Пока нет токенов",
+      "cta": "Создайте свой первый токен Начало работы с API"
+    },
+    "errors": {
+      "load_failed": "Не удалось загрузить список маркеров",
+      "create_failed": "Не удалось создать, повторите попытку позже",
+      "max_reached": "Достигнут лимит в 10 токенов",
+      "revoke_failed": "Не удалось отменить, повторите попытку позже",
+      "rename_failed": "Не удалось переименовать, повторите попытку позже"
+    }
   }
 }
