@@ -18,30 +18,6 @@ export type PaymentStatusResponse = CommonResponse & {
   remaining_time?: number;
 };
 
-export type PaymentOrder = {
-  user_id: number;
-  type: string;
-  service: string;
-  amount: number;
-  order_id: string;
-  name: string;
-  device: string;
-  state: boolean;
-  username: string;
-  created_at: string;
-  updated_at: string;
-};
-
-export type PaymentListResponse = CommonResponse & {
-  data: PaymentOrder[];
-  total: number;
-};
-
-export type RecheckOrderResponse = CommonResponse & {
-  order_state?: boolean;
-  is_changed?: boolean;
-};
-
 export async function createPaymentOrder(
   type: string,
   quota: number,
@@ -92,43 +68,4 @@ export function usePaymentState(order: string): boolean {
   }, []);
 
   return state;
-}
-
-export async function getPaymentOrders(
-  page: number,
-  search: string,
-): Promise<PaymentListResponse> {
-  try {
-    const response = await axios.get<PaymentListResponse>(
-      "/admin/payment/view",
-      {
-        params: { page, search },
-      },
-    );
-    return response.data;
-  } catch (e) {
-    return { status: false, error: getErrorMessage(e), data: [], total: 0 };
-  }
-}
-
-export async function recheckOrderStatus(
-  order: string,
-  service: string,
-): Promise<RecheckOrderResponse> {
-  try {
-    const response = await axios.get<RecheckOrderResponse>(
-      "/admin/payment/recheck",
-      {
-        params: { order, service },
-      },
-    );
-    return response.data;
-  } catch (e) {
-    return {
-      status: false,
-      error: getErrorMessage(e),
-      order_state: false,
-      is_changed: false,
-    };
-  }
 }

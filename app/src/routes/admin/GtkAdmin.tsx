@@ -3,6 +3,7 @@
 // Eight-tab sidebar: Hub / Channels / Users / Ratios / Orders / Pricing / Settings / Tokens
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { useSelector } from "react-redux";
@@ -149,6 +150,13 @@ const IconSettings = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="12" cy="12" r="3"/>
     <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+  </svg>
+);
+const IconMansu = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <line x1="9" y1="3" x2="9" y2="21"/>
+    <line x1="15" y1="3" x2="15" y2="21"/>
   </svg>
 );
 const IconSearch = () => (
@@ -1472,6 +1480,15 @@ function GtkAdmin() {
             <em>{TAB_TITLES[tab]}</em>
           </h1>
           <div className="gtk-topbar-right">
+            {/* 民宿工作台 — top-bar entry to the separate /admin/mansu kanban route */}
+            <Link
+              to="/admin/mansu"
+              className="btn btn-ghost btn-sm"
+              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <IconMansu />
+              <span>民宿工作台</span>
+            </Link>
             <span className="status">
               <span className="dot" />
               系统正常
