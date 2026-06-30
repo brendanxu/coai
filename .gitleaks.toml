@@ -1,0 +1,41 @@
+# gitleaks config — greentokey CoAI worktree (feat/v0.22-token-launch)
+# Added 2026-06-30 by final launch audit. Reason: `bin/pre-deploy-check.sh` runs
+# `gitleaks dir .` from THIS tree, but the tree had no config, so (a) a benign
+# docker image-tag in a deploy-report .md tripped generic-api-key and would abort
+# a real deploy, and (b) the default rules did NOT catch the `sk-...` NewAPI relay
+# token that leaked into config.example.yaml (P0, audit 2026-06-30). This config
+# mirrors the parent repo allowlist and adds an explicit sk- token rule.
+
+title = "greentokey coai gitleaks config"
+
+[extend]
+# Inherit upstream default rules (AWS keys, GitHub tokens, JWT, generic high-entropy).
+useDefault = true
+
+# Custom rule: catch NewAPI / OpenAI-style sk- tokens (40+ chars) in code/config.
+# This is the class of secret that slipped past the default rules in the P0 leak.
+[[rules]]
+id = "newapi-sk-token"
+description = "NewAPI / OpenAI-style sk- access token"
+regex = '''sk-[A-Za-z0-9]{40,}'''
+keywords = ["sk-"]
+
+[allowlist]
+description = "Narrow exceptions for deploy-report markdown and placeholder markers"
+# Deploy/review reports legitimately mention docker image tags (greentokey-coai:vX.Y.Z-name)
+# and describe past deploys; they carry no live secrets. Mirrors parent .gitleaks.toml.
+paths = [
+  '''\.gitleaks\.toml''',
+  '''docs/codex-reviews/.*''',
+  '''docs/superpowers/.*''',
+]
+# Safe placeholder shapes used in config.example.yaml and docs.
+regexes = [
+  '''sk-x{8,}''',                       # config.example.yaml placeholder (sk-xxxx...)
+  '''<see memory/credentials\.md>''',
+  '''\*\*\*REDACTED[^*]*\*\*\*''',
+]
+# Docker image tags look like 20-char alnum+hyphen → generic-api-key false positive.
+stopwords = [
+  "greentokey-coai",
+]
