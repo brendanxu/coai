@@ -29,7 +29,8 @@ newapi:
   # NewAPI /v1 endpoints authenticate with sk-xxx (Bearer prefix), NOT the admin token.
   # Set this to a NewAPI token with sufficient quota for all relay traffic.
   # If empty, falls back to admin_access_token with a warning (may be rejected by NewAPI /v1).
-  # Production value: sk-EZKyGzC1r2Dxves1Q0wlpSNAjFiyZg79jCHYl4oYuibhJof9 (token id=6, unlimited quota)
+  # The REAL production relay token must live ONLY in the VPS runtime config / .env
+  # (never commit a live sk-xxx here). Placeholder example: sk-xxxxxxxxxxxxxxxxxxxx
   relay_token: ""
 system:
   general:

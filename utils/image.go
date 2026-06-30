@@ -205,7 +205,7 @@ func DownloadImage(url string, path string) error {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			globals.Debug("[utils] close file error: %s (path: %s)", err.Error(), path)
+			globals.Debug(fmt.Sprintf("[utils] close file error: %s (path: %s)", err.Error(), path))
 		}
 	}(res.Body)
 
@@ -217,7 +217,7 @@ func DownloadImage(url string, path string) error {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			globals.Debug("[utils] close file error: %s (path: %s)", err.Error(), path)
+			globals.Debug(fmt.Sprintf("[utils] close file error: %s (path: %s)", err.Error(), path))
 		}
 	}(file)
 

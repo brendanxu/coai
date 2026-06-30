@@ -19,7 +19,6 @@ import router from "@/router.tsx";
 import React from "react";
 import {
   KeyRound,
-  LibraryBig,
   MessageCircle,
   PackageCheck,
   Shield,
@@ -71,7 +70,7 @@ function MenuBar({ children, className }: MenuBarProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <BarItem icon={<MessageCircle />} path={`/`} name={"chat"} />
-            <BarItem icon={<LibraryBig />} path={`/model`} name={"model"} />
+            {/* Removed dead '/model' BarItem — no such route is registered (was a 404 for every logged-in user). PKG launch-audit 2026-06-30. */}
             {/* <BarItem icon={<Compass />} path={`/preset`} name={"preset"} /> */}
             {!HIDE_CREDIT_UI && (
               <BarItem icon={<Wallet />} path={`/wallet`} name={"wallet"} />
@@ -81,7 +80,11 @@ function MenuBar({ children, className }: MenuBarProps) {
             {/* PKG-N4 — /orders is auth-gated; this whole branch is already
                 gated on `auth`, so no extra check needed here. */}
             <BarItem icon={<PackageCheck />} path={`/orders`} name={"orders"} />
-            <BarItem icon={<KeyRound />} path={`/setting/tokens`} name={"tokens"} />
+            <BarItem
+              icon={<KeyRound />}
+              path={`/setting/tokens`}
+              name={"tokens"}
+            />
             <BarItem icon={<User />} path={`/account`} name={"account"} />
             {/* <BarItem icon={<PieChart />} path={`/log`} name={"log"} /> */}
             {admin && (
